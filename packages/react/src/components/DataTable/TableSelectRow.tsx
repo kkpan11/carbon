@@ -1,5 +1,5 @@
 /**
- * Copyright IBM Corp. 2016, 2023
+ * Copyright IBM Corp. 2016, 2025
  *
  * This source code is licensed under the Apache-2.0 license found in the
  * LICENSE file in the root directory of this source tree.
@@ -10,18 +10,28 @@ import React from 'react';
 import classNames from 'classnames';
 import InlineCheckbox from '../InlineCheckbox';
 import RadioButton from '../RadioButton';
+import { useId } from '../../internal/useId';
 import { usePrefix } from '../../internal/usePrefix';
+import { deprecate } from '../../prop-types/deprecate';
 
 export interface TableSelectRowProps {
   /**
-   * Specify the aria label for the underlying input control
+   * Specify a label to be read by screen readers on the containing textbox
+   * node
    */
-  ariaLabel: string;
+  ['aria-label']?: string;
+
+  /**
+   * @deprecated please use `aria-label` instead.
+   * Specify a label to be read by screen readers on the containing textbox
+   * node
+   */
+  ariaLabel?: string;
 
   /**
    * Specify whether this row is selected, or not
    */
-  checked: boolean;
+  checked?: boolean;
 
   /**
    * The CSS class names of the cell that wraps the underlying input control
@@ -64,7 +74,8 @@ export interface TableSelectRowProps {
 }
 
 const TableSelectRow = ({
-  ariaLabel,
+  ariaLabel: deprecatedAriaLabel,
+  ['aria-label']: ariaLabel,
   checked,
   id,
   name,
@@ -75,29 +86,58 @@ const TableSelectRow = ({
   className,
 }: TableSelectRowProps) => {
   const prefix = usePrefix();
+  const uniqueNameId = useId();
+
+  const handleRadioChange = onChange
+    ? (
+        value: string | number | undefined,
+        name: string | undefined,
+        event: React.ChangeEvent<HTMLInputElement>
+      ) => {
+        // Convert the radio value to boolean for consistency
+        onChange(!!value, name || '', event);
+      }
+    : undefined;
+
+  const handleCheckboxChange = onChange
+    ? (
+        checked: boolean,
+        name: string,
+        event: React.ChangeEvent<HTMLInputElement>
+      ) => {
+        onChange(checked, name, event);
+      }
+    : undefined;
+
   const selectionInputProps = {
     id,
-    name,
+    name: name ? name : uniqueNameId,
     onClick: onSelect,
-    onChange,
     checked,
     disabled,
   };
-  const InlineInputComponent = radio ? RadioButton : InlineCheckbox;
+
+  const labelValue = ariaLabel || deprecatedAriaLabel || '';
   const tableSelectRowClasses = classNames(`${prefix}--table-column-checkbox`, {
     ...(className && { [className]: true }),
     [`${prefix}--table-column-radio`]: radio,
   });
   return (
     <td className={tableSelectRowClasses} aria-live="off">
-      <InlineInputComponent
-        {...selectionInputProps}
-        {...(radio && {
-          labelText: ariaLabel,
-          hideLabel: true,
-        })}
-        {...(!radio && { ['aria-label']: ariaLabel })}
-      />
+      {radio ? (
+        <RadioButton
+          {...selectionInputProps}
+          labelText={labelValue}
+          onChange={handleRadioChange}
+          hideLabel={true}
+        />
+      ) : (
+        <InlineCheckbox
+          {...selectionInputProps}
+          aria-label={labelValue}
+          onChange={handleCheckboxChange}
+        />
+      )}
     </td>
   );
 };
@@ -105,12 +145,19 @@ TableSelectRow.propTypes = {
   /**
    * Specify the aria label for the underlying input control
    */
-  ariaLabel: PropTypes.string.isRequired,
-
+  ['aria-label']: PropTypes.string,
+  /**
+   * Deprecated, please use `aria-label` instead.
+   * Specify the aria label for the underlying input control
+   */
+  ariaLabel: deprecate(
+    PropTypes.string,
+    'This prop syntax has been deprecated. Please use the new `aria-label`.'
+  ),
   /**
    * Specify whether this row is selected, or not
    */
-  checked: PropTypes.bool.isRequired,
+  checked: PropTypes.bool,
 
   /**
    * The CSS class names of the cell that wraps the underlying input control

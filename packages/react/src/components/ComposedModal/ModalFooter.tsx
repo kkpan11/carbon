@@ -1,3 +1,10 @@
+/**
+ * Copyright IBM Corp. 2023, 2025
+ *
+ * This source code is licensed under the Apache-2.0 license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
+
 import React, { type ReactNode, type MouseEvent, type Ref } from 'react';
 import PropTypes from 'prop-types';
 import Button from '../Button';
@@ -8,7 +15,7 @@ import { noopFn } from '../../internal/noopFn';
 import InlineLoading from '../InlineLoading';
 import { InlineLoadingStatus } from '../InlineLoading/InlineLoading';
 
-interface SecondaryButtonProps {
+export interface SecondaryButtonProps {
   buttonText: ReactNode;
   onClick(evt: MouseEvent): void;
 }
@@ -35,15 +42,19 @@ function SecondaryButtonSet({
   }
 
   if (Array.isArray(secondaryButtons) && secondaryButtons.length <= 2) {
-    return secondaryButtons.map(({ buttonText, onClick: onButtonClick }, i) => (
-      <Button
-        key={`${buttonText}-${i}`}
-        className={secondaryClassName}
-        kind="secondary"
-        onClick={onButtonClick || handleRequestClose}>
-        {buttonText}
-      </Button>
-    ));
+    return (
+      <>
+        {secondaryButtons.map(({ buttonText, onClick: onButtonClick }, i) => (
+          <Button
+            key={`${buttonText}-${i}`}
+            className={secondaryClassName}
+            kind="secondary"
+            onClick={onButtonClick || handleRequestClose}>
+            {buttonText}
+          </Button>
+        ))}
+      </>
+    );
   }
   if (secondaryButtonText) {
     return (
@@ -116,6 +127,12 @@ export interface ModalFooterProps {
    * Note that this prop is not applied if you render primary/danger button by yourself
    */
   danger?: boolean;
+
+  /**
+   * Specify the message read by screen readers for the danger primary button.
+   * Defaults to an empty string; provide localized text to opt in.
+   */
+  dangerDescription?: string;
 
   /**
    * The `ref` callback for the primary button.
@@ -193,6 +210,7 @@ export const ModalFooter = React.forwardRef<HTMLElement, ModalFooterProps>(
       className: customClassName,
       closeModal = noopFn,
       danger,
+      dangerDescription = '',
       inputref,
       onRequestClose = noopFn,
       onRequestSubmit = noopFn,
@@ -242,13 +260,13 @@ export const ModalFooter = React.forwardRef<HTMLElement, ModalFooterProps>(
         // @ts-expect-error: Invalid derived types, will be fine once explicit types are added
         ref={ref}
         aria-busy={loadingActive}>
-        {/* @ts-expect-error: Invalid derived types, will be fine once explicit types are added */}
         <SecondaryButtonSet {...secondaryButtonProps} />
         {primaryButtonText && (
           <Button
             onClick={onRequestSubmit}
             className={primaryButtonClass}
             disabled={loadingActive || primaryButtonDisabled}
+            dangerDescription={dangerDescription}
             kind={danger ? 'danger' : 'primary'}
             ref={inputref}>
             {loadingStatus === 'inactive' ? (
@@ -293,9 +311,14 @@ ModalFooter.propTypes = {
   danger: PropTypes.bool,
 
   /**
+   * Specify the message read by screen readers for the danger primary button.
+   * Defaults to an empty string; provide localized text to opt in.
+   */
+  dangerDescription: PropTypes.string,
+
+  /**
    * The `ref` callback for the primary button.
    */
-  // @ts-expect-error: Invalid derived type
   inputref: PropTypes.oneOfType([
     PropTypes.func,
     PropTypes.shape({

@@ -1,6 +1,13 @@
+/**
+ * Copyright IBM Corp. 2022, 2024
+ *
+ * This source code is licensed under the Apache-2.0 license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
+
 'use strict';
 
-const clipboard = require('clipboardy');
+const { writeText } = require('tinyclip');
 const prettier = require('prettier');
 const CarbonComponents = require('@carbon/react');
 const enquirer = require('enquirer');
@@ -227,7 +234,7 @@ async function main() {
     ]);
 
     if (copy) {
-      clipboard.writeSync(testFile);
+      await writeText(testFile);
     }
     return;
   }

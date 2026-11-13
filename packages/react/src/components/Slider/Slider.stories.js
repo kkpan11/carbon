@@ -1,16 +1,15 @@
 /**
- * Copyright IBM Corp. 2016, 2023
+ * Copyright IBM Corp. 2016, 2026
  *
  * This source code is licensed under the Apache-2.0 license found in the
  * LICENSE file in the root directory of this source tree.
  */
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 
 import { WithLayer } from '../../../.storybook/templates/WithLayer';
 
-import { SliderSkeleton } from '.';
-import Slider from './Slider';
+import { Slider, SliderSkeleton } from '.';
 import mdx from './Slider.mdx';
 
 export default {
@@ -26,266 +25,334 @@ export default {
   },
 };
 
-export const Default = () => (
+const sharedArgs = {
+  ariaLabelInput: 'Slider value',
+  disabled: false,
+  hideLabel: false,
+  hideTextInput: false,
+  inputType: 'number',
+  invalid: false,
+  invalidText: 'Enter a value within the allowed range',
+  labelText: 'Storage allocation',
+  max: 100,
+  maxLabel: ' GB',
+  min: 0,
+  minLabel: ' GB',
+  name: 'storage-allocation',
+  noValidate: false,
+  readOnly: false,
+  required: false,
+  step: 1,
+  stepMultiplier: 10,
+  value: 50,
+  warn: false,
+  warnText: 'Storage allocation is approaching the recommended limit',
+};
+
+const twoHandleArgs = {
+  ...sharedArgs,
+  ariaLabelInput: 'Minimum storage allocation',
+  labelText: 'Storage allocation range',
+  name: 'minimum-storage-allocation',
+  unstable_ariaLabelInputUpper: 'Maximum storage allocation',
+  unstable_nameUpper: 'maximum-storage-allocation',
+  unstable_valueUpper: 90,
+  value: 10,
+};
+
+const sharedArgTypes = {
+  ariaLabelInput: {
+    control: 'text',
+  },
+  disabled: {
+    control: 'boolean',
+  },
+  hideLabel: {
+    control: 'boolean',
+  },
+  hideTextInput: {
+    control: 'boolean',
+  },
+  inputType: {
+    control: 'text',
+  },
+  invalid: {
+    control: 'boolean',
+  },
+  invalidText: {
+    control: 'text',
+  },
+  labelText: {
+    control: 'text',
+  },
+  max: {
+    control: 'number',
+  },
+  maxLabel: {
+    control: 'text',
+  },
+  min: {
+    control: 'number',
+  },
+  minLabel: {
+    control: 'text',
+  },
+  name: {
+    control: 'text',
+  },
+  noValidate: {
+    control: 'boolean',
+  },
+  onBlur: {
+    action: 'onBlur',
+  },
+  onChange: {
+    action: 'onChange',
+  },
+  onInputKeyUp: {
+    action: 'onInputKeyUp',
+  },
+  onRelease: {
+    action: 'onRelease',
+  },
+  readOnly: {
+    control: 'boolean',
+  },
+  required: {
+    control: 'boolean',
+  },
+  step: {
+    control: 'number',
+  },
+  stepMultiplier: {
+    control: 'number',
+  },
+  unstable_ariaLabelInputUpper: {
+    control: 'text',
+  },
+  unstable_nameUpper: {
+    control: 'text',
+  },
+  unstable_valueUpper: {
+    control: 'number',
+  },
+  value: {
+    control: 'number',
+  },
+  warn: {
+    control: 'boolean',
+  },
+  warnText: {
+    control: 'text',
+  },
+};
+
+const singleHandleControls = Object.keys(sharedArgs);
+const twoHandleControls = Object.keys(twoHandleArgs);
+
+const singleHandleParameters = {
+  controls: {
+    include: singleHandleControls,
+  },
+};
+
+const twoHandleParameters = {
+  controls: {
+    include: twoHandleControls,
+  },
+};
+
+const hiddenInputArgTypes = {
+  ...sharedArgTypes,
+  hideTextInput: {
+    ...sharedArgTypes.hideTextInput,
+    table: {
+      readonly: true,
+    },
+  },
+};
+
+const randomValue = ({ max, min, step }) => {
+  const range = max - min;
+  if (range <= 0 || step <= 0) {
+    return min;
+  }
+
+  return Math.min(max, min + Math.round((Math.random() * range) / step) * step);
+};
+
+export const Default = (args) => <Slider {...args} />;
+
+Default.args = { ...sharedArgs };
+Default.argTypes = { ...sharedArgTypes };
+Default.parameters = singleHandleParameters;
+
+export const SliderWithHiddenInputs = (args) => <Slider {...args} />;
+
+SliderWithHiddenInputs.args = {
+  ...sharedArgs,
+  hideTextInput: true,
+};
+SliderWithHiddenInputs.argTypes = hiddenInputArgTypes;
+SliderWithHiddenInputs.parameters = singleHandleParameters;
+
+export const SliderWithCustomValueLabel = (args) => (
   <Slider
-    labelText="Slider label"
-    value={50}
-    min={0}
-    max={100}
-    step={1}
-    stepMultiplier={10}
-    noValidate
-    invalidText="Invalid message goes here"
+    {...args}
+    formatLabel={(value) => {
+      if (value < 25) {
+        return 'Low';
+      } else if (value > 75) {
+        return 'High';
+      }
+      return 'Medium';
+    }}
   />
 );
 
-export const SliderWithHiddenInputs = () => (
-  <Slider
-    labelText="Slider label"
-    value={50}
-    min={0}
-    max={100}
-    step={1}
-    stepMultiplier={10}
-    noValidate
-    invalidText="Invalid message goes here"
-    hideTextInput={true}
-  />
-);
+SliderWithCustomValueLabel.args = {
+  ...sharedArgs,
+  hideTextInput: true,
+  labelText: 'Storage usage',
+  stepMultiplier: 50,
+};
+SliderWithCustomValueLabel.argTypes = {
+  ...hiddenInputArgTypes,
+};
+SliderWithCustomValueLabel.parameters = singleHandleParameters;
 
-export const ControlledSlider = () => {
-  const [val, setVal] = useState(87);
+export const ControlledSlider = (args) => {
+  const [value, setValue] = useState(args.value);
+
+  useEffect(() => {
+    setValue(args.value);
+  }, [args.value]);
+
   return (
     <>
-      <button
-        type="button"
-        onClick={() => setVal(Math.round(Math.random() * 100))}>
-        randomize value
+      <button type="button" onClick={() => setValue(randomValue(args))}>
+        Randomize value
       </button>
       <Slider
-        labelText="Slider label"
-        max={100}
-        min={0}
-        value={val}
-        onChange={({ value }) => setVal(value)}
+        {...args}
+        value={value}
+        onChange={(data) => {
+          setValue(data.value);
+          args.onChange?.(data);
+        }}
       />
-      <h1>{val}</h1>
+      <p>Current value: {value}</p>
     </>
   );
 };
 
-export const _WithLayer = () => (
+ControlledSlider.args = { ...sharedArgs, value: 87 };
+ControlledSlider.argTypes = { ...sharedArgTypes };
+ControlledSlider.parameters = singleHandleParameters;
+
+export const _WithLayer = (args) => (
   <WithLayer>
-    <Slider
-      labelText="Slider label"
-      value={50}
-      min={0}
-      max={100}
-      step={1}
-      stepMultiplier={10}
-      noValidate
-    />
+    <Slider {...args} />
   </WithLayer>
 );
 
-export const ControlledSliderWithLayer = () => {
-  const [val, setVal] = useState(87);
+_WithLayer.args = { ...sharedArgs };
+_WithLayer.argTypes = { ...sharedArgTypes };
+_WithLayer.parameters = singleHandleParameters;
+
+export const ControlledSliderWithLayer = (args) => {
+  const [value, setValue] = useState(args.value);
+
+  useEffect(() => {
+    setValue(args.value);
+  }, [args.value]);
+
   return (
     <WithLayer>
-      <button
-        type="button"
-        onClick={() => setVal(Math.round(Math.random() * 100))}>
-        randomize value
+      <button type="button" onClick={() => setValue(randomValue(args))}>
+        Randomize value
       </button>
       <Slider
-        labelText="Slider label"
-        max={100}
-        min={0}
-        value={val}
-        onChange={({ value }) => setVal(value)}
+        {...args}
+        value={value}
+        onChange={(data) => {
+          setValue(data.value);
+          args.onChange?.(data);
+        }}
       />
-      <h1>{val}</h1>
+      <p>Current value: {value}</p>
     </WithLayer>
   );
 };
 
-export const TwoHandleSlider = () => (
-  <Slider
-    ariaLabelInput="Lower bound"
-    unstable_ariaLabelInputUpper="Upper bound"
-    labelText="Slider label"
-    value={10}
-    unstable_valueUpper={90}
-    min={0}
-    max={100}
-    step={1}
-    stepMultiplier={10}
-    invalidText="Invalid message goes here"
-  />
-);
+ControlledSliderWithLayer.args = { ...sharedArgs, value: 87 };
+ControlledSliderWithLayer.argTypes = { ...sharedArgTypes };
+ControlledSliderWithLayer.parameters = singleHandleParameters;
 
-export const TwoHandleSliderWithHiddenInputs = () => (
-  <Slider
-    ariaLabelInput="Lower bound"
-    unstable_ariaLabelInputUpper="Upper bound"
-    labelText="Slider label"
-    value={10}
-    unstable_valueUpper={90}
-    min={0}
-    max={100}
-    step={1}
-    stepMultiplier={10}
-    invalidText="Invalid message goes here"
-    hideTextInput={true}
-  />
-);
+export const TwoHandleSlider = (args) => <Slider {...args} />;
 
-export const Skeleton = () => <SliderSkeleton />;
+TwoHandleSlider.args = { ...twoHandleArgs };
+TwoHandleSlider.argTypes = { ...sharedArgTypes };
+TwoHandleSlider.parameters = twoHandleParameters;
 
-export const TwoHandleSkeleton = () => <SliderSkeleton twoHandles={true} />;
+export const TwoHandleSliderWithHiddenInputs = (args) => <Slider {...args} />;
 
-export const Playground = (args) => (
-  <Slider
-    {...args}
-    labelText={`Slider (must be an increment of ${args.step})`}
-  />
-);
+TwoHandleSliderWithHiddenInputs.args = {
+  ...twoHandleArgs,
+  hideTextInput: true,
+};
+TwoHandleSliderWithHiddenInputs.argTypes = {
+  ...hiddenInputArgTypes,
+};
+TwoHandleSliderWithHiddenInputs.parameters = twoHandleParameters;
 
-Playground.argTypes = {
-  ariaLabelInput: {
-    control: { type: 'text' },
+const skeletonArgs = {
+  ariaLabel: 'Slider handle',
+  hideLabel: false,
+  twoHandles: false,
+  unstable_ariaLabelHandleUpper: 'Upper slider handle',
+};
+
+const skeletonArgTypes = {
+  ariaLabel: {
+    control: 'text',
   },
-  unstable_ariaLabelInputUpper: {
-    control: { type: 'text' },
+  hideLabel: {
+    control: 'boolean',
   },
-  light: {
-    table: {
-      disable: true,
-    },
+  twoHandles: {
+    control: 'boolean',
   },
-  children: {
-    table: {
-      disable: true,
-    },
-  },
-  className: {
-    table: {
-      disable: true,
-    },
-  },
-  disabled: {
-    control: {
-      control: {
-        type: 'boolean',
-      },
-    },
-  },
-  formatLabel: {
-    table: {
-      disable: true,
-    },
-  },
-  hideTextInput: {
-    control: {
-      type: 'boolean',
-    },
-  },
-  invalid: {
-    control: {
-      type: 'boolean',
-    },
-  },
-  invalidText: {
-    control: {
-      type: 'text',
-    },
-  },
-  labelText: {
-    table: {
-      disable: true,
-    },
-  },
-  min: {
-    control: { type: 'number' },
-  },
-  max: {
-    control: { type: 'number' },
-  },
-  name: {
-    control: { type: 'text' },
-  },
-  unstable_nameUpper: {
-    control: { type: 'text' },
-  },
-  readOnly: {
-    control: {
-      type: 'boolean',
-    },
-  },
-  required: {
-    control: {
-      type: 'boolean',
-    },
-  },
-  step: {
-    control: { type: 'number' },
-  },
-  stepMultiplier: {
-    control: { type: 'number' },
-  },
-  value: {
-    control: { type: 'number' },
-  },
-  unstable_valueUpper: {
-    control: { type: 'number' },
-  },
-  onBlur: {
-    table: {
-      disable: true,
-    },
-  },
-  onChange: {
-    table: {
-      disable: true,
-    },
-  },
-  onInputKeyUp: {
-    table: {
-      disable: true,
-    },
-  },
-  onRelease: {
-    table: {
-      disable: true,
-    },
-  },
-  warn: {
-    control: {
-      type: 'boolean',
-    },
-  },
-  warnText: {
-    control: {
-      type: 'text',
-    },
+  unstable_ariaLabelHandleUpper: {
+    control: 'text',
   },
 };
 
-Playground.args = {
-  ariaLabelInput: 'Lower bound',
-  unstable_ariaLabelInputUpper: 'Upper bound',
-  disabled: false,
-  hideTextInput: false,
-  invalid: false,
-  invalidText: 'Invalid message goes here',
-  min: 0,
-  max: 100,
-  readOnly: false,
-  required: false,
-  step: 5,
-  stepMultiplier: 5,
-  value: 50,
-  unstable_valueUpper: undefined,
-  warn: false,
-  warnText: 'Warning message goes here',
+const skeletonParameters = {
+  controls: {
+    include: Object.keys(skeletonArgs),
+  },
 };
+
+export const Skeleton = (args) => <SliderSkeleton {...args} />;
+
+Skeleton.args = { ...skeletonArgs };
+Skeleton.argTypes = { ...skeletonArgTypes };
+Skeleton.parameters = skeletonParameters;
+
+export const TwoHandleSkeleton = (args) => <SliderSkeleton {...args} />;
+
+TwoHandleSkeleton.args = {
+  ...skeletonArgs,
+  twoHandles: true,
+};
+TwoHandleSkeleton.argTypes = {
+  ...skeletonArgTypes,
+  twoHandles: {
+    ...skeletonArgTypes.twoHandles,
+    table: {
+      readonly: true,
+    },
+  },
+};
+TwoHandleSkeleton.parameters = skeletonParameters;

@@ -1,17 +1,22 @@
 /**
- * Copyright IBM Corp. 2016, 2023
+ * Copyright IBM Corp. 2016, 2026
  *
  * This source code is licensed under the Apache-2.0 license found in the
  * LICENSE file in the root directory of this source tree.
  */
 
 import PropTypes from 'prop-types';
-import React, { ReactNode, useRef } from 'react';
+import React, { cloneElement, useRef, type ReactNode } from 'react';
 import classNames from 'classnames';
 import { Text } from '../Text';
+import { deprecate } from '../../prop-types/deprecate';
 import { usePrefix } from '../../internal/usePrefix';
 import { useId } from '../../internal/useId';
-import mergeRefs from '../../tools/mergeRefs';
+import { mergeRefs } from '../../tools/mergeRefs';
+import { AILabel } from '../AILabel';
+import { isComponentElement } from '../../internal';
+import { useNormalizedInputProps } from '../../internal/useNormalizedInputProps';
+import { useNoInteractiveChildrenForLabel } from '../FeatureFlags/useNoInteractiveChildrenForLabel';
 
 type ExcludedAttributes = 'onChange';
 
@@ -29,6 +34,11 @@ export interface RadioButtonProps
    * Provide an optional className to be applied to the containing node
    */
   className?: string;
+
+  /**
+   * **Experimental**: Provide a `decorator` component to be rendered inside the `RadioButton` component
+   */
+  decorator?: ReactNode;
 
   /**
    * Specify whether the `<RadioButton>` should be checked by default
@@ -83,6 +93,7 @@ export interface RadioButtonProps
   onClick?: (evt: React.MouseEvent<HTMLInputElement>) => void;
 
   /**
+   * @deprecated please use decorator instead.
    * **Experimental**: Provide a `Slug` component to be rendered inside the `RadioButton` component
    */
   slug?: ReactNode;
@@ -96,13 +107,39 @@ export interface RadioButtonProps
    * `true` to specify if the input is required.
    */
   required?: boolean;
+
+  /**
+   * Specify whether the control is currently invalid
+   */
+  invalid?: boolean;
+
+  /**
+   * Provide the text that is displayed when the control is in an invalid state
+   */
+  invalidText?: ReactNode;
+
+  /**
+   * Specify whether the control is currently in warning state
+   */
+  warn?: boolean;
+
+  /**
+   * Provide the text that is displayed when the control is in warning state
+   */
+  warnText?: ReactNode;
+
+  /**
+   * Specify whether the RadioButton should be read-only
+   */
+  readOnly?: boolean;
 }
 
 const RadioButton = React.forwardRef<HTMLInputElement, RadioButtonProps>(
   (props, ref) => {
     const {
       className,
-      disabled,
+      decorator,
+      disabled = false,
       hideLabel,
       id,
       labelPosition = 'right',
@@ -112,12 +149,27 @@ const RadioButton = React.forwardRef<HTMLInputElement, RadioButtonProps>(
       value = '',
       slug,
       required,
+      invalid = false,
+      invalidText,
+      warn = false,
+      warnText,
+      readOnly,
       ...rest
     } = props;
 
     const prefix = usePrefix();
     const uid = useId('radio-button');
     const uniqueId = id || uid;
+
+    const normalizedProps = useNormalizedInputProps({
+      id: uniqueId,
+      readOnly,
+      disabled,
+      invalid,
+      invalidText,
+      warn,
+      warnText,
+    });
 
     function handleOnChange(event: React.ChangeEvent<HTMLInputElement>) {
       onChange(value, name, event);
@@ -137,18 +189,26 @@ const RadioButton = React.forwardRef<HTMLInputElement, RadioButtonProps>(
         [`${prefix}--radio-button-wrapper--label-${labelPosition}`]:
           labelPosition !== 'right',
         [`${prefix}--radio-button-wrapper--slug`]: slug,
+        [`${prefix}--radio-button-wrapper--decorator`]: decorator,
+        [`${prefix}--radio-button-wrapper--invalid`]: normalizedProps.invalid,
+        [`${prefix}--radio-button-wrapper--warning`]: normalizedProps.warn,
       }
     );
 
     const inputRef = useRef<HTMLInputElement>(null);
+    const labelRef = useRef<HTMLLabelElement>(null);
 
-    let normalizedSlug: React.ReactElement | undefined;
-    if (slug && React.isValidElement(slug)) {
-      const size = slug.props?.['kind'] === 'inline' ? 'md' : 'mini';
-      normalizedSlug = React.cloneElement(slug as React.ReactElement<any>, {
-        size,
-      });
-    }
+    const candidate = slug ?? decorator;
+    const candidateIsAILabel = isComponentElement(candidate, AILabel);
+    const normalizedDecorator = candidateIsAILabel
+      ? cloneElement(candidate, {
+          size: candidate.props?.['kind'] === 'inline' ? 'md' : 'mini',
+        })
+      : candidate;
+    useNoInteractiveChildrenForLabel(
+      labelRef,
+      'The RadioButton component `labelText` prop must have no interactive content'
+    );
 
     return (
       <div className={wrapperClasses}>
@@ -159,20 +219,27 @@ const RadioButton = React.forwardRef<HTMLInputElement, RadioButtonProps>(
           onChange={handleOnChange}
           id={uniqueId}
           ref={mergeRefs(inputRef, ref)}
-          disabled={disabled}
+          disabled={normalizedProps.disabled}
           value={value}
           name={name}
           required={required}
+          readOnly={readOnly}
         />
-        <label htmlFor={uniqueId} className={`${prefix}--radio-button__label`}>
+        <label
+          htmlFor={uniqueId}
+          className={`${prefix}--radio-button__label`}
+          ref={labelRef}>
           <span className={`${prefix}--radio-button__appearance`} />
-          {labelText && (
-            <Text className={innerLabelClasses}>
-              {labelText}
-              {normalizedSlug}
-            </Text>
-          )}
+          {labelText && <Text className={innerLabelClasses}>{labelText}</Text>}
         </label>
+        {labelText && slug ? (
+          normalizedDecorator
+        ) : labelText && decorator ? (
+          <div className={`${prefix}--radio-button-wrapper-inner--decorator`}>
+            {normalizedDecorator}
+          </div>
+        ) : null}
+        {normalizedProps.validation}
       </div>
     );
   }
@@ -190,6 +257,11 @@ RadioButton.propTypes = {
    * Provide an optional className to be applied to the containing node
    */
   className: PropTypes.string,
+
+  /**
+   * **Experimental**: Provide a decorator component to be rendered inside the `RadioButton` component
+   */
+  decorator: PropTypes.node,
 
   /**
    * Specify whether the `<RadioButton>` should be checked by default
@@ -245,9 +317,37 @@ RadioButton.propTypes = {
   required: PropTypes.bool,
 
   /**
+   * Specify whether the control is currently invalid
+   */
+  invalid: PropTypes.bool,
+
+  /**
+   * Provide the text that is displayed when the control is in an invalid state
+   */
+  invalidText: PropTypes.node,
+
+  /**
+   * Specify whether the control is currently in warning state
+   */
+  warn: PropTypes.bool,
+
+  /**
+   * Provide the text that is displayed when the control is in warning state
+   */
+  warnText: PropTypes.node,
+
+  /**
+   * Specify whether the RadioButton should be read-only
+   */
+  readOnly: PropTypes.bool,
+
+  /**
    * **Experimental**: Provide a `Slug` component to be rendered inside the `RadioButton` component
    */
-  slug: PropTypes.node,
+  slug: deprecate(
+    PropTypes.node,
+    'The `slug` prop has been deprecated and will be removed in the next major version. Use the decorator prop instead.'
+  ),
 
   /**
    * Specify the value of the `<RadioButton>`

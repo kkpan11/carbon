@@ -7,7 +7,7 @@
 
 import React from 'react';
 import { InlineNotification } from '../../Notification';
-import { action } from '@storybook/addon-actions';
+import { action } from 'storybook/actions';
 import mdx from '../Notification.mdx';
 
 // eslint-disable-next-line storybook/csf-component
@@ -17,6 +17,9 @@ export default {
   parameters: {
     docs: {
       page: mdx,
+    },
+    controls: {
+      exclude: ['actionButtonLabel', 'aria-label'],
     },
   },
   args: {
@@ -30,54 +33,17 @@ export default {
   },
 };
 
-export const Default = () => (
-  <InlineNotification
-    title="Notification title"
-    subtitle="Subtitle text goes here"
-  />
-);
+export const Default = (args) => <InlineNotification {...args} />;
 
-export const Playground = (args) => <InlineNotification {...args} />;
-
-Playground.argTypes = {
-  actionButtonLabel: {
-    table: {
-      disable: true,
-    },
-  },
-  ['aria-label']: {
-    table: {
-      disable: true,
-    },
-  },
-  ariaLabel: {
-    table: {
-      disable: true,
-    },
-  },
-  onActionButtonClick: {
-    table: {
-      disable: true,
-    },
-  },
+Default.argTypes = {
   onClose: {
     action: 'onClose',
   },
   onCloseButtonClick: {
     action: 'onCloseButtonClick',
   },
-  children: {
-    table: {
-      disable: true,
-    },
-  },
-  className: {
-    table: {
-      disable: true,
-    },
-  },
 };
-Playground.args = {
+Default.args = {
   title: 'Notification title',
   subtitle: 'Subtitle text goes here',
 };

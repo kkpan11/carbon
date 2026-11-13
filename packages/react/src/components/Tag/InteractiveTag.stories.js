@@ -1,25 +1,38 @@
 /**
- * Copyright IBM Corp. 2016, 2023
+ * Copyright IBM Corp. 2016, 2026
  *
  * This source code is licensed under the Apache-2.0 license found in the
  * LICENSE file in the root directory of this source tree.
  */
 
-import React, { useState } from 'react';
+import styles from './story.scss?inline';
+import interactiveTagStyles from './storyInteractiveTag.scss?inline';
+
+import React from 'react';
 import { default as Tag } from '.';
 import { default as SelectableTag } from './SelectableTag';
 import { default as OperationalTag } from './OperationalTag';
 import { default as DismissibleTag } from './DismissibleTag';
 import { Asleep } from '@carbon/icons-react';
-import { Toggletip, ToggletipButton, ToggletipContent } from '../Toggletip';
 import { Popover, PopoverContent } from '../Popover';
-import mdx from './InteractiveTag.mdx';
-import './storyInteractiveTag.scss';
+import mdx from './Tag.mdx';
+import Button from '../Button';
 
 export default {
-  title: 'Experimental/unstable__InteractiveTag',
+  title: 'Components/Tag',
   component: SelectableTag,
+  decorators: [
+    (Story) => (
+      <>
+        <style>{styles}</style>
+        <style>{interactiveTagStyles}</style>
+        <Story />
+      </>
+    ),
+  ],
   parameters: {
+    styles,
+    interactiveTagStyles,
     docs: {
       page: mdx,
     },
@@ -27,21 +40,55 @@ export default {
 };
 
 export const Selectable = (args) => {
+  const tags = [
+    {
+      id: 1,
+      text: 'Tag content with a long text description',
+    },
+    {
+      id: 2,
+      text: 'Tag content 1',
+    },
+    {
+      id: 3,
+      text: 'Tag content 2',
+    },
+    {
+      id: 4,
+      text: 'Tag content 3',
+    },
+  ];
+
+  const [selectedTags, setSelectedTags] = React.useState([
+    {
+      id: 2,
+      text: 'Tag content 1',
+    },
+  ]);
+
+  const handleChange = (tag, selected) => {
+    const nextSelectedTags = selected
+      ? [...selectedTags, tag]
+      : selectedTags.filter((t) => t.id !== tag.id);
+
+    console.log('Selected tags array: ', nextSelectedTags);
+    setSelectedTags(nextSelectedTags);
+  };
+
   return (
-    <>
-      <SelectableTag
-        renderIcon={Asleep}
-        text="Tag content with a long text description"
-        className="some-class"
-        {...args}
-      />
-      <SelectableTag
-        renderIcon={Asleep}
-        text="Tag content"
-        className="some-class"
-        {...args}
-      />
-    </>
+    <div className="tag-group" aria-label="Selectable tags" role="group">
+      {tags.map((tag, index) => (
+        <SelectableTag
+          key={index}
+          renderIcon={Asleep}
+          text={tag.text}
+          className="some-class"
+          selected={selectedTags.find((t) => t.id === tag.id)}
+          onChange={(selected) => handleChange(tag, selected)}
+          {...args}
+        />
+      ))}
+    </div>
   );
 };
 
@@ -49,35 +96,16 @@ Selectable.args = {
   disabled: false,
 };
 
+Selectable.parameters = {
+  controls: {
+    exclude: ['type', 'filter', 'title'],
+  },
+};
+
 Selectable.argTypes = {
-  as: {
-    table: {
-      disable: true,
-    },
-  },
-  type: {
-    table: {
-      disable: true,
-    },
-  },
-  filter: {
-    table: {
-      disable: true,
-    },
-  },
-  onClose: {
-    table: {
-      disable: true,
-    },
-  },
   selected: {
     control: 'false',
     description: 'Specify the state of the selectable tag.',
-  },
-  title: {
-    table: {
-      disable: true,
-    },
   },
   size: {
     options: ['sm', 'md', 'lg'],
@@ -85,14 +113,25 @@ Selectable.argTypes = {
       type: 'select',
     },
   },
+  id: {
+    control: false,
+  },
+  renderIcon: {
+    control: false,
+  },
 };
 
 export const Operational = (args) => {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = React.useState(false);
+  const [openHighContrast, setOpenHighContrast] = React.useState(false);
 
   return (
     <>
-      <div style={{ marginBottom: '1rem' }}>
+      <div
+        className="tag-group"
+        aria-label="Operational tags"
+        role="group"
+        style={{ marginBottom: '1rem' }}>
         <OperationalTag
           type="red"
           className="some-class"
@@ -168,48 +207,55 @@ export const Operational = (args) => {
       <h4>Interactive examples</h4>
       <div
         id="operational-tag"
-        style={{
-          display: 'flex',
-          justifyContent: 'flex-start',
-          marginTop: '1rem',
-        }}>
-        <Toggletip>
-          <ToggletipButton label="Tag content" tabIndex={-1} as="div">
-            <OperationalTag
-              renderIcon={Asleep}
-              text="Tag content"
-              className="some-class"
-              {...args}
-            />
-          </ToggletipButton>
-          <ToggletipContent>
-            <div style={{ lineHeight: 0 }}>
-              <p>Tag 1 name</p>
-              <p>Tag 2 name</p>
-              <p>Tag 3 name</p>
-              <p>Tag 4 name</p>
-              <p>Tag 5 name</p>
-            </div>
-          </ToggletipContent>
-        </Toggletip>
-
-        <Popover open={open}>
+        className="tag-group"
+        style={{ marginTop: '1rem' }}
+        aria-label="Operational tags with Popover"
+        role="group">
+        {/* High contrast example */}
+        <Popover
+          open={openHighContrast}
+          highContrast
+          onRequestClose={() => {
+            setOpenHighContrast(false);
+          }}>
           <OperationalTag
             onClick={() => {
-              setOpen(!open);
+              setOpen(false);
+              setOpenHighContrast((prev) => !prev);
             }}
+            aria-expanded={openHighContrast}
+            renderIcon={Asleep}
+            text="Tag content"
+            className="some-class"
+            {...args}
+          />
+          <PopoverContent className="popover-content">
+            <p>Tag 1 name</p>
+            <p>Tag 2 name</p>
+            <p>Tag 3 name</p>
+            <p>Tag 4 name</p>
+            <p>Tag 5 name</p>
+          </PopoverContent>
+        </Popover>
+
+        <Popover
+          open={open}
+          onRequestClose={() => {
+            setOpen(false);
+          }}>
+          <OperationalTag
+            onClick={() => {
+              setOpenHighContrast(false);
+              setOpen((prev) => !prev);
+            }}
+            aria-expanded={open}
             renderIcon={Asleep}
             text="Tag content"
             className="some-class"
             {...args}
           />
           <PopoverContent>
-            <div
-              style={{
-                display: 'flex',
-                flexDirection: 'column',
-                padding: '1rem',
-              }}>
+            <div className="tag-group tag-group--column">
               <Tag type="blue" className="some-class" {...args}>
                 {'Tag 1 name'}
               </Tag>
@@ -238,6 +284,12 @@ Operational.args = {
   size: 'md',
 };
 
+Operational.parameters = {
+  controls: {
+    exclude: ['filter', 'title', 'selected'],
+  },
+};
+
 Operational.argTypes = {
   id: {
     control: false,
@@ -248,31 +300,6 @@ Operational.argTypes = {
   className: {
     control: false,
   },
-  as: {
-    table: {
-      disable: true,
-    },
-  },
-  filter: {
-    table: {
-      disable: true,
-    },
-  },
-  onClose: {
-    table: {
-      disable: true,
-    },
-  },
-  title: {
-    table: {
-      disable: true,
-    },
-  },
-  selected: {
-    table: {
-      disable: true,
-    },
-  },
   type: {
     control: false,
   },
@@ -282,101 +309,103 @@ Operational.argTypes = {
       type: 'select',
     },
   },
-  // type: {
-  //   options: ['red', 'magenta', 'blue'],
-  //   control: {
-  //     type: 'select',
-  //   },
-  // },
+  renderIcon: {
+    control: false,
+  },
 };
 
 export const Dismissible = (args) => {
+  const tags = [
+    {
+      type: 'red',
+      text: 'Tag content with a long text description',
+      tagTitle: 'Provide a custom title to the tag',
+    },
+    {
+      type: 'magenta',
+      text: 'Tag content 1',
+    },
+    {
+      type: 'purple',
+      text: 'Tag content 2',
+    },
+    {
+      type: 'blue',
+      text: 'Tag content 3',
+    },
+    {
+      type: 'cyan',
+      text: 'Tag content 4',
+    },
+    {
+      type: 'teal',
+      text: 'Tag content 5',
+    },
+    {
+      type: 'green',
+      text: 'Tag content 6',
+    },
+    {
+      type: 'gray',
+      text: 'Tag content 7',
+    },
+    {
+      type: 'cool-gray',
+      text: 'Tag content 8',
+    },
+    {
+      type: 'warm-gray',
+      text: 'Tag content 9',
+    },
+    {
+      type: 'high-contrast',
+      text: 'Tag content 10',
+    },
+    {
+      type: 'outline',
+      text: 'Tag content 11',
+    },
+  ];
+
+  const [renderedTags, setRenderedTags] = React.useState(tags);
+
+  const handleClose = (removedTag) => {
+    const newTags = renderedTags.filter((tag) => tag !== removedTag);
+    setRenderedTags(newTags);
+  };
+
+  const resetTabs = () => {
+    setRenderedTags(tags);
+  };
+
   return (
     <>
-      <DismissibleTag
-        type="red"
-        className="some-class"
-        renderIcon={Asleep}
-        text="Tag content with a long text description"
-        {...args}
-      />
-      <DismissibleTag
-        type="magenta"
-        className="some-class"
-        text="Tag content"
-        renderIcon={Asleep}
-        {...args}
-      />
-      <DismissibleTag
-        type="purple"
-        className="some-class"
-        text="Tag content"
-        renderIcon={Asleep}
-        {...args}
-      />
-      <DismissibleTag
-        type="blue"
-        className="some-class"
-        renderIcon={Asleep}
-        text="Tag content"
-        {...args}
-      />
-      <DismissibleTag
-        type="cyan"
-        className="some-class"
-        renderIcon={Asleep}
-        text="Tag content"
-        {...args}
-      />
-      <DismissibleTag
-        type="teal"
-        className="some-class"
-        renderIcon={Asleep}
-        text="Tag content"
-        {...args}
-      />
-      <DismissibleTag
-        type="green"
-        className="some-class"
-        renderIcon={Asleep}
-        text="Tag content"
-        {...args}
-      />
-      <DismissibleTag
-        type="gray"
-        className="some-class"
-        renderIcon={Asleep}
-        text="Tag content"
-        {...args}
-      />
-      <DismissibleTag
-        type="cool-gray"
-        className="some-class"
-        renderIcon={Asleep}
-        text="Tag content"
-        {...args}
-      />
-      <DismissibleTag
-        type="warm-gray"
-        className="some-class"
-        renderIcon={Asleep}
-        text="Tag content"
-        {...args}
-      />
-      <DismissibleTag
-        type="high-contrast"
-        className="some-class"
-        renderIcon={Asleep}
-        text="Tag content"
-        {...args}
-      />
-      <DismissibleTag
-        type="outline"
-        className="some-class"
-        renderIcon={Asleep}
-        text="Tag content"
-        {...args}
-      />
+      <Button
+        // aria-label="Re-render all tags in the screen"
+        style={{ marginBottom: '3rem' }}
+        onClick={resetTabs}>
+        Reset
+      </Button>
+      <br />
+      <div className="tag-group" aria-label="Dismissible tags" role="group">
+        {renderedTags.map((tag, index) => (
+          <DismissibleTag
+            key={index}
+            type={tag.type}
+            className="some-class"
+            renderIcon={Asleep}
+            text={tag.text}
+            tagTitle={tag.tagTitle}
+            title="Dismiss"
+            dismissTooltipAlignment={args.dismissTooltipAlignment}
+            onClose={(e) => {
+              e.preventDefault();
+              handleClose(tag);
+            }}
+            {...args}
+          />
+        ))}
+      </div>
     </>
   );
 };
@@ -384,28 +413,46 @@ export const Dismissible = (args) => {
 Dismissible.args = {
   disabled: false,
   size: 'md',
+  dismissTooltipAlignment: 'bottom',
 };
 
+Dismissible.parameters = {
+  controls: {
+    exclude: ['filter', 'selected'],
+  },
+};
 Dismissible.argTypes = {
-  as: {
-    table: {
-      disable: true,
-    },
-  },
-  filter: {
-    table: {
-      disable: true,
-    },
-  },
-  selected: {
-    table: {
-      disable: true,
-    },
-  },
   size: {
     options: ['sm', 'md', 'lg'],
     control: {
       type: 'select',
     },
+  },
+  dismissTooltipAlignment: {
+    options: [
+      'top',
+      'top-start',
+      'top-end',
+      'bottom',
+      'bottom-start',
+      'bottom-end',
+      'left',
+      'left-start',
+      'left-end',
+      'right',
+      'right-start',
+      'right-end',
+    ],
+    control: { type: 'select' },
+    description: 'Specify the tooltip alignment for the dismiss button',
+    table: {
+      defaultValue: { summary: 'bottom' },
+    },
+  },
+  id: {
+    control: false,
+  },
+  renderIcon: {
+    control: false,
   },
 };

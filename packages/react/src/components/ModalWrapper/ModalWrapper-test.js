@@ -1,16 +1,35 @@
 /**
- * Copyright IBM Corp. 2016, 2023
+ * Copyright IBM Corp. 2016, 2026
  *
  * This source code is licensed under the Apache-2.0 license found in the
  * LICENSE file in the root directory of this source tree.
  */
 
 import React from 'react';
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import ModalWrapper from '../ModalWrapper';
 
 describe('ModalWrapper', () => {
+  it('should log the deprecation warning when rendering `ModalWrapper`', () => {
+    const consoleWarnSpy = jest
+      .spyOn(console, 'warn')
+      .mockImplementation(() => {});
+
+    render(
+      <ModalWrapper buttonTriggerText="Launch modal">
+        <p>zoom zoom</p>
+      </ModalWrapper>
+    );
+
+    expect(consoleWarnSpy).toHaveBeenCalledTimes(1);
+    expect(consoleWarnSpy).toHaveBeenCalledWith(
+      'Warning: `<ModalWrapper>` has been deprecated in favor of `<ComposedModal/>` and will be removed in the next major version, `@carbon/react@v2.x`'
+    );
+
+    consoleWarnSpy.mockRestore();
+  });
+
   it('should default to primary button', () => {
     render(
       <ModalWrapper
@@ -102,6 +121,24 @@ describe('ModalWrapper', () => {
     expect(screen.getByTestId('modal-2')).not.toHaveClass('is-visible');
   });
 
+  it('should call onKeyDown with escape', async () => {
+    const onKeyDown = jest.fn();
+    render(
+      <ModalWrapper
+        buttonTriggerText="Launch modal"
+        modalHeading="Modal heading"
+        modalLabel="Label"
+        data-testid="modal-2"
+        onKeyDown={onKeyDown}>
+        <p>Modal content here</p>
+      </ModalWrapper>
+    );
+
+    await userEvent.tab();
+    await userEvent.keyboard('{Escape}');
+    expect(onKeyDown).toHaveBeenCalledTimes(1);
+  });
+
   it('should set open state to false when close button is clicked', async () => {
     render(
       <ModalWrapper
@@ -114,10 +151,9 @@ describe('ModalWrapper', () => {
     );
 
     const triggerBtn = screen.getByText('Launch modal');
-    // eslint-disable-next-line testing-library/no-node-access
-    const closeBtn = document.querySelector('.cds--modal-close');
     await userEvent.click(triggerBtn);
     expect(screen.getByTestId('modal-3')).toHaveClass('is-visible');
+    const closeBtn = screen.getByRole('button', { name: 'Close' });
     await userEvent.click(closeBtn);
     expect(screen.getByTestId('modal-3')).not.toHaveClass('is-visible');
   });
@@ -149,6 +185,7 @@ describe('ModalWrapper', () => {
         modalHeading="Modal heading"
         modalLabel="Label"
         handleSubmit={handleSubmit}
+        shouldCloseAfterSubmit
         open
         data-testid="modal-5">
         <p>Modal content here</p>
@@ -170,6 +207,7 @@ describe('ModalWrapper', () => {
         modalHeading="Modal heading"
         modalLabel="Label"
         handleSubmit={handleSubmit}
+        shouldCloseAfterSubmit
         open>
         <p>Modal content here</p>
       </ModalWrapper>
@@ -177,11 +215,11 @@ describe('ModalWrapper', () => {
 
     const triggerBtn = screen.getByText('Launch modal');
     const submitBtn = screen.getByText('Save');
-    await userEvent.click(submitBtn);
 
+    await userEvent.click(triggerBtn);
+    expect(submitBtn).toHaveFocus();
+    await userEvent.click(submitBtn);
+    expect(triggerBtn).toHaveFocus();
     expect(handleSubmit).toHaveBeenCalled();
-    setTimeout(() => {
-      expect(triggerBtn).toHaveFocus();
-    }, 0);
   });
 });

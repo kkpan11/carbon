@@ -1,5 +1,5 @@
 /**
- * Copyright IBM Corp. 2016, 2023
+ * Copyright IBM Corp. 2016, 2026
  *
  * This source code is licensed under the Apache-2.0 license found in the
  * LICENSE file in the root directory of this source tree.
@@ -7,13 +7,20 @@
 
 import cx from 'classnames';
 import PropTypes from 'prop-types';
-import React, { ElementType, useMemo, type PropsWithChildren } from 'react';
+import React, {
+  cloneElement,
+  isValidElement,
+  useMemo,
+  type ElementType,
+  type PropsWithChildren,
+  type Ref,
+} from 'react';
 import { usePrefix } from '../../internal/usePrefix';
 import { PolymorphicProps } from '../../types/common';
 import { LayerContext } from '../Layer/LayerContext';
 import { useMatchMedia } from '../../internal/useMatchMedia';
 
-interface GlobalThemeProps {
+export interface GlobalThemeProps {
   theme?: 'white' | 'g10' | 'g90' | 'g100';
   children?: React.ReactNode;
 }
@@ -22,28 +29,30 @@ export const ThemeContext = React.createContext<GlobalThemeProps>({
   theme: 'white',
 });
 
-export const GlobalTheme = React.forwardRef(function GlobalTheme(
-  { children, theme }: PropsWithChildren<GlobalThemeProps>,
-  ref: React.Ref<unknown>
-) {
-  const value = useMemo(() => {
-    return {
-      theme,
-    };
-  }, [theme]);
+export const GlobalTheme = React.forwardRef(
+  (
+    { children, theme }: PropsWithChildren<GlobalThemeProps>,
+    ref: React.Ref<unknown>
+  ) => {
+    const value = useMemo(() => {
+      return {
+        theme,
+      };
+    }, [theme]);
 
-  const childrenWithProps = React.cloneElement(
-    children as React.ReactElement<any>,
-    { ref: ref }
-  );
+    const childrenWithProps = isValidElement<{ ref?: Ref<unknown> }>(children)
+      ? cloneElement(children, { ref })
+      : children;
 
-  return (
-    <ThemeContext.Provider value={value}>
-      {childrenWithProps}
-    </ThemeContext.Provider>
-  );
-});
+    return (
+      <ThemeContext.Provider value={value}>
+        {childrenWithProps}
+      </ThemeContext.Provider>
+    );
+  }
+);
 
+GlobalTheme.displayName = 'GlobalTheme';
 GlobalTheme.propTypes = {
   /**
    * Provide child elements to be rendered inside of `GlobalTheme`, this is
@@ -88,12 +97,12 @@ export function Theme<E extends ElementType = 'div'>({
       isDark,
     };
   }, [theme]);
-  const BaseComponentAsAny = BaseComponent as any;
+  const BaseComponentAsElement = BaseComponent as ElementType;
 
   return (
     <ThemeContext.Provider value={value}>
       <LayerContext.Provider value={1}>
-        <BaseComponentAsAny {...rest} className={className} />
+        <BaseComponentAsElement {...rest} className={className} />
       </LayerContext.Provider>
     </ThemeContext.Provider>
   );

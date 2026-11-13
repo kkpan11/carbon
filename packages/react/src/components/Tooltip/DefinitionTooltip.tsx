@@ -1,5 +1,5 @@
 /**
- * Copyright IBM Corp. 2016, 2023
+ * Copyright IBM Corp. 2016, 2026
  *
  * This source code is licensed under the Apache-2.0 license found in the
  * LICENSE file in the root directory of this source tree.
@@ -12,7 +12,7 @@ import { Popover, PopoverAlignment, PopoverContent } from '../Popover';
 import { match, keys } from '../../internal/keyboard';
 import { useFallbackId } from '../../internal/useId';
 import { usePrefix } from '../../internal/usePrefix';
-import deprecate from '../../prop-types/deprecate';
+import { deprecate } from '../../prop-types/deprecate';
 
 export interface DefinitionTooltipProps
   extends Omit<
@@ -25,9 +25,16 @@ export interface DefinitionTooltipProps
   align?: PopoverAlignment;
 
   /**
+   * Will auto-align Definition Tooltip. This prop is currently experimental
+   * and is subject to future changes. Requires React v17+
+   * @see https://github.com/carbon-design-system/carbon/issues/18714
+   */
+  autoAlign?: boolean;
+
+  /**
    * The `children` prop will be used as the value that is being defined
    */
-  children?: React.ReactNode;
+  children: React.ReactNode;
 
   /**
    * Specify an optional className to be applied to the container node
@@ -69,8 +76,9 @@ export interface DefinitionTooltipProps
   triggerClassName?: string;
 }
 
-const DefinitionTooltip: React.FC<DefinitionTooltipProps> = ({
-  align = 'bottom-start',
+const DefinitionTooltip = ({
+  align = 'bottom',
+  autoAlign,
   className,
   children,
   definition,
@@ -80,13 +88,16 @@ const DefinitionTooltip: React.FC<DefinitionTooltipProps> = ({
   tooltipText,
   triggerClassName,
   ...rest
-}) => {
+}: DefinitionTooltipProps) => {
   const [isOpen, setOpen] = useState(defaultOpen);
   const prefix = usePrefix();
   const tooltipId = useFallbackId(id);
 
   function onKeyDown(event: React.KeyboardEvent) {
-    if (isOpen && match(event, keys.Escape)) {
+    if (match(event, keys.Enter) || match(event, keys.Space)) {
+      event.preventDefault();
+      setOpen(!isOpen);
+    } else if (isOpen && match(event, keys.Escape)) {
       event.stopPropagation();
       setOpen(false);
     }
@@ -96,13 +107,16 @@ const DefinitionTooltip: React.FC<DefinitionTooltipProps> = ({
     <Popover
       align={align}
       className={className}
+      autoAlign={autoAlign}
       dropShadow={false}
       highContrast
       onMouseLeave={() => {
         setOpen(false);
       }}
       onMouseEnter={() => {
-        openOnHover ? setOpen(true) : null;
+        if (openOnHover) {
+          setOpen(true);
+        }
       }}
       onFocus={() => {
         setOpen(true);
@@ -112,12 +126,15 @@ const DefinitionTooltip: React.FC<DefinitionTooltipProps> = ({
         {...rest}
         className={cx(`${prefix}--definition-term`, triggerClassName)}
         aria-controls={tooltipId}
+        aria-describedby={tooltipId}
         aria-expanded={isOpen}
         onBlur={() => {
           setOpen(false);
         }}
-        onClick={() => {
-          setOpen(!isOpen);
+        onMouseDown={(event) => {
+          // We use onMouseDown rather than onClick to make sure this triggers
+          // before onFocus.
+          if (event.button === 0) setOpen(!isOpen);
         }}
         onKeyDown={onKeyDown}
         type="button">
@@ -163,6 +180,13 @@ DefinitionTooltip.propTypes = {
     'right-end',
     'right-start',
   ]),
+
+  /**
+   * Will auto-align the popover. This prop is currently experimental and is
+   * subject to future changes. Requires React v17+
+   * @see https://github.com/carbon-design-system/carbon/issues/18714
+   */
+  autoAlign: PropTypes.bool,
 
   /**
    * The `children` prop will be used as the value that is being defined

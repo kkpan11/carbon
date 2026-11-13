@@ -8,65 +8,20 @@
 import React from 'react';
 import { Stack } from './Stack';
 
-export default {
-  title: 'Layout/Stack',
-  component: Stack,
-  parameters: {
-    controls: {
-      hideNoControlsWarning: true,
-    },
-  },
-  argTypes: {
-    children: {
-      table: {
-        disable: true,
-      },
-    },
-  },
-};
-
-export const Default = () => {
-  return (
-    <Stack gap={6}>
-      <div>Item 1</div>
-      <div>Item 2</div>
-      <div>Item 3</div>
-    </Stack>
-  );
-};
-
-export const Horizontal = () => {
-  return (
-    <Stack gap={6} orientation="horizontal">
-      <div>Item 1</div>
-      <div>Item 2</div>
-      <div>Item 3</div>
-    </Stack>
-  );
-};
-
-export const Playground = (args) => {
-  return (
-    <Stack {...args}>
-      <div>Item 1</div>
-      <div>Item 2</div>
-      <div>Item 3</div>
-    </Stack>
-  );
-};
-
-Playground.args = {
+const args = {
   as: 'div',
+  gap: 6,
+  orientation: 'vertical',
 };
 
-Playground.argTypes = {
+const argTypes = {
   as: {
     control: {
       type: 'text',
     },
   },
   gap: {
-    options: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+    options: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
     control: {
       type: 'select',
     },
@@ -77,4 +32,44 @@ Playground.argTypes = {
       type: 'select',
     },
   },
+};
+
+export default {
+  title: 'Layout/Stack',
+  component: Stack,
+  args,
+  argTypes,
+};
+
+export const Horizontal = (args) => {
+  return (
+    <Stack {...args}>
+      <div>Item 1</div>
+      <div>Item 2</div>
+      <div>Item 3</div>
+    </Stack>
+  );
+};
+
+Horizontal.args = {
+  orientation: 'horizontal',
+};
+
+Horizontal.argTypes = {
+  orientation: {
+    ...argTypes.orientation,
+    table: {
+      readonly: true,
+    },
+  },
+};
+
+export const Default = (args) => {
+  return (
+    <Stack {...args}>
+      <div>Item 1</div>
+      <div>Item 2</div>
+      <div>Item 3</div>
+    </Stack>
+  );
 };

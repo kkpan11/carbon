@@ -1,5 +1,5 @@
 /**
- * Copyright IBM Corp. 2016, 2023
+ * Copyright IBM Corp. 2016, 2026
  *
  * This source code is licensed under the Apache-2.0 license found in the
  * LICENSE file in the root directory of this source tree.
@@ -7,38 +7,56 @@
 
 import cx from 'classnames';
 import PropTypes from 'prop-types';
-import React, { type MouseEventHandler, useRef, ReactNode } from 'react';
+import React, {
+  cloneElement,
+  forwardRef,
+  useRef,
+  type HTMLAttributes,
+  type MouseEventHandler,
+  type ReactNode,
+} from 'react';
 import {
   ArrowUp as Arrow,
   ArrowsVertical as Arrows,
 } from '@carbon/icons-react';
 import classNames from 'classnames';
-import { sortStates } from './state/sorting';
 import { useId } from '../../internal/useId';
 import { usePrefix } from '../../internal/usePrefix';
-import { ReactAttr } from '../../types/common';
-import { DataTableSortState } from './state/sortStates';
+import type { TFunc, TranslateWithId } from '../../types/common';
+import { sortStates, type DataTableSortState } from './state/sortStates';
+import { AILabel } from '../AILabel';
+import { isComponentElement } from '../../internal';
+import { useNoInteractiveChildrenForLabel } from '../FeatureFlags/useNoInteractiveChildrenForLabel';
 
 const defaultScope = 'col';
 
-export type TableHeaderTranslationKey = 'carbon.table.header.icon.description';
+const translationIds = {
+  'carbon.table.header.icon.description':
+    'carbon.table.header.icon.description',
+} as const;
 
-export interface TableHeaderTranslationArgs {
+type TranslationKey = keyof typeof translationIds;
+
+interface TableHeaderTranslationArgs {
   header: ReactNode;
   isSortHeader?: boolean;
   sortDirection?: DataTableSortState;
   sortStates: typeof sortStates;
 }
 
-const translationKeys: { [key: string]: TableHeaderTranslationKey } = {
-  buttonDescription: 'carbon.table.header.icon.description',
+const defaultTranslations: Record<TranslationKey, string> = {
+  [translationIds['carbon.table.header.icon.description']]:
+    'Click to sort rows by header in ascending order',
 };
 
-const translateWithId = (
-  key: TableHeaderTranslationKey,
-  args?: TableHeaderTranslationArgs
-): string => {
-  if (args && key === translationKeys.buttonDescription) {
+const defaultTranslateWithId: TFunc<
+  TranslationKey,
+  TableHeaderTranslationArgs
+> = (messageId, args) => {
+  if (
+    args &&
+    messageId === translationIds['carbon.table.header.icon.description']
+  ) {
     if (args.isSortHeader && sortStates) {
       // When transitioning, we know that the sequence of states is as follows:
       // NONE -> ASC -> DESC -> NONE
@@ -54,7 +72,7 @@ const translateWithId = (
     return `Click to sort rows by ${args.header} header in ascending order`;
   }
 
-  return '';
+  return defaultTranslations[messageId];
 };
 
 const sortDirections: { [key: string]: 'none' | 'ascending' | 'descending' } = {
@@ -63,8 +81,9 @@ const sortDirections: { [key: string]: 'none' | 'ascending' | 'descending' } = {
   [sortStates.DESC]: 'descending',
 };
 
-interface TableHeaderProps
-  extends ReactAttr<HTMLTableCellElement & HTMLButtonElement> {
+export interface TableHeaderProps
+  extends HTMLAttributes<HTMLTableCellElement & HTMLButtonElement>,
+    TranslateWithId<TranslationKey, TableHeaderTranslationArgs> {
   /**
    * Pass in children that will be embedded in the table header label
    */
@@ -110,61 +129,65 @@ interface TableHeaderProps
   scope?: string;
 
   /**
-   * **Experimental**: Provide a `Slug` component to be rendered inside the `TableSlugRow` component
+   * @deprecated please use decorator instead.
+   * Provide a `Slug` component to be rendered inside the `TableSlugRow` component
    */
   slug?: ReactNode;
+
+  /**
+   * **Experimental**: Provide a `decorator` component to be rendered inside the `TableDecoratorRow` component
+   */
+  decorator?: ReactNode;
 
   /**
    * Specify which direction we are currently sorting by, should be one of DESC,
    * NONE, or ASC.
    */
-  sortDirection?: string;
-
-  /**
-   * Supply a method to translate internal strings with your i18n tool of
-   * choice. Translation keys are available on the `translationKeys` field for
-   * this component.
-   */
-  translateWithId?: (
-    key: TableHeaderTranslationKey,
-    { header, sortDirection, isSortHeader, sortStates }
-  ) => string;
+  sortDirection?: DataTableSortState;
 }
 
-const TableHeader = React.forwardRef(function TableHeader(
-  {
+const frFn = forwardRef<HTMLTableCellElement, TableHeaderProps>;
+
+const TableHeader = frFn((props, ref) => {
+  const {
     className: headerClassName,
     children,
     colSpan,
+    decorator,
     isSortable = false,
     isSortHeader,
     onClick,
     scope = defaultScope,
     sortDirection,
-    translateWithId: t = translateWithId,
+    translateWithId: t = defaultTranslateWithId,
     slug,
     id,
     ...rest
-  }: TableHeaderProps,
-  ref: React.Ref<HTMLTableCellElement>
-) {
+  } = props;
+
   const prefix = usePrefix();
   const uniqueId = useId('table-sort');
+  const headerLabelRef = useRef<HTMLDivElement>(null);
 
-  // Slug is always size `mini`
-  const slugRef = useRef<HTMLInputElement>(null);
-  let normalizedSlug;
-  if (slug) {
-    normalizedSlug = React.cloneElement(slug as React.ReactElement<any>, {
-      size: 'mini',
-      ref: slugRef,
-    });
-  }
+  // AILabel is always size `mini`
+  const candidate = slug ?? decorator;
+  const candidateIsAILabel = isComponentElement(candidate, AILabel);
+  const colHasAILabel = candidateIsAILabel;
+  const normalizedDecorator = candidateIsAILabel
+    ? cloneElement(candidate, { size: 'mini' })
+    : candidate;
 
   const headerLabelClassNames = classNames({
     [`${prefix}--table-header-label`]: true,
-    [`${prefix}--table-header-label--slug`]: slug,
+    [`${prefix}--table-header-label--slug ${prefix}--table-header-label--ai-label`]:
+      colHasAILabel,
+    [`${prefix}--table-header-label--decorator`]: decorator,
   });
+
+  useNoInteractiveChildrenForLabel(
+    headerLabelRef,
+    'The TableHeader component `children` prop must have no interactive content when `isSortable` is true'
+  );
 
   if (!isSortable) {
     return (
@@ -178,7 +201,9 @@ const TableHeader = React.forwardRef(function TableHeader(
         {children ? (
           <div className={headerLabelClassNames}>
             {children}
-            {normalizedSlug}
+            <div className={`${prefix}--table-header-label--decorator-inner`}>
+              {normalizedDecorator}
+            </div>
           </div>
         ) : null}
       </th>
@@ -205,15 +230,9 @@ const TableHeader = React.forwardRef(function TableHeader(
 
   const headerClasses = cx(headerClassName, `${prefix}--table-sort__header`, {
     [`${prefix}--table-sort__header--slug`]: slug,
+    [`${prefix}--table-sort__header--ai-label`]: colHasAILabel,
+    [`${prefix}--table-sort__header--decorator`]: decorator,
   });
-
-  const handleClick = (evt) => {
-    if (slug && slugRef.current && slugRef.current.contains(evt.target)) {
-      return;
-    } else if (onClick) {
-      return onClick(evt);
-    }
-  };
 
   return (
     <th
@@ -230,18 +249,24 @@ const TableHeader = React.forwardRef(function TableHeader(
         type="button"
         aria-describedby={uniqueId}
         className={className}
-        onClick={handleClick}
+        onClick={onClick}
         {...rest}>
         <span className={`${prefix}--table-sort__flex`}>
-          <div className={`${prefix}--table-header-label`}>{children}</div>
+          <div className={`${prefix}--table-header-label`} ref={headerLabelRef}>
+            {children}
+          </div>
           <Arrow size={20} className={`${prefix}--table-sort__icon`} />
           <Arrows
             size={20}
             className={`${prefix}--table-sort__icon-unsorted`}
           />
-          {normalizedSlug}
         </span>
       </button>
+      {(slug || decorator) && (
+        <div className={`${prefix}--table-header-label--decorator-inner`}>
+          {normalizedDecorator}
+        </div>
+      )}
     </th>
   );
 });
@@ -298,14 +323,10 @@ TableHeader.propTypes = {
   sortDirection: PropTypes.oneOf(Object.values(sortStates)),
 
   /**
-   * Supply a method to translate internal strings with your i18n tool of
-   * choice. Translation keys are available on the `translationKeys` field for
-   * this component.
+   * Translates component strings using your i18n tool.
    */
   translateWithId: PropTypes.func,
 };
-
-(TableHeader as any).translationKeys = Object.values(translationKeys);
 
 TableHeader.displayName = 'TableHeader';
 

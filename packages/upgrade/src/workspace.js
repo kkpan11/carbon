@@ -1,5 +1,5 @@
 /**
- * Copyright IBM Corp. 2019, 2023
+ * Copyright IBM Corp. 2019, 2025
  *
  * This source code is licensed under the Apache-2.0 license found in the
  * LICENSE file in the root directory of this source tree.
@@ -277,6 +277,9 @@ class PackageJson {
 
     this.changed = true;
     for (const type of types) {
+      // Use delete to fully remove the dependency key from the JSON output.
+      //
+      // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
       delete this.modified[type][name];
     }
   }

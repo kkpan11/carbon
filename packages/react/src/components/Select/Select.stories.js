@@ -8,51 +8,19 @@
 import React from 'react';
 
 import { WithLayer } from '../../../.storybook/templates/WithLayer';
-
 import { default as Select, SelectSkeleton } from '../Select';
 import SelectItem from '../SelectItem';
 import SelectItemGroup from '../SelectItemGroup';
+import Button from '../Button';
+import { AILabel, AILabelContent, AILabelActions } from '../AILabel';
+import { IconButton } from '../IconButton';
+import { View, FolderOpen, Folders } from '@carbon/icons-react';
 import mdx from './Select.mdx';
 
 export default {
   title: 'Components/Select',
   component: Select,
-  args: {
-    disabled: false,
-    inline: false,
-    noLabel: false,
-    hideLabel: false,
-    invalid: false,
-    warn: false,
-    size: 'md',
-  },
   argTypes: {
-    onChange: {
-      action: 'onChange',
-      table: {
-        disable: true,
-      },
-    },
-    children: {
-      table: {
-        disable: true,
-      },
-    },
-    className: {
-      table: {
-        disable: true,
-      },
-    },
-    defaultValue: {
-      table: {
-        disable: true,
-      },
-    },
-    id: {
-      table: {
-        disable: true,
-      },
-    },
     light: {
       table: {
         disable: true,
@@ -69,93 +37,216 @@ export default {
     docs: {
       page: mdx,
     },
+    controls: {
+      exclude: ['id', 'defaultValue'],
+    },
   },
 };
 
-export const Default = () => {
+const sharedArgTypes = {
+  disabled: {
+    control: 'boolean',
+  },
+  helperText: {
+    control: 'text',
+  },
+  hideLabel: {
+    control: 'boolean',
+  },
+  inline: {
+    control: 'boolean',
+  },
+  invalid: {
+    control: 'boolean',
+  },
+  invalidText: {
+    control: 'text',
+  },
+  labelText: {
+    control: 'text',
+  },
+  onChange: {
+    action: 'onChange',
+  },
+  readOnly: {
+    control: 'boolean',
+  },
+  size: {
+    control: 'select',
+    options: ['xs', 'sm', 'md', 'lg'],
+  },
+  warn: {
+    control: 'boolean',
+  },
+  warnText: {
+    control: 'text',
+  },
+};
+
+const sharedArgs = {
+  disabled: false,
+  helperText: 'Select the region where your resources will be hosted.',
+  hideLabel: false,
+  inline: false,
+  invalid: false,
+  invalidText: 'Select a deployment region.',
+  labelText: 'Deployment region',
+  readOnly: false,
+  size: 'md',
+  warn: false,
+  warnText: 'This region has limited availability.',
+};
+
+const sharedControls = Object.keys(sharedArgTypes);
+
+const selectItems = (
+  <>
+    <SelectItem value="" text="Choose a region" />
+    <SelectItem value="us-south" text="Dallas (us-south)" />
+    <SelectItem value="us-east" text="Washington, DC (us-east)" />
+    <SelectItem value="eu-de" text="Frankfurt (eu-de)" />
+    <SelectItem value="au-syd" text="Sydney (au-syd)" />
+  </>
+);
+
+export const Inline = (args) => {
   return (
     <div>
-      <Select
-        id="select-1"
-        labelText="Select an option"
-        helperText="Optional helper text">
-        <SelectItem value="" text="" />
-        <SelectItem
-          value="An example option that is really long to show what should be done to handle long text"
-          text="An example option that is really long to show what should be done to handle long text"
-        />
-        <SelectItem value="Option 2" text="Option 2" />
-        <SelectItem value="Option 3" text="Option 3" />
-        <SelectItem value="Option 4" text="Option 4" />
+      <Select inline id="select-1" {...args}>
+        {selectItems}
       </Select>
     </div>
   );
 };
 
-export const Inline = () => {
-  return (
-    <div>
-      <Select
-        inline
-        id="select-1"
-        labelText="Select"
-        helperText="Optional helper text">
-        <SelectItem value="" text="" />
-        <SelectItem value="Option 1" text="Option 1" />
-        <SelectItem value="Option 2" text="Option 2" />
-        <SelectItem value="Option 3" text="Option 3" />
-        <SelectItem value="Option 4" text="Option 4" />
-      </Select>
-    </div>
-  );
+Inline.args = {
+  ...sharedArgs,
+  inline: true,
 };
 
-export const Skeleton = () => <SelectSkeleton />;
+Inline.argTypes = {
+  ...sharedArgTypes,
+  inline: {
+    ...sharedArgTypes.inline,
+    table: { readonly: true },
+  },
+};
 
-export const _WithLayer = () => (
+Inline.parameters = {
+  controls: { include: sharedControls },
+};
+
+export const Skeleton = (args) => {
+  return <SelectSkeleton {...args} />;
+};
+
+Skeleton.args = {
+  hideLabel: false,
+};
+
+Skeleton.argTypes = {
+  hideLabel: {
+    control: 'boolean',
+  },
+};
+
+Skeleton.parameters = {
+  controls: { include: ['hideLabel'] },
+};
+
+export const _WithLayer = (args) => (
   <WithLayer>
     {(layer) => (
-      <Select
-        id={`select-${layer}`}
-        labelText=""
-        helperText="Optional helper text">
-        <SelectItem value="" text="" />
-        <SelectItem
-          value="An example option that is really long to show what should be done to handle long text"
-          text="An example option that is really long to show what should be done to handle long text"
-        />
-        <SelectItem value="Option 2" text="Option 2" />
+      <Select id={`select-${layer}`} {...args}>
+        {selectItems}
       </Select>
     )}
   </WithLayer>
 );
 
-export const Playground = (args) => {
+_WithLayer.args = {
+  ...sharedArgs,
+};
+
+_WithLayer.argTypes = {
+  ...sharedArgTypes,
+};
+
+_WithLayer.parameters = {
+  controls: { include: sharedControls },
+};
+
+export const withAILabel = (args) => {
+  const aiLabel = (
+    <AILabel className="ai-label-container">
+      <AILabelContent>
+        <div>
+          <p className="secondary">AI Explained</p>
+          <h2 className="ai-label-heading">84%</h2>
+          <p className="secondary bold">Confidence score</p>
+          <p className="secondary">
+            This recommendation is based on current service availability and the
+            location of your existing resources.
+          </p>
+          <hr />
+          <p className="secondary">Model type</p>
+          <p className="bold">Foundation model</p>
+        </div>
+        <AILabelActions>
+          <IconButton kind="ghost" label="View">
+            <View />
+          </IconButton>
+          <IconButton kind="ghost" label="Open Folder">
+            <FolderOpen />
+          </IconButton>
+          <IconButton kind="ghost" label="Folders">
+            <Folders />
+          </IconButton>
+          <Button>View details</Button>
+        </AILabelActions>
+      </AILabelContent>
+    </AILabel>
+  );
+
   return (
     <div>
-      <Select
-        id="select-1"
-        labelText="Select an option"
-        helperText="Optional helper text"
-        {...args}>
-        <SelectItem value="" text="" />
-        <SelectItem
-          value="An example option that is really long to show what should be done to handle long text"
-          text="An example option that is really long to show what should be done to handle long text"
-        />
-        <SelectItem value="Option 2" text="Option 2" />
-        <SelectItem value="Option 3" text="Option 3" />
-        <SelectItem value="Option 4" text="Option 4" />
+      <Select id="select-1" decorator={aiLabel} {...args}>
+        {selectItems}
       </Select>
     </div>
   );
 };
 
-Playground.argTypes = {
-  helperText: {
-    control: 'text',
-  },
-  invalidText: { control: 'text' },
-  labelText: { control: 'text' },
-  warnText: { control: 'text' },
+withAILabel.args = {
+  ...sharedArgs,
+};
+
+withAILabel.argTypes = {
+  ...sharedArgTypes,
+};
+
+withAILabel.parameters = {
+  controls: { include: sharedControls },
+};
+
+export const Default = (args) => {
+  return (
+    <div>
+      <Select id="select-1" {...args}>
+        {selectItems}
+      </Select>
+    </div>
+  );
+};
+
+Default.args = {
+  ...sharedArgs,
+};
+
+Default.argTypes = {
+  ...sharedArgTypes,
+};
+
+Default.parameters = {
+  controls: { include: sharedControls },
 };

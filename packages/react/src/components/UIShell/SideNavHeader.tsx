@@ -1,5 +1,5 @@
 /**
- * Copyright IBM Corp. 2016, 2023
+ * Copyright IBM Corp. 2016, 2025
  *
  * This source code is licensed under the Apache-2.0 license found in the
  * LICENSE file in the root directory of this source tree.
@@ -11,7 +11,7 @@ import React from 'react';
 import SideNavIcon from './SideNavIcon';
 import { usePrefix } from '../../internal/usePrefix';
 
-interface SideNavHeaderProps {
+export interface SideNavHeaderProps {
   /**
    * The child nodes to be rendered
    */
@@ -29,16 +29,15 @@ interface SideNavHeaderProps {
   isSideNavExpanded?: boolean;
 
   /**
-   * Provide an icon to render in the header of the side navigation. Should be
-   * a React class.
+   * A component used to render an icon.
    */
   renderIcon: React.ComponentType;
 }
-const SideNavHeader: React.FC<SideNavHeaderProps> = ({
+const SideNavHeader = ({
   children,
   className: customClassName,
   renderIcon: IconElement,
-}) => {
+}: SideNavHeaderProps) => {
   const prefix = usePrefix();
   const className = cx(`${prefix}--side-nav__header`, customClassName);
   return (
@@ -69,10 +68,8 @@ SideNavHeader.propTypes = {
   isSideNavExpanded: PropTypes.bool,
 
   /**
-   * Provide an icon to render in the header of the side navigation. Should be
-   * a React class.
+   * A component used to render an icon.
    */
-  // @ts-expect-error - PropTypes are unable to cover this case.
   renderIcon: PropTypes.oneOfType([PropTypes.func, PropTypes.object])
     .isRequired,
 };

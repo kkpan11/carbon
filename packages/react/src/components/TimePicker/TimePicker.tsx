@@ -1,5 +1,5 @@
 /**
- * Copyright IBM Corp. 2016, 2023
+ * Copyright IBM Corp. 2016, 2026
  *
  * This source code is licensed under the Apache-2.0 license found in the
  * LICENSE file in the root directory of this source tree.
@@ -7,16 +7,16 @@
 
 import cx from 'classnames';
 import PropTypes from 'prop-types';
-import React from 'react';
+import React, { forwardRef, useRef, type HTMLAttributes } from 'react';
 import { usePrefix } from '../../internal/usePrefix';
-import deprecate from '../../prop-types/deprecate';
-import { ForwardRefReturn, ReactAttr } from '../../types/common';
-import { WarningFilled, WarningAltFilled } from '@carbon/icons-react';
+import { deprecate } from '../../prop-types/deprecate';
+import { useNormalizedInputProps } from '../../internal/useNormalizedInputProps';
+import { useNoInteractiveChildrenForLabel } from '../FeatureFlags/useNoInteractiveChildrenForLabel';
 
 type ExcludedAttributes = 'id' | 'value';
 
 export interface TimePickerProps
-  extends Omit<ReactAttr<HTMLInputElement>, ExcludedAttributes> {
+  extends Omit<HTMLAttributes<HTMLInputElement>, ExcludedAttributes> {
   /**
    * Pass in the children that will be rendered next to the form control
    */
@@ -26,6 +26,16 @@ export interface TimePickerProps
    * Specify an optional className to be applied to the container node
    */
   className?: string;
+
+  /**
+   * Specify an optional className to be applied to the `<input>` node
+   */
+  inputClassName?: string;
+
+  /**
+   * Specify an optional className to be applied to the container that wraps the `<input>` and select option
+   */
+  pickerClassName?: string;
 
   /**
    * Specify whether the `<input>` should be disabled
@@ -129,24 +139,21 @@ export interface TimePickerProps
   value?: string;
 }
 
-export type TimePickerComponent = ForwardRefReturn<
-  HTMLInputElement,
-  TimePickerProps
->;
+const frFn = forwardRef<HTMLInputElement, TimePickerProps>;
 
-const TimePicker: TimePickerComponent = React.forwardRef<
-  HTMLInputElement,
-  TimePickerProps
->(function TimePicker(
-  {
+const TimePicker = frFn((props, ref) => {
+  const {
+    ['aria-describedby']: ariaDescribedBy,
     children,
     className,
+    inputClassName,
+    pickerClassName,
     disabled = false,
     hideLabel,
     id,
-    invalidText = 'Invalid time format.',
+    invalidText = 'Error message goes here',
     invalid = false,
-    warningText = 'Warning message.',
+    warningText = 'Warning message goes here',
     warning = false,
     labelText,
     light = false,
@@ -161,62 +168,57 @@ const TimePicker: TimePickerComponent = React.forwardRef<
     type = 'text',
     value,
     ...rest
-  },
-  ref: React.LegacyRef<HTMLInputElement>
-) {
+  } = props;
   const prefix = usePrefix();
-
-  const [isValue, setValue] = React.useState(value);
-  const [prevValue, setPrevValue] = React.useState(value);
-
-  if (value !== prevValue) {
-    setValue(value);
-    setPrevValue(value);
-  }
+  const labelRef = useRef<HTMLLabelElement>(null);
 
   function handleOnClick(evt) {
     if (!disabled) {
-      if (!readOnly) {
-        setValue(isValue);
-      }
       onClick(evt);
     }
   }
 
   function handleOnChange(evt) {
     if (!disabled && !readOnly) {
-      setValue(isValue);
       onChange(evt);
     }
   }
 
   function handleOnBlur(evt) {
     if (!disabled) {
-      if (!readOnly) {
-        setValue(isValue);
-      }
       onBlur(evt);
     }
   }
 
+  const normalizedProps = useNormalizedInputProps({
+    id,
+    readOnly,
+    disabled,
+    invalid,
+    invalidText,
+    warn: warning,
+    warnText: warningText,
+  });
+
   const timePickerInputClasses = cx(
     `${prefix}--time-picker__input-field`,
     `${prefix}--text-input`,
-    [className],
+    [inputClassName],
     {
       [`${prefix}--text-input--light`]: light,
-      [`${prefix}--time-picker__input-field-error`]: invalid || warning,
+      [`${prefix}--time-picker__input-field-error`]:
+        normalizedProps.invalid || normalizedProps.warn,
     }
   );
 
   const timePickerClasses = cx({
     [`${prefix}--time-picker`]: true,
     [`${prefix}--time-picker--light`]: light,
-    [`${prefix}--time-picker--invalid`]: invalid,
-    [`${prefix}--time-picker--warning`]: warning,
+    [`${prefix}--time-picker--invalid`]: normalizedProps.invalid,
+    [`${prefix}--time-picker--warning`]: normalizedProps.warn,
     [`${prefix}--time-picker--readonly`]: readOnly,
     [`${prefix}--time-picker--${size}`]: size,
-    ...(className && { [className]: true }),
+    ...(pickerClassName && { [pickerClassName]: true }),
   });
 
   const labelClasses = cx(`${prefix}--label`, {
@@ -224,11 +226,15 @@ const TimePicker: TimePickerComponent = React.forwardRef<
     [`${prefix}--label--disabled`]: disabled,
   });
 
-  const label = labelText ? (
-    <label htmlFor={id} className={labelClasses}>
+  const label = typeof labelText !== 'undefined' && labelText !== null && (
+    <label htmlFor={id} className={labelClasses} ref={labelRef}>
       {labelText}
     </label>
-  ) : null;
+  );
+  useNoInteractiveChildrenForLabel(
+    labelRef,
+    'The TimePicker component `labelText` prop must have no interactive content'
+  );
 
   function getInternalPickerSelects() {
     const readOnlyEventHandlers = {
@@ -250,6 +256,7 @@ const TimePicker: TimePickerComponent = React.forwardRef<
     };
 
     const mappedChildren = React.Children.map(children, (pickerSelect) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- https://github.com/carbon-design-system/carbon/issues/20452
       const item = pickerSelect as any;
 
       if (item) {
@@ -268,6 +275,17 @@ const TimePicker: TimePickerComponent = React.forwardRef<
   const readOnlyProps = {
     readOnly: readOnly,
   };
+  const describedBy =
+    [
+      normalizedProps.invalid
+        ? normalizedProps.invalidId
+        : normalizedProps.warn
+          ? normalizedProps.warnId
+          : null,
+      ariaDescribedBy,
+    ]
+      .filter(Boolean)
+      .join(' ') || undefined;
 
   return (
     <div className={cx(`${prefix}--form-item`, className)}>
@@ -276,8 +294,8 @@ const TimePicker: TimePickerComponent = React.forwardRef<
         <div className={`${prefix}--time-picker__input`}>
           <input
             className={timePickerInputClasses}
-            data-invalid={invalid ? invalid : undefined}
-            disabled={disabled}
+            data-invalid={normalizedProps.invalid ? true : undefined}
+            disabled={normalizedProps.disabled}
             id={id}
             maxLength={maxLength}
             onClick={handleOnClick}
@@ -290,30 +308,25 @@ const TimePicker: TimePickerComponent = React.forwardRef<
             value={value}
             {...rest}
             {...readOnlyProps}
+            aria-describedby={describedBy}
+            aria-invalid={normalizedProps.invalid ? true : undefined}
           />
-          {(invalid || warning) && (
-            <div className={`${prefix}--time-picker__error__icon`}>
-              {invalid ? (
-                <WarningFilled
-                  className={`${prefix}--checkbox__invalid-icon`}
-                  size={16}
-                />
-              ) : (
-                <WarningAltFilled
-                  className={`${prefix}--text-input__invalid-icon--warning`}
-                  size={16}
-                />
-              )}
-            </div>
-          )}
+          {(normalizedProps.invalid || normalizedProps.warn) &&
+            normalizedProps.icon && (
+              <div className={`${prefix}--time-picker__error__icon`}>
+                {/* Use the icon from normalizedProps */}
+                {React.createElement(normalizedProps.icon, {
+                  className: normalizedProps.invalid
+                    ? `${prefix}--checkbox__invalid-icon`
+                    : `${prefix}--text-input__invalid-icon--warning`,
+                  size: 16,
+                } as React.ComponentProps<typeof normalizedProps.icon>)}
+              </div>
+            )}
         </div>
         {getInternalPickerSelects()}
       </div>
-      {(invalid || warning) && (
-        <div className={`${prefix}--form-requirement`}>
-          {invalid ? invalidText : warningText}
-        </div>
-      )}
+      {normalizedProps.validation}
     </div>
   );
 });

@@ -1,5 +1,5 @@
 /**
- * Copyright IBM Corp. 2016, 2023
+ * Copyright IBM Corp. 2016, 2026
  *
  * This source code is licensed under the Apache-2.0 license found in the
  * LICENSE file in the root directory of this source tree.
@@ -9,7 +9,7 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import React from 'react';
 import Checkbox from '../Checkbox';
-import { Slug } from '../../Slug';
+import { AILabel } from '../../AILabel';
 
 const prefix = 'cds';
 
@@ -22,6 +22,46 @@ describe('Checkbox', () => {
   it('should label the input by the given labelText', () => {
     render(<Checkbox id="test" labelText="test-label" />);
     expect(screen.getByLabelText('test-label')).toBeInTheDocument();
+  });
+
+  it('should warn without throwing for interactive content in labelText', () => {
+    const spy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+
+    expect(() => {
+      render(
+        <Checkbox
+          id="test"
+          labelText={
+            <>
+              test-label <button type="button">Help</button>
+            </>
+          }
+        />
+      );
+    }).not.toThrow();
+
+    expect(spy).toHaveBeenCalledWith(
+      expect.stringContaining(
+        'Warning: The Checkbox component `labelText` prop must have no interactive content'
+      )
+    );
+
+    spy.mockRestore();
+  });
+
+  it('should allow non-interactive content in labelText', () => {
+    expect(() => {
+      render(
+        <Checkbox
+          id="test"
+          labelText={
+            <>
+              test-label <span>additional label content</span>
+            </>
+          }
+        />
+      );
+    }).not.toThrow();
   });
 
   it('should use defaultChecked to set the default value of the <input> checkbox', () => {
@@ -78,6 +118,21 @@ describe('Checkbox', () => {
     expect(screen.getByText('Helper text')).toBeInTheDocument();
   });
 
+  it('should render helperText with value 0', () => {
+    render(<Checkbox id="test" labelText="label" helperText={0} />);
+    expect(screen.getByText('0')).toBeInTheDocument();
+  });
+
+  it('should not render helperText when helperText is an empty string', () => {
+    const { container } = render(
+      <Checkbox id="test" labelText="Checkbox label" helperText="" />
+    );
+
+    expect(
+      container.querySelector(`.${prefix}--form__helper-text`)
+    ).not.toBeInTheDocument();
+  });
+
   it('should set data-invalid when invalid prop is true', () => {
     render(
       <Checkbox
@@ -106,6 +161,81 @@ describe('Checkbox', () => {
     );
 
     expect(screen.getByText('Invalid text')).toBeInTheDocument();
+  });
+
+  it('should not respect invalid prop if disabled', () => {
+    const { container } = render(
+      <Checkbox
+        defaultChecked
+        labelText="Checkbox label"
+        id="checkbox-label-1"
+        invalid
+        disabled
+      />
+    );
+
+    // eslint-disable-next-line testing-library/no-node-access, testing-library/no-container
+    const invalidIcon = container.querySelector(
+      `svg.${prefix}--checkbox__invalid-icon`
+    );
+
+    expect(screen.getByRole('checkbox')).not.toHaveAttribute('data-invalid');
+    expect(container.firstChild).not.toHaveClass(
+      `${prefix}--checkbox-wrapper--invalid`
+    );
+    expect(invalidIcon).not.toBeInTheDocument();
+  });
+
+  it('should not respect invalid prop if readOnly', () => {
+    const { container } = render(
+      <Checkbox
+        defaultChecked
+        labelText="Checkbox label"
+        id="checkbox-label-1"
+        invalid
+        readOnly
+      />
+    );
+
+    // eslint-disable-next-line testing-library/no-node-access, testing-library/no-container
+    const invalidIcon = container.querySelector(
+      `svg.${prefix}--checkbox__invalid-icon`
+    );
+
+    expect(screen.getByRole('checkbox')).not.toHaveAttribute('data-invalid');
+    expect(container.firstChild).not.toHaveClass(
+      `${prefix}--checkbox-wrapper--invalid`
+    );
+    expect(invalidIcon).not.toBeInTheDocument();
+  });
+
+  it('should remain disabled when readOnly and disabled are both true', () => {
+    render(
+      <Checkbox
+        defaultChecked
+        labelText="Checkbox label"
+        id="checkbox-label-1"
+        readOnly
+        disabled
+      />
+    );
+
+    expect(screen.getByRole('checkbox')).toBeDisabled();
+  });
+
+  it('should display helperText when invalid is true but disabled', () => {
+    render(
+      <Checkbox
+        defaultChecked
+        labelText="Checkbox label"
+        id="checkbox-label-1"
+        invalid
+        disabled
+        helperText="Helper text"
+      />
+    );
+
+    expect(screen.getByText('Helper text')).toBeInTheDocument();
   });
 
   it('should respect readOnly prop', () => {
@@ -142,6 +272,50 @@ describe('Checkbox', () => {
       `${prefix}--checkbox-wrapper--warning`
     );
     expect(warnIcon).toBeInTheDocument();
+  });
+
+  it('should not respect warn prop if disabled', () => {
+    const { container } = render(
+      <Checkbox
+        defaultChecked
+        labelText="Checkbox label"
+        id="checkbox-label-1"
+        warn
+        disabled
+      />
+    );
+
+    // eslint-disable-next-line testing-library/no-node-access, testing-library/no-container
+    const warnIcon = container.querySelector(
+      `svg.${prefix}--checkbox__invalid-icon--warning`
+    );
+
+    expect(container.firstChild).not.toHaveClass(
+      `${prefix}--checkbox-wrapper--warning`
+    );
+    expect(warnIcon).not.toBeInTheDocument();
+  });
+
+  it('should not respect warn prop if readOnly', () => {
+    const { container } = render(
+      <Checkbox
+        defaultChecked
+        labelText="Checkbox label"
+        id="checkbox-label-1"
+        warn
+        readOnly
+      />
+    );
+
+    // eslint-disable-next-line testing-library/no-node-access, testing-library/no-container
+    const warnIcon = container.querySelector(
+      `svg.${prefix}--checkbox__invalid-icon--warning`
+    );
+
+    expect(container.firstChild).not.toHaveClass(
+      `${prefix}--checkbox-wrapper--warning`
+    );
+    expect(warnIcon).not.toBeInTheDocument();
   });
 
   it('should display warnText if warn prop is true', () => {
@@ -199,18 +373,56 @@ describe('Checkbox', () => {
     expect(onChange).not.toHaveBeenCalled();
   });
 
-  it('should respect slug prop', () => {
+  it('should respect deprecated slug prop', () => {
+    const spy = jest.spyOn(console, 'warn').mockImplementation(() => {});
     const { container } = render(
       <Checkbox
         defaultChecked
         labelText="Checkbox label"
         id="checkbox-label-1"
-        slug={<Slug />}
+        slug={<AILabel />}
       />
     );
 
     expect(container.firstChild).toHaveClass(
       `${prefix}--checkbox-wrapper--slug`
     );
+    expect(container.querySelector('label')).not.toContainElement(
+      screen.getByRole('button')
+    );
+    spy.mockRestore();
+  });
+
+  it('should respect decorator prop', () => {
+    const { container } = render(
+      <Checkbox
+        defaultChecked
+        labelText="Checkbox label"
+        id="checkbox-label-1"
+        decorator={<AILabel />}
+      />
+    );
+
+    expect(container.firstChild).toHaveClass(
+      `${prefix}--checkbox-wrapper--decorator`
+    );
+    expect(container.querySelector('label')).not.toContainElement(
+      screen.getByRole('button')
+    );
+  });
+
+  it('should set size to "md" when decorator kind is "inline"', () => {
+    const { container } = render(
+      <Checkbox
+        defaultChecked
+        labelText="Checkbox label"
+        id="checkbox-label-2"
+        decorator={<AILabel kind="inline" />}
+      />
+    );
+
+    expect(
+      container.querySelector('.cds--ai-label__button--md')
+    ).toBeInTheDocument();
   });
 });

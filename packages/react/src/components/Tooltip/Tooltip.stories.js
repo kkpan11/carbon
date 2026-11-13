@@ -1,21 +1,23 @@
 /**
- * Copyright IBM Corp. 2016, 2023
+ * Copyright IBM Corp. 2016, 2026
  *
  * This source code is licensed under the Apache-2.0 license found in the
  * LICENSE file in the root directory of this source tree.
  */
 
-import './story.scss';
+import styles from './story.scss?inline';
 
-import { Information } from '@carbon/icons-react';
+import { OverflowMenuVertical } from '@carbon/icons-react';
 import React, { useRef, useEffect } from 'react';
 import { Tooltip } from './';
 import mdx from './Tooltip.mdx';
+import Button from '../Button';
 
 export default {
   title: 'Components/Tooltip',
   component: Tooltip,
   parameters: {
+    styles,
     controls: {
       hideNoControlsWarning: true,
     },
@@ -25,54 +27,97 @@ export default {
     },
   },
   argTypes: {
-    children: {
+    align: {
+      options: [
+        'top',
+        'top-start',
+        'top-end',
+
+        'bottom',
+        'bottom-start',
+        'bottom-end',
+
+        'left',
+        'left-end',
+        'left-start',
+
+        'right',
+        'right-end',
+        'right-start',
+      ],
+      control: {
+        type: 'select',
+      },
+    },
+    highContrast: {
       table: {
         disable: true,
       },
     },
-    className: {
-      table: {
-        disable: true,
+    label: {
+      control: {
+        type: 'text',
+      },
+    },
+    description: {
+      control: {
+        type: 'text',
       },
     },
   },
   decorators: [
     (Story, context) => {
       if (context.name.toLowerCase().includes('auto align')) {
-        return <Story />;
+        return (
+          <>
+            <style>{styles}</style>
+            <Story />
+          </>
+        );
       }
       return (
-        <div className="sb-tooltip-story">
-          <Story />
-        </div>
+        <>
+          <style>{styles}</style>
+          <div className="sb-tooltip-story">
+            <Story />
+          </div>
+        </>
       );
     },
   ],
 };
 
-export const Default = () => {
-  const label =
-    'Occasionally, services are updated in a specified time window to ensure no down time for customers.';
+// Note: autoAlign is used here only to make tooltips visible in StackBlitz,
+// autoAlign is in preview and not part of the actual implementation.
+export const Default = (args) => {
+  const label = 'Options';
   return (
-    <Tooltip align="bottom" label={label}>
+    <Tooltip autoAlign label={label} closeOnActivation={false} {...args}>
       <button className="sb-tooltip-trigger" type="button">
-        <Information />
+        <OverflowMenuVertical />
       </button>
     </Tooltip>
   );
 };
 
-export const Alignment = () => {
+export const Alignment = (args) => {
   return (
-    <Tooltip label="Tooltip alignment" align="bottom-left">
-      <button className="sb-tooltip-trigger" type="button">
-        <Information />
-      </button>
+    <Tooltip label="Tooltip alignment" align="bottom-left" {...args}>
+      <Button>This button has a tooltip</Button>
     </Tooltip>
   );
 };
 
-export const ExperimentalAutoAlign = () => {
+const autoAlignStoryContainerStyle = {
+  display: 'grid',
+  placeItems: 'center',
+  width: '200vw',
+  minWidth: '1200px',
+  height: '200vh',
+  minHeight: '1200px',
+};
+
+export const ExperimentalAutoAlign = (args) => {
   const ref = useRef();
   const tooltipLabel =
     'Scroll the container up, down, left or right to observe how the tooltip will automatically change its position in attempt to stay within the viewport. This works on initial render in addition to on scroll.';
@@ -81,99 +126,25 @@ export const ExperimentalAutoAlign = () => {
     ref?.current?.scrollIntoView({ block: 'center', inline: 'center' });
   });
   return (
-    <div style={{ width: '5000px', height: '5000px' }}>
-      <div
-        style={{
-          position: 'absolute',
-          top: '2500px',
-          left: '2500px',
-        }}>
-        <Tooltip label={tooltipLabel} align="top" autoAlign>
-          <button className="sb-tooltip-trigger" type="button" ref={ref}>
-            <Information />
-          </button>
-        </Tooltip>
-      </div>
+    <div style={autoAlignStoryContainerStyle}>
+      <Tooltip label={tooltipLabel} align="top" autoAlign {...args}>
+        <Button ref={ref}>This button has a tooltip</Button>
+      </Tooltip>
     </div>
   );
 };
 
-export const Duration = () => {
-  return (
-    <Tooltip label="Label one" enterDelayMs={0} leaveDelayMs={300}>
-      <button className="sb-tooltip-trigger" type="button">
-        <Information />
-      </button>
-    </Tooltip>
-  );
-};
-
-const PlaygroundStory = (props) => {
-  const {
-    align,
-    closeOnActivation,
-    defaultOpen,
-    description,
-    enterDelayMs,
-    label,
-    leaveDelayMs,
-  } = props;
+// Note: autoAlign is used here only to make tooltips visible in StackBlitz,
+// autoAlign is in preview and not part of the actual implementation.
+export const Duration = (args) => {
   return (
     <Tooltip
-      align={align}
-      defaultOpen={defaultOpen}
-      description={description}
-      enterDelayMs={enterDelayMs}
-      label={label}
-      leaveDelayMs={leaveDelayMs}
-      closeOnActivation={closeOnActivation}>
-      <button className="sb-tooltip-trigger" type="button">
-        <Information />
-      </button>
+      autoAlign
+      label="Label one"
+      enterDelayMs={0}
+      leaveDelayMs={300}
+      {...args}>
+      <Button>This button has a tooltip</Button>
     </Tooltip>
   );
-};
-
-export const Playground = PlaygroundStory.bind({});
-
-Playground.args = {
-  align: 'bottom',
-  closeOnActivation: false,
-  defaultOpen: false,
-  label: 'Custom label',
-};
-
-Playground.argTypes = {
-  align: {
-    options: [
-      'top',
-      'top-left',
-      'top-right',
-
-      'bottom',
-      'bottom-left',
-      'bottom-right',
-
-      'left',
-      'left-bottom',
-      'left-top',
-
-      'right',
-      'right-bottom',
-      'right-top',
-    ],
-    control: {
-      type: 'select',
-    },
-  },
-  label: {
-    control: {
-      type: 'text',
-    },
-  },
-  description: {
-    control: {
-      type: 'text',
-    },
-  },
 };

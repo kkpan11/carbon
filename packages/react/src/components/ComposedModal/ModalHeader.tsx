@@ -1,5 +1,5 @@
 /**
- * Copyright IBM Corp. 2016, 2023
+ * Copyright IBM Corp. 2016, 2026
  *
  * This source code is licensed under the Apache-2.0 license found in the
  * LICENSE file in the root directory of this source tree.
@@ -9,14 +9,18 @@ import React, {
   type ReactNode,
   type MouseEvent,
   type HTMLAttributes,
+  useContext,
+  useEffect,
 } from 'react';
 import PropTypes from 'prop-types';
 import cx from 'classnames';
 import { Close } from '@carbon/icons-react';
 import { usePrefix } from '../../internal/usePrefix';
 import { IconButton } from '../IconButton';
+import { useId } from '../../internal/useId';
+import { ComposedModalContext } from './ComposedModalContext';
 
-type DivProps = Omit<HTMLAttributes<HTMLDivElement>, 'title'>;
+export type DivProps = Omit<HTMLAttributes<HTMLDivElement>, 'title'>;
 export interface ModalHeaderProps extends DivProps {
   /**
    * Provide an optional function to be called when the close button is
@@ -58,7 +62,7 @@ export interface ModalHeaderProps extends DivProps {
   /**
    * Specify an optional label to be displayed
    */
-  label?: ReactNode;
+  label?: string;
 
   /**
    * Specify an optional className to be applied to the modal header label
@@ -95,6 +99,25 @@ export const ModalHeader = React.forwardRef<HTMLDivElement, ModalHeaderProps>(
     ref
   ) {
     const prefix = usePrefix();
+    const modalId = useId();
+    const { setLabelId, setTitleId } = useContext(ComposedModalContext);
+
+    const generatedLabelId = `${prefix}--modal-header__label--${modalId}`;
+    const generatedTitleId = `${prefix}--modal-header__heading--${modalId}`;
+
+    useEffect(() => {
+      if (label && setLabelId) {
+        setLabelId(generatedLabelId);
+        return () => setLabelId(undefined);
+      }
+    }, [label, generatedLabelId, setLabelId]);
+
+    useEffect(() => {
+      if (title && setTitleId) {
+        setTitleId(generatedTitleId);
+        return () => setTitleId(undefined);
+      }
+    }, [title, generatedTitleId, setTitleId]);
 
     function handleCloseButtonClick(evt: MouseEvent) {
       closeModal?.(evt);
@@ -122,9 +145,17 @@ export const ModalHeader = React.forwardRef<HTMLDivElement, ModalHeaderProps>(
 
     return (
       <div className={headerClass} {...rest} ref={ref}>
-        {label && <h2 className={labelClass}>{label}</h2>}
+        {label && (
+          <h2 id={generatedLabelId} className={labelClass}>
+            {label}
+          </h2>
+        )}
 
-        {title && <h3 className={titleClass}>{title}</h3>}
+        {title && (
+          <h2 id={generatedTitleId} className={titleClass}>
+            {title}
+          </h2>
+        )}
 
         {children}
 
@@ -133,7 +164,6 @@ export const ModalHeader = React.forwardRef<HTMLDivElement, ModalHeaderProps>(
             className={closeClass}
             label={iconDescription}
             onClick={handleCloseButtonClick}
-            title={iconDescription}
             aria-label={iconDescription}
             align="left">
             <Close
@@ -190,7 +220,7 @@ ModalHeader.propTypes = {
   /**
    * Specify an optional label to be displayed
    */
-  label: PropTypes.node,
+  label: PropTypes.string,
 
   /**
    * Specify an optional className to be applied to the modal header label

@@ -1,3 +1,10 @@
+//
+// Copyright IBM Corp. 2022, 2023
+//
+// This source code is licensed under the Apache-2.0 license found in the
+// LICENSE file in the root directory of this source tree.
+//
+
 @use '@carbon/styles/scss/colors' as *;
 
 // base of project work area
@@ -14,6 +21,7 @@
 .cds--grid .inside {
   block-size: 100%;
   min-block-size: 80px;
+  color: $gray-100;
 }
 
 // hack to enable zoom feature to trigger
@@ -57,6 +65,7 @@
 #templates .cds--grid--condensed .inside,
 #templates .cds--row--condensed .inside {
   background: none;
+  color: $gray-10;
 }
 
 #templates .cds--grid--narrow .inside,

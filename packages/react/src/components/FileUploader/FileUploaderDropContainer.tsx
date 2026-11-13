@@ -1,23 +1,29 @@
 /**
- * Copyright IBM Corp. 2016, 2023
+ * Copyright IBM Corp. 2016, 2026
  *
  * This source code is licensed under the Apache-2.0 license found in the
  * LICENSE file in the root directory of this source tree.
  */
 
-import React, { useRef, useState } from 'react';
+import React, {
+  useRef,
+  useState,
+  type ChangeEvent,
+  type DragEvent,
+  type HTMLAttributes,
+  type SyntheticEvent,
+} from 'react';
 import PropTypes from 'prop-types';
 import classNames from 'classnames';
 import { keys, matches } from '../../internal/keyboard';
-import uniqueId from '../../tools/uniqueId';
+import { useId } from '../../internal/useId';
 import { usePrefix } from '../../internal/usePrefix';
 import { composeEventHandlers } from '../../tools/events';
-import deprecate from '../../prop-types/deprecate';
-import { ReactAttr } from '../../types/common';
+import { deprecate } from '../../prop-types/deprecate';
 import { noopFn } from '../../internal/noopFn';
 
 export interface FileUploaderDropContainerProps
-  extends Omit<ReactAttr<HTMLButtonElement>, 'tabIndex'> {
+  extends Omit<HTMLAttributes<HTMLButtonElement>, 'tabIndex'> {
   /**
    * Specify the types of files that this input should be able to receive
    */
@@ -45,6 +51,11 @@ export interface FileUploaderDropContainerProps
   labelText?: string;
 
   /**
+   * Maximum file size allowed in bytes. Files larger than this will be marked invalid
+   */
+  maxFileSize?: number;
+
+  /**
    * Specify if the component should accept multiple files to upload
    */
   multiple?: boolean;
@@ -59,7 +70,7 @@ export interface FileUploaderDropContainerProps
    */
   onAddFiles?: (
     event: React.SyntheticEvent<HTMLElement>,
-    content: { addedFiles: File[] }
+    content: { addedFiles: AddedFile[] }
   ) => void;
 
   /**
@@ -74,9 +85,14 @@ export interface FileUploaderDropContainerProps
   pattern?: string;
 
   /**
+   * Specify if the file input is required
+   */
+  required?: boolean;
+
+  /**
    * Ref to pass to the inner button element
    */
-  innerRef?: React.LegacyRef<HTMLButtonElement>;
+  innerRef?: React.Ref<HTMLButtonElement>;
 
   /**
    * @deprecated The `role` prop for `FileUploaderButton` has been deprecated since it now renders a button element by default, and has an implicit role of button.
@@ -99,18 +115,21 @@ function FileUploaderDropContainer({
   id,
   disabled,
   labelText = 'Add file',
+  maxFileSize,
   multiple = false,
   name,
   onAddFiles = noopFn,
   onClick,
   pattern = '.[0-9a-z]+$',
-  // eslint-disable-next-line react/prop-types
+  required,
+
   innerRef,
   ...rest
 }: FileUploaderDropContainerProps) {
   const prefix = usePrefix();
   const inputRef = useRef<HTMLInputElement>(null);
-  const { current: uid } = useRef(id || uniqueId());
+  const generatedId = useId();
+  const { current: uid } = useRef(id || generatedId);
   const [isActive, setActive] = useState(false);
   const dropareaClasses = classNames(
     `${prefix}--file__drop-container`,
@@ -123,17 +142,24 @@ function FileUploaderDropContainer({
   );
 
   /**
-   * Filters the array of added files based on file type restrictions
+   * Filters the array of added files based on file type and size restrictions
    */
   function validateFiles(transferredFiles: AddedFile[]) {
-    if (!accept.length) {
-      return transferredFiles;
-    }
     const acceptedTypes = new Set(accept);
     return transferredFiles.reduce<AddedFile[]>((acc, curr) => {
       const { name, type: mimeType = '' } = curr;
       const fileExtensionRegExp = new RegExp(pattern, 'i');
       const [fileExtension] = name.match(fileExtensionRegExp) ?? [];
+
+      if (maxFileSize && curr.size > maxFileSize) {
+        curr.invalidFileType = true;
+        return acc.concat([curr]);
+      }
+
+      if (!accept.length) {
+        return acc.concat([curr]);
+      }
+
       if (fileExtension === undefined) {
         return acc;
       }
@@ -148,17 +174,54 @@ function FileUploaderDropContainer({
     }, []);
   }
 
-  function handleChange(event: React.ChangeEvent<HTMLInputElement>) {
-    const files = [...(event.target.files ?? [])];
-    const addedFiles = validateFiles(files);
-    return onAddFiles(event, { addedFiles });
-  }
+  const getAddedFiles = (files: File[]) => {
+    if (!files.length) return [];
+    const filesToValidate = multiple ? files : [files[0]];
+    return validateFiles(filesToValidate);
+  };
 
-  function handleDrop(event: React.DragEvent<HTMLDivElement>) {
-    const files = [...event.dataTransfer.files];
-    const addedFiles = validateFiles(files);
+  const handleChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const files = [...(event.target.files ?? [])];
+
+    return onAddFiles(event, { addedFiles: getAddedFiles(files) });
+  };
+
+  const handleDrop = (event: DragEvent<HTMLDivElement>) => {
+    const items = [...(event.dataTransfer.items ?? [])];
+    const files = items.length
+      ? // Normalize dropped items to files. Skip directories and non-file items.
+        items.reduce<File[]>((acc, item) => {
+          if (item.kind !== 'file') {
+            return acc;
+          }
+
+          const entry = item.webkitGetAsEntry();
+          if (entry?.isDirectory) {
+            return acc;
+          }
+
+          const file = item.getAsFile();
+          if (file) {
+            acc.push(file);
+          }
+
+          return acc;
+        }, [])
+      : [...event.dataTransfer.files];
+    const addedFiles = getAddedFiles(files);
+
+    if (inputRef.current) {
+      try {
+        const dataTransfer = new DataTransfer();
+        addedFiles.forEach((file) => dataTransfer.items.add(file));
+        inputRef.current.files = dataTransfer.files;
+      } catch {
+        // Some environments reject programmatic file input assignments.
+      }
+    }
+
     return onAddFiles(event, { addedFiles });
-  }
+  };
 
   const handleClick = () => {
     if (!disabled) {
@@ -202,7 +265,7 @@ function FileUploaderDropContainer({
         className={dropareaClasses}
         ref={innerRef}
         onKeyDown={(evt) => {
-          if (matches(evt as unknown as Event, [keys.Enter, keys.Space])) {
+          if (matches(evt, [keys.Enter, keys.Space])) {
             evt.preventDefault();
             inputRef.current?.click();
           }
@@ -223,10 +286,11 @@ function FileUploaderDropContainer({
         disabled={disabled}
         accept={accept.join(',')}
         name={name}
+        required={required}
         multiple={multiple}
         onChange={handleChange}
         onClick={(evt) => {
-          (evt.target as HTMLInputElement).value = null as unknown as string;
+          (evt.target as HTMLInputElement).value = '';
         }}
       />
     </div>
@@ -261,6 +325,11 @@ FileUploaderDropContainer.propTypes = {
   labelText: PropTypes.string.isRequired,
 
   /**
+   * Maximum file size allowed in bytes. Files larger than this will be marked invalid
+   */
+  maxFileSize: PropTypes.number,
+
+  /**
    * Specify if the component should accept multiple files to upload
    */
   multiple: PropTypes.bool,
@@ -286,6 +355,11 @@ FileUploaderDropContainer.propTypes = {
    * Provide a custom regex pattern for the acceptedTypes
    */
   pattern: PropTypes.string,
+
+  /**
+   * Specify if the file input is required
+   */
+  required: PropTypes.bool,
 
   /**
    * Provide an accessibility role for the `<FileUploaderButton>`

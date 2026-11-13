@@ -1,14 +1,15 @@
 /**
- * Copyright IBM Corp. 2016, 2023
+ * Copyright IBM Corp. 2016, 2026
  *
  * This source code is licensed under the Apache-2.0 license found in the
  * LICENSE file in the root directory of this source tree.
  */
 
 import PropTypes from 'prop-types';
-import React, { type FunctionComponent, TableHTMLAttributes } from 'react';
+import React, { type TableHTMLAttributes } from 'react';
 import cx from 'classnames';
 import { usePrefix } from '../../internal/usePrefix';
+import { DataTableSize } from '../DataTable/DataTable';
 
 export interface DataTableSkeletonHeader {
   /**
@@ -28,12 +29,6 @@ export interface DataTableSkeletonProps
    * Specify the number of columns that you want to render in the skeleton state
    */
   columnCount?: number;
-
-  /**
-   * Optionally specify whether you want the Skeleton to be rendered as a
-   * compact DataTable
-   */
-  compact?: boolean;
 
   /**
    * Optionally specify the displayed headers
@@ -56,6 +51,16 @@ export interface DataTableSkeletonProps
   showToolbar?: boolean;
 
   /**
+   * Specify a label to be read by screen readers on the toolbar region.
+   */
+  toolbarLabel?: string;
+
+  /**
+   * Changes the row height of table.
+   */
+  size?: DataTableSize;
+
+  /**
    * Optionally specify whether you want the DataTable to be zebra striped
    */
   zebra?: boolean;
@@ -65,23 +70,24 @@ export interface DataTableSkeletonProps
   className?: string;
 }
 
-const DataTableSkeleton: FunctionComponent<DataTableSkeletonProps> = ({
+const DataTableSkeleton = ({
   headers,
   rowCount = 5,
   columnCount = 5,
   zebra = false,
-  compact = false,
   className,
   showHeader = true,
   showToolbar = true,
+  toolbarLabel = 'data table toolbar',
+  size = 'lg',
   ...rest
-}) => {
+}: DataTableSkeletonProps) => {
   const prefix = usePrefix();
   const dataTableSkeletonClasses = cx(className, {
     [`${prefix}--skeleton`]: true,
     [`${prefix}--data-table`]: true,
+    [`${prefix}--data-table--${size}`]: size,
     [`${prefix}--data-table--zebra`]: zebra,
-    [`${prefix}--data-table--compact`]: compact,
   });
 
   const rowRepeat = rowCount;
@@ -109,7 +115,7 @@ const DataTableSkeleton: FunctionComponent<DataTableSkeletonProps> = ({
       ) : null}
       {showToolbar ? (
         <section
-          aria-label="data table toolbar"
+          aria-label={toolbarLabel}
           className={`${prefix}--table-toolbar`}>
           <div className={`${prefix}--toolbar-content`}>
             <span
@@ -124,7 +130,7 @@ const DataTableSkeleton: FunctionComponent<DataTableSkeletonProps> = ({
             {columnsArray.map((i) => (
               <th key={i}>
                 {headers ? (
-                  <div className="cds--table-header-label">
+                  <div className={`${prefix}--table-header-label`}>
                     {headers[i]?.header}
                   </div>
                 ) : (
@@ -152,12 +158,6 @@ DataTableSkeleton.propTypes = {
   columnCount: PropTypes.number,
 
   /**
-   * Optionally specify whether you want the Skeleton to be rendered as a
-   * compact DataTable
-   */
-  compact: PropTypes.bool,
-
-  /**
    * Optionally specify the displayed headers
    */
   headers: PropTypes.arrayOf(
@@ -180,6 +180,16 @@ DataTableSkeleton.propTypes = {
    * Specify if the table toolbar should be rendered as part of the skeleton.
    */
   showToolbar: PropTypes.bool,
+
+  /**
+   * Specify a label to be read by screen readers on the toolbar region.
+   */
+  toolbarLabel: PropTypes.string,
+
+  /**
+   * Changes the row height of table.
+   */
+  size: PropTypes.oneOf(['xs', 'sm', 'md', 'lg', 'xl']),
 
   /**
    * Optionally specify whether you want the DataTable to be zebra striped

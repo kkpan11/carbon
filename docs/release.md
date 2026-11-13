@@ -12,12 +12,21 @@
 - [Release Team](#release-team)
 - [Process](#process)
   - [Prerelease](#prerelease)
+    - [Releasing another prerelease](#releasing-another-prerelease)
   - [Stable release](#stable-release)
+  - [Update gatsby-theme-carbon and carbon-website](#update-gatsby-theme-carbon-and-carbon-website)
   - [Post release](#post-release)
-  - [Manual patch release](#manual-patch-release)
-- [Previous releases](#previous-releases)
+  - [Manual Patch Release](#manual-patch-release)
+- [Previous releases (v10)](#previous-releases-v10)
   - [How to determine if the previous major version needs to be released](#how-to-determine-if-the-previous-major-version-needs-to-be-released)
   - [Releasing the previous major version](#releasing-the-previous-major-version)
+  - [Releasing a new major for a single package](#releasing-a-new-major-for-a-single-package)
+- [Troubleshooting](#troubleshooting)
+  - [The Version workflow succeeded, but the PR was not created](#the-version-workflow-succeeded-but-the-pr-was-not-created)
+  - [Something failed in the Version workflow](#something-failed-in-the-version-workflow)
+  - [Something failed in the Release workflow](#something-failed-in-the-release-workflow)
+  - [We're getting reports of unpkg links not working](#were-getting-reports-of-unpkg-links-not-working)
+  - [When running the v10 storybook deploy manually, the v11 storybook is being published to v7-react.carbondesignsystem.com](#when-running-the-v10-storybook-deploy-manually-the-v11-storybook-is-being-published-to-v7-reactcarbondesignsystemcom)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
@@ -89,6 +98,9 @@ release team will need to do the following:
 
 ```bash
 git checkout main
+```
+
+```bash
 git pull upstream main
 ```
 
@@ -105,6 +117,9 @@ chore(release): v11.2.0-rc.0
 
 ```bash
 git tag -a v11.2.0-rc.0 -m 'v11.2.0-rc.0'
+```
+
+```bash
 git push upstream v11.2.0-rc.0
 ```
 
@@ -139,6 +154,9 @@ this stage, the release team will do the following:
 
 ```bash
 git checkout main
+```
+
+```bash
 git pull upstream main
 ```
 
@@ -155,19 +173,18 @@ chore(release): v11.10.0
 
 ```bash
 git tag -a v11.2.0 -m 'v11.2.0'
+```
+
+```bash
 git push upstream v11.2.0
 ```
 
 - [ ] Verify that this triggers a run of the
       [Release Workflow](https://github.com/carbon-design-system/carbon/actions/workflows/release.yml)
 
-The packages that have been published will be switched to latest on the last
-Wednesday of a sprint. To make the switch, you will need to:
+This automatically promotes Carbon packages with new release versions to latest.
+Next you will need to:
 
-- [ ] Run the
-      [Promotion Workflow](https://github.com/carbon-design-system/carbon/actions/workflows/promote.yml)
-      to automatically promote Carbon packages with new release versions to
-      latest
 - [ ] Verify the packages have been promoted to latest
       [on NPM](https://www.npmjs.com/package/@carbon/react)
 - [ ] Update the latest release notes with the generated output from Carbon Cli
@@ -181,6 +198,7 @@ Wednesday of a sprint. To make the switch, you will need to:
   - [ ] #carbon-announcements
   - [ ] #carbon-design-system
   - [ ] #carbon-react
+  - [ ] #carbon-web-components
 
 <details>
   <summary>Click to view slack announcement template</summary>
@@ -212,27 +230,28 @@ Or, use the
 
 ### Update gatsby-theme-carbon and carbon-website
 
-After the promotion workflow is completed this will trigger the
+After the release workflow for stable release is completed this will trigger the
 `deploy-packages` workflow to update both `design-language-website` and
 `gatsby-theme-carbon` to the latest version of the Carbon packages.
 
+- [ ] Ensure a Pull Request has been generated in the
+      [design-language-website](https://github.com/carbon-design-system/design-language-website/pulls).
+      Make sure the PR bumps up the icons and pictograms packages to the latest
+      version. Do not merge the PR as the brand team will review, approve and
+      merge the PR.
 - [ ] Review, approve and merge the Pull Request generated from this action in
       [gatsby-theme-carbon](https://github.com/carbon-design-system/gatsby-theme-carbon/pulls)
       to verify no breaking changes have occurred in this release. If the PR
       from the previous release was not merged, the existing PR will be updated.
-      This should trigger an automatic release of `gatsby-theme-carbon`.
+- [ ] Run the
+      [`release-it`](https://github.com/carbon-design-system/gatsby-theme-carbon/actions/workflows/release.yml)
+      workflow in the `gatsby-theme-carbon` repo to trigger a release of
+      `gatsby-theme-carbon`.
 - [ ] Check that
       [gatsby-theme-carbon](https://github.com/carbon-design-system/gatsby-theme-carbon)
       has been released and is on the
       [latest version](https://github.com/carbon-design-system/gatsby-theme-carbon/blob/main/packages/gatsby-theme-carbon/package.json)
       of Carbon
-- [ ] Run the
-      [Update Carbon and gatsby-theme-carbon deps workflow](https://github.com/carbon-design-system/carbon-website/actions/workflows/update-carbon-gatsby-deps.yml)
-      to automatically open a PR in the Carbon website to update to latest
-      Carbon and gatsby-theme-carbon versions.
-- [ ] Review and approve the
-      [pull request](https://github.com/carbon-design-system/carbon-website/pulls)
-      generate by the workflow.
 
 ### Post release
 
@@ -255,8 +274,8 @@ categories:
 
 ### Manual Patch Release
 
-Occassionaly we need to do an off-cycle patch release to fix some broken
-functionality that was inadvertedly published in a previous release. In such
+Occasionally we need to do an off-cycle patch release to fix some broken
+functionality that was inadvertently published in a previous release. In such
 cases, follow these steps below to ensure a proper patch release:
 
 - [ ] Go to your local version of the monorepo
@@ -264,7 +283,7 @@ cases, follow these steps below to ensure a proper patch release:
 - [ ] Checkout to the tag of the release you want to publish a patch for (most
       likely the latest release tag, to find the previous release, view the
       [tag list](https://github.com/carbon-design-system/carbon/tags)).
-      `git checkout release/vX.Y.Z`
+      `git checkout vX.Y.Z`
 - [ ] Create a new release branch with the intended version to be released.
       Should be the same release that we previously checked out to incremented
       by +0.0.1 to account for a new patch version.
@@ -292,7 +311,13 @@ cases, follow these steps below to ensure a proper patch release:
 
   ```bash
   git add -A
+  ```
+
+  ```bash
   git commit -m 'chore(release): vX.Y.Z'
+  ```
+
+  ```bash
   git push --set-upstream origin release/vX.Y.Z
   ```
 
@@ -310,7 +335,10 @@ cases, follow these steps below to ensure a proper patch release:
 
     ```bash
     git tag -a vX.Y.Z -m 'vX.Y.Z'
-    git push upstream vX.Y.Z
+    ```
+
+    ```bash
+    git push upstream refs/tags/vX.Y.Z
     ```
 
 - [ ] Verify that your push triggered a release action
@@ -324,8 +352,9 @@ cases, follow these steps below to ensure a proper patch release:
   Note:
 
   - Do NOT do this for the <kbd>carbon-components</kbd> package.
-  - You need to use the individual generatied version number for the package
+  - You need to use the individual generated version number for the package
     here, not the released github tag version.
+  - Ensure you log into the npm cli as `carbon-bot` to avoid auth issues
 
 - [ ] for each package (replace <kbd>carbon-components-react</kbd> with the
       package name):
@@ -341,10 +370,13 @@ cases, follow these steps below to ensure a proper patch release:
 
 ## Previous releases (v10)
 
-We currently support the current and previous major version of the Design
-System. While the current major version will receive features and bug fixes, the
-previous major version will only receive bug fixes along with any critical
-security updates.
+From the initial v11 release in March 2022 until September 30, 2024 we supported
+the previous major version of the Design System (v10). During this time v10 only
+received bug fixes when requested, and critical security updates. All v10 code
+and assets reached end of support on September 30, 2024.
+
+The content below relating to the v10 release process is only kept here for
+posterity and should be removed from this document in the next major release.
 
 ### How to determine if the previous major version needs to be released
 
@@ -392,8 +424,8 @@ yarn lerna version patch \
   - NOT include a breaking change (e.g. it should not be v10.14.0 → v11.0.0)
   - NOT include a minor change (e.g. it should not be v10.59.1 -> v10.60.0)
 - Hit `y` to confirm changes
-- [ ] For a quick sound check, run `yarn install --immutable --immutable-cache`
-      to make sure all the versions have been correctly bumped
+- [ ] For a quick sound check, run `yarn install --immutable` to make sure all
+      the versions have been correctly bumped
   - Note: sometimes you will need to update the root `package.json` file
     manually
 - [ ] Run `yarn install`
@@ -401,7 +433,13 @@ yarn lerna version patch \
 
 ```bash
 git add -A
+```
+
+```bash
 git commit -m 'chore(release): vX.Y.Z'
+```
+
+```bash
 git push --set-upstream origin release/vX.Y.Z
 ```
 
@@ -414,6 +452,9 @@ git push --set-upstream origin release/vX.Y.Z
 
 ```bash
 git checkout v10
+```
+
+```bash
 git pull upstream v10
 ```
 
@@ -433,6 +474,9 @@ chore(release): v10.59.1
 
 ```bash
 git tag -a vX.Y.Z -m 'vX.Y.Z'
+```
+
+```bash
 git push upstream vX.Y.Z
 ```
 
@@ -456,7 +500,7 @@ For instance:
 
 - `eslint-config-carbon` needs a new major
 - All other packages should only be bumped as a new patch
-- The tag for the release should remain at the curent major `v11.x`, and not be
+- The tag for the release should remain at the current major `v11.x`, and not be
   bumped to `v12.x`
 
 To do this, packages must be versioned manually.
@@ -468,6 +512,9 @@ To do this, packages must be versioned manually.
 1. Run `yarn lerna version --no-git-tag-version --no-push`
 1. An interactive prompt will be presented - select the appropriate version bump
    for each package
+   - If you are prompted with a package that does not need a version change,
+     select **Custom Version** and enter the existing version to keep it
+     unchanged
 1. After the interactive prompt is complete, run `yarn install` to update
    `yarn.lock`
 1. Commit `chore(release): v11.23.1`
@@ -497,9 +544,21 @@ environment as long as you have push access to the repo.
 
 ```bash
 git checkout main
+```
+
+```bash
 git pull upstream main
+```
+
+```bash
 git checkout -b `release/vX.Y.Z`
+```
+
+```bash
 yarn install
+```
+
+```bash
 yarn build
 ```
 
@@ -511,7 +570,13 @@ yarn build
 
 ```bash
 git add .
+```
+
+```bash
 git commit -m "chore(release): vX.Y.Z"
+```
+
+```bash
 git push
 ```
 
@@ -547,6 +612,8 @@ package which does not contain a compiled stylesheet.
 
 To fix, re-apply the `latest` tag to `v10.x` instead of `v11.x`. Any
 non-versioned unpkg links should now resolve to `carbon-components@v10.x` again.
+
+- Ensure you log into the npm cli as `carbon-bot` to avoid auth issues.
 
 ```bash
 npm dist-tag add carbon-components@10.X.Y latest

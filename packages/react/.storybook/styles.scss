@@ -1,11 +1,13 @@
 //
-// Copyright IBM Corp. 2018, 2023
+// Copyright IBM Corp. 2018, 2026
 //
 // This source code is licensed under the Apache-2.0 license found in the
 // LICENSE file in the root directory of this source tree.
 //
 
-@use '../index.scss' as styles;
+@use '../index.scss' as styles with (
+  $font-path: '~@ibm/plex'
+);
 @use '../scss/grid/flexbox';
 
 :root {
@@ -37,6 +39,14 @@ body {
 
 .docblock-argstable-head ~ .docblock-argstable-body table tbody {
   filter: none;
+}
+
+.docs-story {
+  background: styles.$background;
+}
+
+.docs-story > *:has(> .docblock-code-toggle) {
+  background-color: styles.$background;
 }
 
 /* stylelint-disable */

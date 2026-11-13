@@ -1,5 +1,5 @@
 /**
- * Copyright IBM Corp. 2022
+ * Copyright IBM Corp. 2022, 2026
  *
  * This source code is licensed under the Apache-2.0 license found in the
  * LICENSE file in the root directory of this source tree.
@@ -8,7 +8,7 @@
 import React from 'react';
 import ExpandableSearch from './ExpandableSearch';
 import userEvent from '@testing-library/user-event';
-import { render, screen } from '@testing-library/react';
+import { render, screen, act } from '@testing-library/react';
 
 const prefix = 'cds';
 
@@ -38,7 +38,7 @@ describe('ExpandableSearch', () => {
       expect(container.firstChild).toHaveClass(`${prefix}--search--expanded`);
     });
 
-    it('is renders a defaultValue', () => {
+    it('renders a defaultValue', () => {
       render(
         <ExpandableSearch
           defaultValue="This is default text"
@@ -63,7 +63,12 @@ describe('ExpandableSearch', () => {
         <ExpandableSearch labelText="test-search" />
       );
 
-      await screen.getAllByRole('button')[0].focus();
+      const expandControl = container.querySelector('.cds--search-magnifier');
+      expect(expandControl).not.toBeNull();
+
+      await act(async () => {
+        expandControl.focus();
+      });
 
       await userEvent.keyboard('[Enter]');
 
@@ -75,7 +80,12 @@ describe('ExpandableSearch', () => {
         <ExpandableSearch labelText="test-search" />
       );
 
-      await screen.getAllByRole('button')[0].focus();
+      const expandControl = container.querySelector('.cds--search-magnifier');
+      expect(expandControl).not.toBeNull();
+
+      await act(async () => {
+        expandControl.focus();
+      });
 
       await userEvent.keyboard('[Space]');
 
@@ -88,6 +98,23 @@ describe('ExpandableSearch', () => {
       await userEvent.click(screen.getAllByRole('button')[0]);
 
       expect(screen.getByRole('searchbox')).toHaveFocus();
+    });
+
+    it('forwards tabIndex to the expand button when collapsed', () => {
+      render(<ExpandableSearch labelText="test-search" tabIndex={-1} />);
+
+      expect(screen.getAllByRole('button')[0]).toHaveAttribute(
+        'tabIndex',
+        '-1'
+      );
+    });
+
+    it('forwards tabIndex to the input when expanded', async () => {
+      render(<ExpandableSearch labelText="test-search" tabIndex={-1} />);
+
+      await userEvent.click(screen.getAllByRole('button')[0]);
+
+      expect(screen.getByRole('searchbox')).toHaveAttribute('tabIndex', '-1');
     });
 
     it('supports a ref on the underlying input element', () => {
@@ -140,6 +167,36 @@ describe('ExpandableSearch', () => {
       expect(container.firstChild).toHaveClass(`${prefix}--search--expanded`);
     });
 
+    it.each([
+      { label: 'empty string', value: '', shouldRemainExpanded: false },
+      { label: 'zero', value: 0, shouldRemainExpanded: true },
+      { label: 'non-empty string', value: 'hmm', shouldRemainExpanded: true },
+      { label: 'undefined', value: undefined, shouldRemainExpanded: false },
+    ])(
+      'should handle blur when defaultValue is $label',
+      async ({ value, shouldRemainExpanded }) => {
+        const { container } = render(
+          <>
+            <ExpandableSearch defaultValue={value} labelText="test-search" />
+            <button type="button">second-element</button>
+          </>
+        );
+
+        await userEvent.click(screen.getAllByRole('button')[0]);
+        await userEvent.click(screen.getByText('second-element'));
+
+        if (shouldRemainExpanded) {
+          expect(container.firstChild).toHaveClass(
+            `${prefix}--search--expanded`
+          );
+        } else {
+          expect(container.firstChild).not.toHaveClass(
+            `${prefix}--search--expanded`
+          );
+        }
+      }
+    );
+
     it('closes and clears value on escape', async () => {
       const { container } = render(
         <ExpandableSearch labelText="test-search" />
@@ -164,6 +221,24 @@ describe('ExpandableSearch', () => {
       expect(container.firstChild).not.toHaveClass(
         `${prefix}--search--expanded`
       );
+    });
+
+    it('aligns the collapsed magnifier tooltip to the top by default', () => {
+      const { container } = render(
+        <ExpandableSearch labelText="test-search" />
+      );
+      expect(
+        container.querySelector(`.${prefix}--search-magnifier-tooltip`)
+      ).toHaveClass(`${prefix}--popover--top`);
+    });
+
+    it('supports a custom tooltipAlignment for the collapsed magnifier', () => {
+      const { container } = render(
+        <ExpandableSearch labelText="test-search" tooltipAlignment="bottom" />
+      );
+      expect(
+        container.querySelector(`.${prefix}--search-magnifier-tooltip`)
+      ).toHaveClass(`${prefix}--popover--bottom`);
     });
   });
 });

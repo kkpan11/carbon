@@ -1,19 +1,9 @@
-import { ArgsTable, Canvas, Story } from '@storybook/blocks';
+import { ArgTypes, Canvas, Meta } from '@storybook/addon-docs/blocks';
 import * as FormStories from './Form.stories';
+import { stackblitzPrefillConfig } from '../../../previewer/codePreviewer';
+import formDemoSrc from './stories/form-demo.js?raw';
 
-{/* <!-- START doctoc generated TOC please keep comment here to allow auto update --> <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE --> */}
-
-## Table of Contents
-
-- [Form](#form)
-  - [Table of Contents](#table-of-contents)
-  - [Overview](#overview)
-  - [Accessibility Considerations](#accessibility-considerations)
-    - [Accessible Name](#accessible-name)
-  - [Component API](#component-api)
-  - [Feedback](#feedback)
-
-{/* <!-- END doctoc generated TOC please keep comment here to allow auto update --> */}
+<Meta isTemplate />
 
 # Form
 
@@ -23,7 +13,18 @@ import * as FormStories from './Form.stories';
 &nbsp;|&nbsp;
 [Accessibility](https://www.carbondesignsystem.com/components/form/accessibility)
 
+{/* <!-- START doctoc generated TOC please keep comment here to allow auto update --> <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE --> */}
+
 ## Table of Contents
+
+- [Overview](#overview)
+- [With AI label](#with-ai-label)
+- [Accessibility Considerations](#accessibility-considerations)
+  - [Accessible Name](#accessible-name)
+- [Component API](#component-api)
+- [Feedback](#feedback)
+
+{/* <!-- END doctoc generated TOC please keep comment here to allow auto update --> */}
 
 ## Overview
 
@@ -31,22 +32,50 @@ The `Form` component is configurable to fit various use cases and layouts. It is
 purposely simple out of the box, and users are responsible for configuring it to
 suit their needs.
 
-<Canvas>
-  <Story of={FormStories.Default} />
-</Canvas>
+<Canvas
+  of={FormStories.Default}
+  additionalActions={[
+    {
+      title: 'Open in Stackblitz',
+      onClick: () =>
+        stackblitzPrefillConfig({
+          story: FormStories.Default,
+          customImports: ["import FormDemo from './stories/form-demo';"],
+          additionalFiles: { 'src/stories/form-demo.tsx': formDemoSrc },
+        }),
+    },
+  ]}
+/>
+
+## With AI label
+
+<Canvas
+  of={FormStories.withAILabel}
+  additionalActions={[
+    {
+      title: 'Open in Stackblitz',
+      onClick: () =>
+        stackblitzPrefillConfig({
+          story: FormStories.withAILabel,
+          customImports: ["import FormDemo from './stories/form-demo';"],
+          additionalFiles: { 'src/stories/form-demo.tsx': formDemoSrc },
+        }),
+    },
+  ]}
+/>
 
 ## Accessibility Considerations
 
 ### Accessible Name
 
 To comply with accessibility requirements, make sure to supply the component
-with an accessible name by providing eiher the `aria-label`, `aria-labelledby`
+with an accessible name by providing either the `aria-label`, `aria-labelledby`
 or `title` attribute. Read more on the accessible naming rule
 [here](https://able.ibm.com/rules/archives/latest/doc/en-US/aria_accessiblename_exists.html).
 
 ## Component API
 
-<ArgsTable />
+<ArgTypes />
 
 ## Feedback
 

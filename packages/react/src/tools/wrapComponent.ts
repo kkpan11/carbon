@@ -1,5 +1,5 @@
 /**
- * Copyright IBM Corp. 2016, 2023
+ * Copyright IBM Corp. 2016, 2026
  *
  * This source code is licensed under the Apache-2.0 license found in the
  * LICENSE file in the root directory of this source tree.
@@ -7,9 +7,8 @@
 
 import cx from 'classnames';
 import PropTypes from 'prop-types';
-import React from 'react';
+import React, { type HTMLAttributes, type ReactElement } from 'react';
 import { usePrefix } from '../internal/usePrefix';
-import { ReactAttr } from '../types/common';
 
 type HTMLTagName = keyof HTMLElementTagNameMap;
 
@@ -27,7 +26,7 @@ const wrapComponent = <T extends HTMLTagName>({
   name,
   className: getClassName,
   type,
-}: WrapComponentArgs<T>): ((props: ReactAttr<T>) => React.ReactElement) => {
+}: WrapComponentArgs<T>): ((props: HTMLAttributes<T>) => ReactElement) => {
   /**
    *
    * @param {{ className?: string, [x: string]: any}} param0
@@ -53,8 +52,7 @@ const wrapComponent = <T extends HTMLTagName>({
   Component.propTypes = {
     className: PropTypes.string,
   };
-
-  return Component as (props: ReactAttr<T>) => React.ReactElement;
+  return Component as (props: HTMLAttributes<T>) => React.ReactElement;
 };
 
 export default wrapComponent;

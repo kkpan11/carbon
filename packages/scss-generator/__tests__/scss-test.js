@@ -7,10 +7,8 @@
  * @jest-environment node
  */
 
-'use strict';
-
-const prettier = require('prettier');
-const { generate, types: t } = require('../src');
+import prettier from 'prettier';
+import { generate, types as t } from '../src';
 
 const prettierOptions = {
   parser: 'scss',
@@ -18,6 +16,20 @@ const prettierOptions = {
   singleQuote: true,
   trailingComma: 'es5',
 };
+
+// Prettier 3 loads SCSS formatting code through dynamic import in Jest.
+// Keep this suite on `yarn test:scss-generator` so VM modules are scoped here.
+async function expectGeneratedScss(ast, expected) {
+  const { code } = generate(ast);
+  expect(await code).toEqual(
+    await prettier.format(expected.trim(), prettierOptions)
+  );
+}
+
+async function getGeneratedScss(ast) {
+  const { code } = generate(ast);
+  return code;
+}
 
 describe('@carbon/scss', () => {
   describe('assignments', () => {
@@ -72,8 +84,8 @@ describe('@carbon/scss', () => {
       ],
     ];
 
-    test.each(assignment)('%s', (_, init, expected, options = {}) => {
-      const { code } = generate(
+    test.each(assignment)('%s', async (_, init, expected, options = {}) => {
+      await expectGeneratedScss(
         t.StyleSheet({
           children: [
             t.Assignment({
@@ -82,9 +94,9 @@ describe('@carbon/scss', () => {
               ...options,
             }),
           ],
-        })
+        }),
+        expected
       );
-      expect(code).toEqual(prettier.format(expected.trim(), prettierOptions));
     });
   });
 
@@ -143,13 +155,13 @@ describe('@carbon/scss', () => {
       ],
     ];
 
-    test.each(rules)('%s', (_, rule, expected) => {
-      const { code } = generate(
+    test.each(rules)('%s', async (_, rule, expected) => {
+      await expectGeneratedScss(
         t.StyleSheet({
           children: [rule],
-        })
+        }),
+        expected
       );
-      expect(code).toEqual(prettier.format(expected.trim(), prettierOptions));
     });
   });
 
@@ -252,13 +264,13 @@ describe('@carbon/scss', () => {
       ],
     ];
 
-    test.each(functions)('%s', (_, ast, expected) => {
-      const { code } = generate(
+    test.each(functions)('%s', async (_, ast, expected) => {
+      await expectGeneratedScss(
         t.StyleSheet({
           children: [ast],
-        })
+        }),
+        expected
       );
-      expect(code).toEqual(prettier.format(expected.trim(), prettierOptions));
     });
   });
 
@@ -361,13 +373,13 @@ describe('@carbon/scss', () => {
       ],
     ];
 
-    test.each(mixins)('%s', (_, ast, expected) => {
-      const { code } = generate(
+    test.each(mixins)('%s', async (_, ast, expected) => {
+      await expectGeneratedScss(
         t.StyleSheet({
           children: [ast],
-        })
+        }),
+        expected
       );
-      expect(code).toEqual(prettier.format(expected.trim(), prettierOptions));
     });
   });
 
@@ -427,13 +439,13 @@ describe('@carbon/scss', () => {
       ],
     ];
 
-    test.each(calls)('%s', (_, ast, expected) => {
-      const { code } = generate(
+    test.each(calls)('%s', async (_, ast, expected) => {
+      await expectGeneratedScss(
         t.StyleSheet({
           children: [ast],
-        })
+        }),
+        expected
       );
-      expect(code).toEqual(prettier.format(expected.trim(), prettierOptions));
     });
   });
 
@@ -479,8 +491,8 @@ describe('@carbon/scss', () => {
       ],
     ];
 
-    test.each(structures)('%s', (_, ast, expected) => {
-      const { code } = generate(ast);
+    test.each(structures)('%s', async (_, ast, expected) => {
+      const code = await getGeneratedScss(ast);
       expect(code.trim()).toEqual(expected.trim());
     });
   });
@@ -521,15 +533,15 @@ describe('@carbon/scss', () => {
       ],
     ];
 
-    test.each(expressions)('%s', (_, ast, expected) => {
-      const { code } = generate(ast);
+    test.each(expressions)('%s', async (_, ast, expected) => {
+      const code = await getGeneratedScss(ast);
       expect(code.trim()).toEqual(expected.trim());
     });
   });
 
   describe('formatting', () => {
-    test('newline', () => {
-      const { code } = generate(
+    test('newline', async () => {
+      const code = await getGeneratedScss(
         t.StyleSheet([t.Comment('start'), t.Newline(), t.Comment('end')])
       );
       expect(code).toBe(`//start

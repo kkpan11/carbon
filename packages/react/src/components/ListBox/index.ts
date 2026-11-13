@@ -1,23 +1,25 @@
 /**
- * Copyright IBM Corp. 2016, 2023
+ * Copyright IBM Corp. 2016, 2025
  *
  * This source code is licensed under the Apache-2.0 license found in the
  * LICENSE file in the root directory of this source tree.
  */
 
-export * as PropTypes from './ListBoxPropTypes';
 export * from './ListBoxPropTypes';
 
-import ListBoxInternal, {
-  ListBoxComponent as ListBoxPartialComponent,
-} from './ListBox';
+import type { ComponentProps } from 'react';
+import ListBoxInternal from './ListBox';
 import ListBoxField, { ListBoxFieldComponent } from './ListBoxField';
-import ListBoxMenu, { ListBoxMenuComponent } from './ListBoxMenu';
+import ListBoxMenu from './ListBoxMenu';
 import ListBoxMenuIcon, { ListBoxMenuIconComponent } from './ListBoxMenuIcon';
-import ListBoxMenuItem, { ListBoxMenuItemComponent } from './ListBoxMenuItem';
+import ListBoxMenuItem from './ListBoxMenuItem';
 import ListBoxSelection, {
   ListBoxSelectionComponent,
 } from './ListBoxSelection';
+
+type ListBoxMenuComponent = typeof ListBoxMenu;
+type ListBoxMenuItemComponent = typeof ListBoxMenuItem;
+type ListBoxPartialComponent = typeof ListBoxInternal;
 
 export interface ListBoxComponent extends ListBoxPartialComponent {
   readonly Field: ListBoxFieldComponent;
@@ -37,4 +39,9 @@ const ListBox: ListBoxComponent = Object.assign(ListBoxInternal, {
 
 export default ListBox;
 
-export type { ListBoxMenuIconTranslationKey } from './ListBoxMenuIcon';
+export type ListBoxMenuIconTranslationKey = Parameters<
+  NonNullable<ComponentProps<typeof ListBoxMenuIcon>['translateWithId']>
+>[0];
+export type ListBoxSelectionTranslationKey = Parameters<
+  NonNullable<ComponentProps<typeof ListBoxSelection>['translateWithId']>
+>[0];

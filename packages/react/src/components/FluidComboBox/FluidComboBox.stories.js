@@ -1,5 +1,5 @@
 /**
- * Copyright IBM Corp. 2022
+ * Copyright IBM Corp. 2022, 2026
  *
  * This source code is licensed under the Apache-2.0 license found in the
  * LICENSE file in the root directory of this source tree.
@@ -7,17 +7,20 @@
 
 import React from 'react';
 import { FluidComboBox, FluidComboBoxSkeleton } from '../FluidComboBox';
-import {
-  ToggletipLabel,
-  Toggletip,
-  ToggletipButton,
-  ToggletipContent,
-} from '../Toggletip';
-import { Information } from '@carbon/icons-react';
+import { AILabel, AILabelContent, AILabelActions } from '../AILabel';
+import { IconButton } from '../IconButton';
+import { Button } from '../Button';
+import { View, FolderOpen, Folders } from '@carbon/icons-react';
+import mdx from './FluidComboBox.mdx';
 
 export default {
-  title: 'Experimental/Fluid Components/unstable__FluidComboBox',
+  title: 'Components/Fluid Components/FluidComboBox',
   component: FluidComboBox,
+  parameters: {
+    docs: {
+      page: mdx,
+    },
+  },
   subcomponents: {
     FluidComboBoxSkeleton,
   },
@@ -51,95 +54,11 @@ const items = [
   },
 ];
 
-const ToggleTip = (
-  <>
-    <ToggletipLabel>Label</ToggletipLabel>
-    <Toggletip align="top-left">
-      <ToggletipButton label="Show information">
-        <Information />
-      </ToggletipButton>
-      <ToggletipContent>
-        <p>Additional field information here.</p>
-      </ToggletipContent>
-    </Toggletip>
-  </>
-);
-
-export const Default = () => (
-  <div style={{ width: '400px' }}>
-    <FluidComboBox
-      onChange={() => {}}
-      id="default"
-      titleText="Label"
-      label="Choose an option"
-      items={items}
-      itemToString={(item) => (item ? item.text : '')}
-    />
-  </div>
-);
-
-export const Condensed = () => (
-  <div style={{ width: '400px' }}>
-    <FluidComboBox
-      onChange={() => {}}
-      id="default"
-      isCondensed
-      titleText="Label"
-      label="Choose an option"
-      items={items}
-      itemToString={(item) => (item ? item.text : '')}
-    />
-  </div>
-);
-
-export const Playground = (args) => (
-  <div style={{ width: args.playgroundWidth }}>
-    <FluidComboBox
-      onChange={() => {}}
-      id="default"
-      titleText="Label"
-      label="Choose an option"
-      items={items}
-      itemToString={(item) => (item ? item.text : '')}
-      {...args}
-    />
-    <br />
-    <FluidComboBox
-      {...args}
-      onChange={() => {}}
-      id="default-3"
-      titleText={ToggleTip}
-      label="Choose an option"
-      items={items}
-      itemToString={(item) => (item ? item.text : '')}
-    />
-  </div>
-);
-
-export const Skeleton = () => (
-  <div style={{ width: 400 }}>
-    <FluidComboBoxSkeleton />
-  </div>
-);
-
-Playground.args = {
-  playgroundWidth: 400,
-  className: 'test-class',
-  isCondensed: false,
-  disabled: false,
-  invalid: false,
-  invalidText:
-    'Error message that is really long can wrap to more lines but should not be excessively long.',
-  label: 'Choose an option',
-  titleText: 'Label',
-  warn: false,
-  warnText:
-    'Warning message that is really long can wrap to more lines but should not be excessively long.',
-};
-
-Playground.argTypes = {
-  playgroundWidth: {
-    control: { type: 'range', min: 300, max: 800, step: 50 },
+const sharedArgTypes = {
+  autoAlign: {
+    control: {
+      type: 'boolean',
+    },
   },
   className: {
     control: {
@@ -156,6 +75,12 @@ Playground.argTypes = {
       type: 'boolean',
     },
   },
+  direction: {
+    control: {
+      type: 'select',
+    },
+    options: ['top', 'bottom'],
+  },
   invalid: {
     control: {
       type: 'boolean',
@@ -169,6 +94,20 @@ Playground.argTypes = {
   label: {
     control: {
       type: 'text',
+    },
+  },
+  onChange: {
+    action: 'onChange',
+  },
+  onInputChange: {
+    action: 'onInputChange',
+  },
+  onToggleClick: {
+    action: 'onToggleClick',
+  },
+  readOnly: {
+    control: {
+      type: 'boolean',
     },
   },
   titleText: {
@@ -187,3 +126,147 @@ Playground.argTypes = {
     },
   },
 };
+
+const sharedArgs = {
+  className: 'test-class',
+  direction: 'bottom',
+  disabled: false,
+  invalid: false,
+  invalidText:
+    'Error message that is really long can wrap to more lines but should not be excessively long.',
+  isCondensed: false,
+  label: 'Choose an option',
+  readOnly: false,
+  titleText: 'Label',
+  warn: false,
+  warnText:
+    'Warning message that is really long can wrap to more lines but should not be excessively long.',
+};
+
+const sharedControls = Object.keys(sharedArgTypes);
+
+export const Default = (args) => {
+  return (
+    <div style={{ width: 400 }}>
+      <FluidComboBox
+        onChange={() => {}}
+        id="default"
+        titleText="Label"
+        label="Choose an option"
+        items={items}
+        itemToString={(item) => (item ? item.text : '')}
+        {...args}
+      />
+    </div>
+  );
+};
+
+Default.args = {
+  ...sharedArgs,
+};
+
+Default.argTypes = {
+  ...sharedArgTypes,
+};
+
+Default.parameters = {
+  controls: { include: sharedControls },
+};
+
+export const Condensed = (args) => {
+  return (
+    <div style={{ width: 400 }}>
+      <FluidComboBox
+        onChange={() => {}}
+        id="default"
+        titleText="Label"
+        label="Choose an option"
+        items={items}
+        itemToString={(item) => (item ? item.text : '')}
+        {...args}
+      />
+    </div>
+  );
+};
+
+Condensed.args = {
+  ...sharedArgs,
+  isCondensed: true,
+};
+
+Condensed.argTypes = {
+  ...sharedArgTypes,
+  isCondensed: {
+    ...sharedArgTypes.isCondensed,
+    table: { readonly: true },
+  },
+};
+
+Condensed.parameters = {
+  controls: { include: sharedControls },
+};
+
+export const withAILabel = (args) => {
+  const aiLabel = (
+    <AILabel className="ai-label-container">
+      <AILabelContent>
+        <div>
+          <p className="secondary">AI Explained</p>
+          <h2 className="ai-label-heading">84%</h2>
+          <p className="secondary bold">Confidence score</p>
+          <p className="secondary">
+            Lorem ipsum dolor sit amet, di os consectetur adipiscing elit, sed
+            do eiusmod tempor incididunt ut fsil labore et dolore magna aliqua.
+          </p>
+          <hr />
+          <p className="secondary">Model type</p>
+          <p className="bold">Foundation model</p>
+        </div>
+        <AILabelActions>
+          <IconButton kind="ghost" label="View">
+            <View />
+          </IconButton>
+          <IconButton kind="ghost" label="Open Folder">
+            <FolderOpen />
+          </IconButton>
+          <IconButton kind="ghost" label="Folders">
+            <Folders />
+          </IconButton>
+          <Button>View details</Button>
+        </AILabelActions>
+      </AILabelContent>
+    </AILabel>
+  );
+  return (
+    <div style={{ width: 400 }}>
+      <FluidComboBox
+        onChange={() => {}}
+        id="default"
+        titleText="Label"
+        label="Choose an option"
+        items={items}
+        itemToString={(item) => (item ? item.text : '')}
+        decorator={aiLabel}
+        {...args}
+      />
+    </div>
+  );
+};
+
+withAILabel.args = {
+  ...sharedArgs,
+};
+
+withAILabel.argTypes = {
+  ...sharedArgTypes,
+};
+
+withAILabel.parameters = {
+  controls: { include: sharedControls },
+};
+
+export const Skeleton = () => (
+  <div style={{ width: 400 }}>
+    <FluidComboBoxSkeleton />
+  </div>
+);

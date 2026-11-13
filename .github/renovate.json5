@@ -1,19 +1,28 @@
 {
-  "extends": [
-    // https://docs.renovatebot.com/presets-config/#configjs-lib
-    "config:js-lib",
-
-    // https://docs.renovatebot.com/presets-default/#maintainlockfilesweekly
-    ":maintainLockFilesWeekly",
-
-    // https://docs.renovatebot.com/presets-default/#preservesemverranges
-    ":preserveSemverRanges",
-
-    // https://docs.renovatebot.com/presets-npm/#npmunpublishsafe
-    "npm:unpublishSafe",
-
-    // https://docs.renovatebot.com/presets-schedule/#scheduledaily
-    "schedule:earlyMondays",
+  extends: [
+    'config:js-lib',
+    ':maintainLockFilesWeekly',
+    ':preserveSemverRanges',
+    'security:minimumReleaseAgeNpm',
   ],
-  "rebaseWhen": "never",
+  schedule: [
+    'after 10pm every weekday',
+    'before 5am every weekday',
+    'every weekend',
+  ],
+  packageRules: [
+    {
+      description: 'Bump @figma/code-connect for in-range updates',
+      matchPackageNames: ['@figma/code-connect'],
+      rangeStrategy: 'bump',
+    },
+  ],
+  vulnerabilityAlerts: {
+    enabled: true,
+  },
+  rebaseWhen: 'never',
+  postUpdateOptions: ['yarnDedupeHighest'],
+  lockFileMaintenance: {
+    enabled: false,
+  },
 }

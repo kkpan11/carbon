@@ -1,5 +1,5 @@
 /**
- * Copyright IBM Corp. 2023
+ * Copyright IBM Corp. 2023, 2026
  *
  * This source code is licensed under the Apache-2.0 license found in the
  * LICENSE file in the root directory of this source tree.
@@ -54,24 +54,28 @@ export interface LayoutProps extends HTMLAttributes<HTMLElement> {
   size?: Size;
 }
 
-const Layout = React.forwardRef<ReactNode, LayoutProps>(function Layout(
-  { as: BaseComponent = 'div', children, className, density, size, ...rest },
-  forwardRef
-) {
-  const prefix = usePrefix();
+const Layout = React.forwardRef<ReactNode, LayoutProps>(
+  (
+    { as: BaseComponent = 'div', children, className, density, size, ...rest },
+    forwardRef
+  ) => {
+    const prefix = usePrefix();
 
-  const classes = cx(className, `${prefix}--layout`, {
-    [`${prefix}--layout--size-${size}`]: size && sizes.includes(size),
-    [`${prefix}--layout--density-${density}`]:
-      density && densities.includes(density),
-  });
+    const classes = cx(className, `${prefix}--layout`, {
+      [`${prefix}--layout--size-${size}`]: size && sizes.includes(size),
+      [`${prefix}--layout--density-${density}`]:
+        density && densities.includes(density),
+    });
 
-  return (
-    <BaseComponent {...rest} ref={forwardRef} className={classes}>
-      {children}
-    </BaseComponent>
-  );
-});
+    return (
+      <BaseComponent {...rest} ref={forwardRef} className={classes}>
+        {children}
+      </BaseComponent>
+    );
+  }
+);
+
+Layout.displayName = 'Layout';
 
 Layout.propTypes = {
   /**
@@ -142,12 +146,11 @@ export interface LayoutConstraintProps extends HTMLAttributes<HTMLElement> {
     max?: Size | null;
   } | null;
 }
-
 const LayoutConstraint = React.forwardRef<ReactNode, LayoutConstraintProps>(
-  function Layout(
+  (
     { as: BaseComponent = 'div', children, className, density, size, ...rest },
     forwardRef
-  ) {
+  ) => {
     const prefix = usePrefix();
 
     const classes = cx(
@@ -172,6 +175,8 @@ const LayoutConstraint = React.forwardRef<ReactNode, LayoutConstraintProps>(
     );
   }
 );
+
+LayoutConstraint.displayName = 'LayoutConstraint';
 
 LayoutConstraint.propTypes = {
   /**

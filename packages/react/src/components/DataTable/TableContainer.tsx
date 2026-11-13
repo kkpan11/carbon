@@ -1,5 +1,5 @@
 /**
- * Copyright IBM Corp. 2016, 2023
+ * Copyright IBM Corp. 2016, 2025
  *
  * This source code is licensed under the Apache-2.0 license found in the
  * LICENSE file in the root directory of this source tree.
@@ -7,14 +7,22 @@
 
 import cx from 'classnames';
 import PropTypes from 'prop-types';
-import React, { useMemo } from 'react';
-import { ReactAttr } from '../../types/common';
+import React, { ReactNode, useMemo, type HTMLAttributes } from 'react';
 import { usePrefix } from '../../internal/usePrefix';
 import { useId } from '../../internal/useId';
 import { TableContext } from './TableContext';
+import { Heading, Section } from '../Heading';
 
 export interface TableContainerProps
-  extends Omit<ReactAttr<HTMLDivElement>, 'title'> {
+  extends Omit<HTMLAttributes<HTMLDivElement>, 'title'> {
+  /**
+   * Specify if the entire table has AI generated contents
+   */
+  aiEnabled?: boolean;
+  /**
+   * **Experimental**: Provide a `decorator` component to be rendered inside the `TableContainer` component
+   */
+  decorator?: ReactNode;
   /**
    * Optional description text for the Table
    */
@@ -34,8 +42,10 @@ export interface TableContainerProps
 }
 
 const TableContainer = ({
+  aiEnabled,
   className,
   children,
+  decorator,
   title,
   description,
   stickyHeader,
@@ -52,6 +62,7 @@ const TableContainer = ({
     {
       [`${prefix}--data-table--max-width`]: stickyHeader,
       [`${prefix}--data-table-container--static`]: useStaticWidth,
+      [`${prefix}--data-table-container--ai-enabled`]: aiEnabled,
     }
   );
   const value = useMemo(() => {
@@ -63,28 +74,56 @@ const TableContainer = ({
 
   return (
     <TableContext.Provider value={value}>
-      <div {...rest} className={tableContainerClasses}>
-        {title && (
-          <div className={`${prefix}--data-table-header`}>
-            <h4 className={`${prefix}--data-table-header__title`} id={titleId}>
-              {title}
-            </h4>
-            <p
-              className={`${prefix}--data-table-header__description`}
-              id={descriptionId}>
-              {description}
-            </p>
+      <Section {...rest} className={tableContainerClasses}>
+        {(title || description || decorator) && (
+          <div
+            className={cx(`${prefix}--data-table-header`, {
+              [`${prefix}--data-table-header__with-decorator`]: decorator,
+              [`${prefix}--data-table-header__with-decorator--standalone`]:
+                decorator && !title && !description,
+            })}>
+            {(title || description) && (
+              <div className={`${prefix}--data-table-header__content`}>
+                {title && (
+                  <Heading
+                    className={`${prefix}--data-table-header__title`}
+                    id={titleId}>
+                    {title}
+                  </Heading>
+                )}
+                {description && (
+                  <p
+                    className={`${prefix}--data-table-header__description`}
+                    id={descriptionId}>
+                    {description}
+                  </p>
+                )}
+              </div>
+            )}
+            {decorator && (
+              <div className={`${prefix}--data-table-header__decorator`}>
+                {decorator}
+              </div>
+            )}
           </div>
         )}
         {children}
-      </div>
+      </Section>
     </TableContext.Provider>
   );
 };
 
 TableContainer.propTypes = {
+  /**
+   * Specify if the entire table has AI generated contents
+   */
+  aiEnabled: PropTypes.bool,
   children: PropTypes.node,
   className: PropTypes.string,
+  /**
+   * **Experimental**: Provide a `decorator` component to be rendered inside the `TableContainer` component
+   */
+  decorator: PropTypes.node,
   /**
    * Optional description text for the Table
    */

@@ -1,34 +1,74 @@
 /**
- * Copyright IBM Corp. 2016, 2023
+ * Copyright IBM Corp. 2016, 2026
  *
  * This source code is licensed under the Apache-2.0 license found in the
  * LICENSE file in the root directory of this source tree.
  */
 
 import PropTypes from 'prop-types';
-import React, { ReactNode, useContext, useState } from 'react';
+import React, {
+  cloneElement,
+  forwardRef,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+  type ReactNode,
+} from 'react';
 import classNames from 'classnames';
 import { useNormalizedInputProps } from '../../internal/useNormalizedInputProps';
-import PasswordInput from './PasswordInput';
-import ControlledPasswordInput from './ControlledPasswordInput';
-import deprecate from '../../prop-types/deprecate';
-import { textInputProps } from './util';
+import { deprecate } from '../../prop-types/deprecate';
+import { getTextInputProps } from './util';
 import { FormContext } from '../FluidForm';
+import { useMergedRefs } from '../../internal/useMergedRefs';
 import { usePrefix } from '../../internal/usePrefix';
-import { useAnnouncer } from '../../internal/useAnnouncer';
+import { getAnnouncement } from '../../internal/getAnnouncement';
+import { hasHelperText } from '../../internal/hasHelperText';
 import { Text } from '../Text';
+import { AILabel } from '../AILabel';
+import { isComponentElement } from '../../internal';
+import { useNoInteractiveChildrenForLabel } from '../FeatureFlags/useNoInteractiveChildrenForLabel';
+import type { TFunc, TranslateWithId } from '../../types/common';
+
+const translationIds = {
+  'carbon.text-input.counter.characters.remaining':
+    'carbon.text-input.counter.characters.remaining',
+  'carbon.text-input.counter.characters.max-reached':
+    'carbon.text-input.counter.characters.max-reached',
+} as const;
+
+type TranslationKey = keyof typeof translationIds;
+
+type TranslationArgs = { count: number; maxCount: number };
+
+const defaultTranslateWithId: TFunc<TranslationKey, TranslationArgs> = (
+  messageId,
+  args
+) => {
+  const count = args?.count ?? 0;
+
+  switch (messageId) {
+    case translationIds['carbon.text-input.counter.characters.remaining']:
+      return `${count} ${count === 1 ? 'character' : 'characters'} left.`;
+    case translationIds['carbon.text-input.counter.characters.max-reached']:
+      return 'Maximum characters reached.';
+  }
+};
 
 type ExcludedAttributes = 'defaultValue' | 'id' | 'size' | 'value';
 
 export interface TextInputProps
-  extends Omit<
-    React.InputHTMLAttributes<HTMLInputElement>,
-    ExcludedAttributes
-  > {
+  extends Omit<React.InputHTMLAttributes<HTMLInputElement>, ExcludedAttributes>,
+    TranslateWithId<TranslationKey, TranslationArgs> {
   /**
    * Specify an optional className to be applied to the `<input>` node
    */
   className?: string;
+
+  /**
+   * **Experimental**: Provide a `decorator` component to be rendered inside the `TextInput` component
+   */
+  decorator?: ReactNode;
 
   /**
    * Optionally provide the default value of the `<input>`
@@ -119,9 +159,10 @@ export interface TextInputProps
   /**
    * Specify the size of the Text Input. Currently supports the following:
    */
-  size?: 'sm' | 'md' | 'lg' | 'xl';
+  size?: 'xs' | 'sm' | 'md' | 'lg';
 
   /**
+   * @deprecated please use `decorator` instead.
    * **Experimental**: Provide a `Slug` component to be rendered inside the `TextInput` component
    */
   slug?: ReactNode;
@@ -147,217 +188,300 @@ export interface TextInputProps
   warnText?: ReactNode;
 }
 
-const TextInput = React.forwardRef(function TextInput(
-  {
-    className,
-    disabled = false,
-    helperText,
-    hideLabel,
-    id,
-    inline = false,
-    invalid = false,
-    invalidText,
-    labelText,
-    light,
-    onChange = () => {},
-    onClick = () => {},
-    placeholder,
-    readOnly,
-    size,
-    type = 'text',
-    warn = false,
-    warnText,
-    enableCounter = false,
-    maxCount,
-    slug,
-    ...rest
-  }: TextInputProps,
-  ref
-) {
-  const prefix = usePrefix();
-
-  const { defaultValue, value } = rest;
-  const [textCount, setTextCount] = useState(
-    defaultValue?.toString().length || value?.toString().length || 0
-  );
-
-  const normalizedProps = useNormalizedInputProps({
-    id,
-    readOnly,
-    disabled,
-    invalid,
-    invalidText,
-    warn,
-    warnText,
-  });
-
-  const textInputClasses = classNames(`${prefix}--text-input`, {
-    [`${prefix}--text-input--light`]: light,
-    [`${prefix}--text-input--invalid`]: normalizedProps.invalid,
-    [`${prefix}--text-input--warning`]: normalizedProps.warn,
-    [`${prefix}--text-input--${size}`]: size, // TODO: V12 - Remove this class
-    [`${prefix}--layout--size-${size}`]: size,
-  });
-  const sharedTextInputProps = {
-    id,
-    onChange: (evt) => {
-      if (!normalizedProps.disabled) {
-        setTextCount(evt.target.value?.length);
-        onChange(evt);
-      }
+const TextInput = forwardRef<unknown, TextInputProps>(
+  (
+    {
+      className,
+      decorator,
+      disabled = false,
+      helperText,
+      hideLabel,
+      id,
+      inline = false,
+      invalid = false,
+      invalidText,
+      labelText,
+      light,
+      onChange = () => {},
+      onClick = () => {},
+      placeholder,
+      readOnly,
+      size,
+      type = 'text',
+      warn = false,
+      warnText,
+      enableCounter = false,
+      maxCount,
+      slug,
+      translateWithId: t = defaultTranslateWithId,
+      ...rest
     },
-    onClick: (evt) => {
-      if (!normalizedProps.disabled) {
-        onClick(evt);
+    ref
+  ) => {
+    const prefix = usePrefix();
+
+    const { defaultValue, value } = rest;
+
+    const inputRef = useRef<HTMLInputElement>(null);
+    const labelRef = useRef<HTMLLabelElement>(null);
+    const mergedRef = useMergedRefs([ref, inputRef]);
+
+    function getInitialTextCount(): number {
+      const targetValue =
+        defaultValue || value || inputRef.current?.value || '';
+      return targetValue.toString().length;
+    }
+
+    const [textCount, setTextCount] = useState(getInitialTextCount());
+
+    useEffect(() => {
+      setTextCount(getInitialTextCount());
+      // eslint-disable-next-line  react-hooks/exhaustive-deps -- https://github.com/carbon-design-system/carbon/issues/20452
+    }, [value, defaultValue, enableCounter]);
+
+    const normalizedProps = useNormalizedInputProps({
+      id,
+      readOnly,
+      disabled,
+      invalid,
+      invalidText,
+      warn,
+      warnText,
+    });
+
+    const textInputClasses = classNames(`${prefix}--text-input`, {
+      [`${prefix}--text-input--light`]: light,
+      [`${prefix}--text-input--invalid`]: normalizedProps.invalid,
+      [`${prefix}--text-input--warning`]: normalizedProps.warn,
+      [`${prefix}--text-input--${size}`]: size, // TODO: V12 - Remove this class
+      [`${prefix}--layout--size-${size}`]: size,
+    });
+    const sharedTextInputProps = {
+      id,
+      onChange: (evt) => {
+        if (!normalizedProps.disabled) {
+          setTextCount(evt.target.value?.length);
+          onChange(evt);
+        }
+      },
+      onClick: (evt) => {
+        if (!normalizedProps.disabled) {
+          onClick(evt);
+        }
+      },
+      placeholder,
+      type,
+      ref: mergedRef,
+      className: textInputClasses,
+      title: placeholder,
+      disabled: normalizedProps.disabled,
+      readOnly,
+      ['aria-describedby']:
+        hasHelperText(helperText) && !normalizedProps.invalid
+          ? normalizedProps.helperId
+          : undefined,
+      ...rest,
+    };
+
+    if (enableCounter) {
+      sharedTextInputProps.maxLength = maxCount;
+    }
+
+    const inputWrapperClasses = classNames(
+      [classNames(`${prefix}--form-item`, className)],
+      `${prefix}--text-input-wrapper`,
+      {
+        [`${prefix}--text-input-wrapper--readonly`]: readOnly,
+        [`${prefix}--text-input-wrapper--light`]: light,
+        [`${prefix}--text-input-wrapper--inline`]: inline,
+        [`${prefix}--text-input-wrapper--inline--invalid`]:
+          inline && normalizedProps.invalid,
       }
-    },
-    placeholder,
-    type,
-    ref,
-    className: textInputClasses,
-    title: placeholder,
-    disabled: normalizedProps.disabled,
-    readOnly,
-    ['aria-describedby']: helperText && normalizedProps.helperId,
-    ...rest,
-  };
+    );
+    const labelClasses = classNames(`${prefix}--label`, {
+      [`${prefix}--visually-hidden`]: hideLabel,
+      [`${prefix}--label--disabled`]: normalizedProps.disabled,
+      [`${prefix}--label--inline`]: inline,
+      [`${prefix}--label--inline--${size}`]: inline && !!size, // TODO v12 - remove this class
+    });
+    const helperTextClasses = classNames(`${prefix}--form__helper-text`, {
+      [`${prefix}--form__helper-text--disabled`]: normalizedProps.disabled,
+      [`${prefix}--form__helper-text--inline`]: inline,
+    });
+    const fieldOuterWrapperClasses = classNames(
+      `${prefix}--text-input__field-outer-wrapper`,
+      {
+        [`${prefix}--text-input__field-outer-wrapper--inline`]: inline,
+      }
+    );
+    const fieldWrapperClasses = classNames(
+      `${prefix}--text-input__field-wrapper`,
+      {
+        [`${prefix}--text-input__field-wrapper--warning`]: normalizedProps.warn,
+        [`${prefix}--text-input__field-wrapper--slug`]: slug,
+        [`${prefix}--text-input__field-wrapper--decorator`]: decorator,
+      }
+    );
+    const iconClasses = classNames({
+      [`${prefix}--text-input__invalid-icon`]:
+        normalizedProps.invalid || normalizedProps.warn,
+      [`${prefix}--text-input__invalid-icon--warning`]: normalizedProps.warn,
+    });
 
-  if (enableCounter) {
-    sharedTextInputProps.maxLength = maxCount;
-  }
+    const counterClasses = classNames(`${prefix}--label`, {
+      [`${prefix}--label--disabled`]: disabled,
+      [`${prefix}--text-input__label-counter`]: true,
+    });
 
-  const inputWrapperClasses = classNames(
-    [classNames(`${prefix}--form-item`, className)],
-    `${prefix}--text-input-wrapper`,
-    {
-      [`${prefix}--text-input-wrapper--readonly`]: readOnly,
-      [`${prefix}--text-input-wrapper--light`]: light,
-      [`${prefix}--text-input-wrapper--inline`]: inline,
-      [`${prefix}--text-input-wrapper--inline--invalid`]:
-        inline && normalizedProps.invalid,
-    }
-  );
-  const labelClasses = classNames(`${prefix}--label`, {
-    [`${prefix}--visually-hidden`]: hideLabel,
-    [`${prefix}--label--disabled`]: normalizedProps.disabled,
-    [`${prefix}--label--inline`]: inline,
-    [`${prefix}--label--inline--${size}`]: inline && !!size,
-  });
-  const helperTextClasses = classNames(`${prefix}--form__helper-text`, {
-    [`${prefix}--form__helper-text--disabled`]: normalizedProps.disabled,
-    [`${prefix}--form__helper-text--inline`]: inline,
-  });
-  const fieldOuterWrapperClasses = classNames(
-    `${prefix}--text-input__field-outer-wrapper`,
-    {
-      [`${prefix}--text-input__field-outer-wrapper--inline`]: inline,
-    }
-  );
-  const fieldWrapperClasses = classNames(
-    `${prefix}--text-input__field-wrapper`,
-    {
-      [`${prefix}--text-input__field-wrapper--warning`]: normalizedProps.warn,
-      [`${prefix}--text-input__field-wrapper--slug`]: slug,
-    }
-  );
-  const iconClasses = classNames({
-    [`${prefix}--text-input__invalid-icon`]:
-      normalizedProps.invalid || normalizedProps.warn,
-    [`${prefix}--text-input__invalid-icon--warning`]: normalizedProps.warn,
-  });
+    const counter =
+      enableCounter && maxCount ? (
+        <Text
+          as="div"
+          className={counterClasses}>{`${textCount}/${maxCount}`}</Text>
+      ) : null;
 
-  const counterClasses = classNames(`${prefix}--label`, {
-    [`${prefix}--label--disabled`]: disabled,
-    [`${prefix}--text-input__label-counter`]: true,
-  });
+    const label = typeof labelText !== 'undefined' && labelText !== null && (
+      <Text as="label" htmlFor={id} className={labelClasses} ref={labelRef}>
+        {labelText}
+      </Text>
+    );
 
-  const counter =
-    enableCounter && maxCount ? (
+    useNoInteractiveChildrenForLabel(
+      labelRef,
+      'The TextInput component `labelText` prop must have no interactive content'
+    );
+
+    const labelWrapper = (
+      <div className={`${prefix}--text-input__label-wrapper`}>
+        {label}
+        {counter}
+      </div>
+    );
+
+    const helper = hasHelperText(helperText) && (
       <Text
         as="div"
-        className={counterClasses}>{`${textCount}/${maxCount}`}</Text>
-    ) : null;
+        id={normalizedProps.helperId}
+        className={helperTextClasses}>
+        {helperText}
+      </Text>
+    );
 
-  const label = labelText ? (
-    <Text as="label" htmlFor={id} className={labelClasses}>
-      {labelText}
-    </Text>
-  ) : null;
+    const input = (
+      <input
+        {...getTextInputProps({
+          sharedTextInputProps,
+          invalid: normalizedProps.invalid,
+          invalidId: normalizedProps.invalidId,
+          warn: normalizedProps.warn,
+          warnId: normalizedProps.warnId,
+        })}
+      />
+    );
 
-  const labelWrapper = (
-    <div className={`${prefix}--text-input__label-wrapper`}>
-      {label}
-      {counter}
-    </div>
-  );
+    const { isFluid } = useContext(FormContext);
+    const announcerRef = useRef<HTMLSpanElement>(null);
+    const [prevAnnouncement, setPrevAnnouncement] = useState('');
+    const ariaAnnouncement = getAnnouncement(
+      textCount,
+      maxCount,
+      {
+        remaining: 'carbon.text-input.counter.characters.remaining',
+        maxReached: 'carbon.text-input.counter.characters.max-reached',
+      },
+      t
+    );
+    useEffect(() => {
+      if (ariaAnnouncement && ariaAnnouncement !== prevAnnouncement) {
+        const announcer = announcerRef.current as HTMLSpanElement | null;
+        if (announcer) {
+          // Clear the content first
+          announcer.textContent = '';
+          // Set the new content after a small delay
+          const timeoutId = setTimeout(() => {
+            if (announcer) {
+              announcer.textContent = ariaAnnouncement;
+              setPrevAnnouncement(ariaAnnouncement);
+            }
+          }, 1000);
+          // clear the timeout
+          return () => {
+            if (timeoutId) {
+              clearTimeout(timeoutId);
+            }
+          };
+        }
+      }
+    }, [ariaAnnouncement, prevAnnouncement]);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- https://github.com/carbon-design-system/carbon/issues/20452
+    const Icon = normalizedProps.icon as any;
 
-  const helper = helperText ? (
-    <Text as="div" id={normalizedProps.helperId} className={helperTextClasses}>
-      {helperText}
-    </Text>
-  ) : null;
+    // AILabel is always size `mini`
+    const candidate = slug ?? decorator;
+    const candidateIsAILabel = isComponentElement(candidate, AILabel);
+    const normalizedDecorator = candidateIsAILabel
+      ? cloneElement(candidate, { size: 'mini' })
+      : candidate;
 
-  const input = (
-    <input
-      {...textInputProps({
-        sharedTextInputProps,
-        invalid: normalizedProps.invalid,
-        invalidId: normalizedProps.invalidId,
-        warn: normalizedProps.warn,
-        warnId: normalizedProps.warnId,
-      })}
-    />
-  );
-
-  const { isFluid } = useContext(FormContext);
-  const ariaAnnouncement = useAnnouncer(textCount, maxCount);
-  const Icon = normalizedProps.icon as any;
-
-  // Slug is always size `mini`
-  let normalizedSlug;
-  if (slug && slug['type']?.displayName === 'Slug') {
-    normalizedSlug = React.cloneElement(slug as React.ReactElement<any>, {
-      size: 'mini',
-    });
-  }
-
-  return (
-    <div className={inputWrapperClasses}>
-      {!inline ? (
-        labelWrapper
-      ) : (
-        <div className={`${prefix}--text-input__label-helper-wrapper`}>
-          {labelWrapper}
-          {!isFluid && (normalizedProps.validation || helper)}
+    return (
+      <div className={inputWrapperClasses}>
+        {!inline ? (
+          labelWrapper
+        ) : (
+          <div className={`${prefix}--text-input__label-helper-wrapper`}>
+            {labelWrapper}
+          </div>
+        )}
+        <div className={fieldOuterWrapperClasses}>
+          <div
+            className={fieldWrapperClasses}
+            data-invalid={normalizedProps.invalid || null}>
+            {input}
+            {Icon && <Icon className={iconClasses} />}
+            {slug ? (
+              normalizedDecorator
+            ) : decorator ? (
+              <div
+                className={`${prefix}--text-input__field-inner-wrapper--decorator`}>
+                {normalizedDecorator}
+              </div>
+            ) : (
+              ''
+            )}
+            <span
+              className={`${prefix}--text-input__counter-alert`}
+              role="alert"
+              aria-live="assertive"
+              aria-atomic="true"
+              ref={announcerRef}>
+              {ariaAnnouncement}
+            </span>
+            {isFluid && <hr className={`${prefix}--text-input__divider`} />}
+            {isFluid && !inline && normalizedProps.validation}
+          </div>
+          {!isFluid && !inline && (normalizedProps.validation || helper)}
         </div>
-      )}
-      <div className={fieldOuterWrapperClasses}>
-        <div
-          className={fieldWrapperClasses}
-          data-invalid={normalizedProps.invalid || null}>
-          {Icon && <Icon className={iconClasses} />}
-          {input}
-          {normalizedSlug}
-          <span className={`${prefix}--text-input__counter-alert`} role="alert">
-            {ariaAnnouncement}
-          </span>
-          {isFluid && <hr className={`${prefix}--text-input__divider`} />}
-          {isFluid && !inline && normalizedProps.validation}
-        </div>
-        {!isFluid && !inline && (normalizedProps.validation || helper)}
+        {inline && !isFluid && (
+          <div className={`${prefix}--text-input__label-helper-wrapper`}>
+            {normalizedProps.validation || helper}
+          </div>
+        )}
       </div>
-    </div>
-  );
-});
+    );
+  }
+);
 
 TextInput.displayName = 'TextInput';
-(TextInput as any).PasswordInput = PasswordInput;
-(TextInput as any).ControlledPasswordInput = ControlledPasswordInput;
 TextInput.propTypes = {
   /**
    * Specify an optional className to be applied to the `<input>` node
    */
   className: PropTypes.string,
+
+  /**
+   * **Experimental**: Provide a `decorator` component to be rendered inside the `TextInput` component
+   */
+  decorator: PropTypes.node,
 
   /**
    * Optionally provide the default value of the `<input>`
@@ -450,12 +574,21 @@ TextInput.propTypes = {
   /**
    * Specify the size of the Text Input. Currently supports the following:
    */
-  size: PropTypes.oneOf(['sm', 'md', 'lg']),
+  size: PropTypes.oneOf(['xs', 'sm', 'md', 'lg']),
 
   /**
    * **Experimental**: Provide a `Slug` component to be rendered inside the `TextInput` component
    */
-  slug: PropTypes.node,
+  slug: deprecate(
+    PropTypes.node,
+    'The `slug` prop for `TextInput` has ' +
+      'been deprecated in favor of the new `decorator` prop. It will be removed in the next major release.'
+  ),
+
+  /**
+   * Translates component strings using your i18n tool.
+   */
+  translateWithId: PropTypes.func,
 
   /**
    * Specify the type of the `<input>`

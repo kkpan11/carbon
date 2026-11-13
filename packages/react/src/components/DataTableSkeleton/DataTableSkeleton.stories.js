@@ -1,5 +1,5 @@
 /**
- * Copyright IBM Corp. 2016, 2023
+ * Copyright IBM Corp. 2016, 2026
  *
  * This source code is licensed under the Apache-2.0 license found in the
  * LICENSE file in the root directory of this source tree.
@@ -13,7 +13,6 @@ import { headers } from '../DataTable/stories/shared';
 
 const props = () => ({
   zebra: false,
-  compact: false,
   showHeader: true,
   showToolbar: true,
 });
@@ -23,24 +22,13 @@ export default {
   component: DataTableSkeleton,
 };
 
-export const Skeleton = () => {
+export const Skeleton = (args) => {
   const { ...rest } = props();
+
   return (
     <div style={{ width: '800px' }}>
       <DataTableSkeleton
         {...rest}
-        headers={headers}
-        aria-label="sample table"
-      />
-      <br />
-    </div>
-  );
-};
-
-export const Playground = (args) => {
-  return (
-    <div style={{ width: '800px' }}>
-      <DataTableSkeleton
         {...args}
         headers={headers}
         aria-label="sample table"
@@ -50,15 +38,8 @@ export const Playground = (args) => {
   );
 };
 
-Playground.argTypes = {
-  headers: {
-    table: {
-      disable: true,
-    },
-  },
-  className: {
-    table: {
-      disable: true,
-    },
+Skeleton.parameters = {
+  controls: {
+    exclude: ['headers'],
   },
 };

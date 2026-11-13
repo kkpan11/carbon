@@ -1,15 +1,11 @@
 /**
- * Copyright IBM Corp. 2022
+ * Copyright IBM Corp. 2022, 2025
  *
  * This source code is licensed under the Apache-2.0 license found in the
  * LICENSE file in the root directory of this source tree.
  */
 
-import React, {
-  type ComponentType,
-  type FunctionComponent,
-  ReactNode,
-} from 'react';
+import React, { type ElementType, type ReactNode } from 'react';
 import PropTypes from 'prop-types';
 import classNames from 'classnames';
 import { LayoutConstraint } from '../../Layout';
@@ -42,12 +38,12 @@ interface ContainedListItemProps {
   onClick?: () => void;
 
   /**
-   * Provide an optional icon to render in front of the item's content.
+   * A component used to render an icon.
    */
-  renderIcon?: ComponentType | FunctionComponent;
+  renderIcon?: ElementType;
 }
 
-const ContainedListItem: React.FC<ContainedListItemProps> = ({
+const ContainedListItem = ({
   action,
   children,
   className,
@@ -55,7 +51,7 @@ const ContainedListItem: React.FC<ContainedListItemProps> = ({
   onClick,
   renderIcon: IconElement,
   ...rest
-}) => {
+}: ContainedListItemProps) => {
   const prefix = usePrefix();
 
   const isClickable = onClick !== undefined;
@@ -130,9 +126,8 @@ ContainedListItem.propTypes = {
   onClick: PropTypes.func,
 
   /**
-   * Provide an optional icon to render in front of the item's content.
+   * A component used to render an icon.
    */
-  // @ts-expect-error: PropTypes are not expressive enough to cover this case
   renderIcon: PropTypes.oneOfType([PropTypes.func, PropTypes.object]),
 };
 

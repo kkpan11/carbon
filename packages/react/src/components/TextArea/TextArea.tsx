@@ -1,5 +1,5 @@
 /**
- * Copyright IBM Corp. 2016, 2023
+ * Copyright IBM Corp. 2016, 2026
  *
  * This source code is licensed under the Apache-2.0 license found in the
  * LICENSE file in the root directory of this source tree.
@@ -7,31 +7,78 @@
 
 import PropTypes from 'prop-types';
 import React, {
-  ReactNode,
-  useState,
+  cloneElement,
+  forwardRef,
   useContext,
-  useRef,
   useEffect,
+  useRef,
+  useState,
+  type ReactNode,
 } from 'react';
 import classNames from 'classnames';
-import deprecate from '../../prop-types/deprecate';
+import { deprecate } from '../../prop-types/deprecate';
 import { WarningFilled, WarningAltFilled } from '@carbon/icons-react';
 import { usePrefix } from '../../internal/usePrefix';
 import { FormContext } from '../FluidForm';
-import { useAnnouncer } from '../../internal/useAnnouncer';
+import { getAnnouncement } from '../../internal/getAnnouncement';
 import useIsomorphicEffect from '../../internal/useIsomorphicEffect';
 import { useMergedRefs } from '../../internal/useMergedRefs';
-import setupGetInstanceId from '../../tools/setupGetInstanceId';
+import { useId } from '../../internal/useId';
+import { hasHelperText } from '../../internal/hasHelperText';
 import { noopFn } from '../../internal/noopFn';
 import { Text } from '../Text';
+import { AILabel } from '../AILabel';
+import { isComponentElement } from '../../internal';
+import { useNoInteractiveChildrenForLabel } from '../FeatureFlags/useNoInteractiveChildrenForLabel';
+import type { TFunc, TranslateWithId } from '../../types/common';
 
-const getInstanceId = setupGetInstanceId();
+const translationIds = {
+  'carbon.text-area.counter.characters.remaining':
+    'carbon.text-area.counter.characters.remaining',
+  'carbon.text-area.counter.words.remaining':
+    'carbon.text-area.counter.words.remaining',
+  'carbon.text-area.counter.characters.max-reached':
+    'carbon.text-area.counter.characters.max-reached',
+  'carbon.text-area.counter.words.max-reached':
+    'carbon.text-area.counter.words.max-reached',
+  'carbon.text-area.counter.characters.limit':
+    'carbon.text-area.counter.characters.limit',
+  'carbon.text-area.counter.words.limit':
+    'carbon.text-area.counter.words.limit',
+} as const;
+
+type TranslationKey = keyof typeof translationIds;
+
+type TranslationArgs = { count: number; maxCount: number };
+
+const defaultTranslateWithId: TFunc<TranslationKey, TranslationArgs> = (
+  messageId,
+  args
+) => {
+  const count = args?.count ?? 0;
+  const maxCount = args?.maxCount ?? 0;
+
+  switch (messageId) {
+    case translationIds['carbon.text-area.counter.characters.remaining']:
+      return `${count} ${count === 1 ? 'character' : 'characters'} left.`;
+    case translationIds['carbon.text-area.counter.words.remaining']:
+      return `${count} ${count === 1 ? 'word' : 'words'} left.`;
+    case translationIds['carbon.text-area.counter.characters.max-reached']:
+      return 'Maximum characters reached.';
+    case translationIds['carbon.text-area.counter.words.max-reached']:
+      return 'Maximum words reached.';
+    case translationIds['carbon.text-area.counter.characters.limit']:
+      return `Character limit ${maxCount}`;
+    case translationIds['carbon.text-area.counter.words.limit']:
+      return `Word limit ${maxCount}`;
+  }
+};
 
 export interface TextAreaProps
-  extends React.InputHTMLAttributes<HTMLTextAreaElement> {
+  extends React.TextareaHTMLAttributes<HTMLTextAreaElement>,
+    TranslateWithId<TranslationKey, TranslationArgs> {
   /**
-   * Provide a custom className that is applied directly to the underlying
-   * `<textarea>` node
+   * Provide a custom className that is applied to the wrapper node
    */
   className?: string;
 
@@ -39,6 +86,11 @@ export interface TextAreaProps
    * Specify the `cols` attribute for the underlying `<textarea>` node
    */
   cols?: number;
+
+  /**
+   * **Experimental**: Provide a `decorator` component to be rendered inside the `TextArea` component
+   */
+  decorator?: ReactNode;
 
   /**
    * Optionally provide the default value of the `<textarea>`
@@ -132,6 +184,7 @@ export interface TextAreaProps
   rows?: number;
 
   /**
+   * @deprecated please use `decorator` instead.
    * **Experimental**: Provide a `Slug` component to be rendered inside the `TextArea` component
    */
   slug?: ReactNode;
@@ -157,9 +210,12 @@ export interface TextAreaProps
   counterMode?: 'character' | 'word';
 }
 
-const TextArea = React.forwardRef((props: TextAreaProps, forwardRef) => {
+const frFn = forwardRef<HTMLTextAreaElement, TextAreaProps>;
+
+const TextArea = frFn((props, forwardRef) => {
   const {
     className,
+    decorator,
     disabled = false,
     id,
     labelText,
@@ -169,28 +225,33 @@ const TextArea = React.forwardRef((props: TextAreaProps, forwardRef) => {
     onKeyDown = noopFn,
     invalid = false,
     invalidText = '',
-    helperText = '',
+    helperText,
     light,
     placeholder = '',
     enableCounter = false,
-    maxCount = undefined,
+    maxCount,
     counterMode = 'character',
     warn = false,
     warnText = '',
     rows = 4,
     slug,
+    translateWithId: t = defaultTranslateWithId,
     ...other
   } = props;
   const prefix = usePrefix();
   const { isFluid } = useContext(FormContext);
   const { defaultValue, value } = other;
 
-  const { current: textAreaInstanceId } = useRef(getInstanceId());
+  const textAreaInstanceId = useId();
 
+  const wrapperRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const ref = useMergedRefs([forwardRef, textareaRef]) as
-    | React.LegacyRef<HTMLTextAreaElement>
-    | undefined;
+  const labelRef = useRef<HTMLLabelElement>(null);
+  const helperTextRef = useRef<HTMLDivElement>(null);
+  const errorTextRef = useRef<HTMLDivElement>(null);
+  const warnTextRef = useRef<HTMLDivElement>(null);
+
+  const ref = useMergedRefs([forwardRef, textareaRef]);
 
   function getInitialTextCount(): number {
     const targetValue =
@@ -200,7 +261,7 @@ const TextArea = React.forwardRef((props: TextAreaProps, forwardRef) => {
     if (counterMode === 'character') {
       return strValue.length;
     } else {
-      return strValue.match(/\w+/g)?.length || 0;
+      return strValue.match(/\p{L}+/gu)?.length || 0;
     }
   }
 
@@ -218,7 +279,24 @@ const TextArea = React.forwardRef((props: TextAreaProps, forwardRef) => {
     } else if (textareaRef.current) {
       textareaRef.current.style.width = `100%`;
     }
-  }, [other.cols]);
+
+    if (!wrapperRef.current) return;
+    const applyWidth = (width: number) => {
+      [helperTextRef, errorTextRef, warnTextRef].forEach((r) => {
+        if (r.current) {
+          r.current.style.maxWidth = `${width}px`;
+          r.current.style.overflowWrap = 'break-word';
+        }
+      });
+    };
+
+    const resizeObserver = new ResizeObserver(([entry]) => {
+      applyWidth(entry.contentRect.width);
+    });
+    resizeObserver.observe(wrapperRef.current);
+
+    return () => resizeObserver && resizeObserver.disconnect();
+  }, [other.cols, invalid, warn]);
 
   const textareaProps: {
     id: TextAreaProps['id'];
@@ -233,7 +311,10 @@ const TextArea = React.forwardRef((props: TextAreaProps, forwardRef) => {
       if (!disabled && enableCounter && counterMode === 'word') {
         const key = evt.which;
 
-        if (maxCount && textCount >= maxCount && key === 32) {
+        if (
+          (maxCount && textCount >= maxCount && key === 32) ||
+          (maxCount && textCount >= maxCount && key === 13)
+        ) {
           evt.preventDefault();
         }
       }
@@ -251,9 +332,9 @@ const TextArea = React.forwardRef((props: TextAreaProps, forwardRef) => {
           textareaRef.current !== null
         ) {
           const existingWords: string[] =
-            textareaRef.current.value.match(/\w+/g) || [];
+            textareaRef.current.value.match(/\p{L}+/gu) || [];
           const pastedWords: string[] =
-            evt.clipboardData.getData('Text').match(/\w+/g) || [];
+            evt.clipboardData.getData('Text').match(/\p{L}+/gu) || [];
 
           const totalWords = existingWords.length + pastedWords.length;
 
@@ -286,16 +367,12 @@ const TextArea = React.forwardRef((props: TextAreaProps, forwardRef) => {
             setTimeout(() => {
               setTextCount(0);
             }, 0);
-
-            return;
-          }
-
-          if (
+          } else if (
             enableCounter &&
             typeof maxCount !== 'undefined' &&
             textareaRef.current !== null
           ) {
-            const matchedWords = evt.target?.value?.match(/\w+/g);
+            const matchedWords = evt.target?.value?.match(/\p{L}+/gu);
             if (matchedWords && matchedWords.length <= maxCount) {
               textareaRef.current.removeAttribute('maxLength');
 
@@ -324,9 +401,11 @@ const TextArea = React.forwardRef((props: TextAreaProps, forwardRef) => {
   const formItemClasses = classNames(`${prefix}--form-item`, className);
 
   const textAreaWrapperClasses = classNames(`${prefix}--text-area__wrapper`, {
+    [`${prefix}--text-area__wrapper--cols`]: other.cols,
     [`${prefix}--text-area__wrapper--readonly`]: other.readOnly,
     [`${prefix}--text-area__wrapper--warn`]: warn,
     [`${prefix}--text-area__wrapper--slug`]: slug,
+    [`${prefix}--text-area__wrapper--decorator`]: decorator,
   });
 
   const labelClasses = classNames(`${prefix}--label`, {
@@ -342,17 +421,23 @@ const TextArea = React.forwardRef((props: TextAreaProps, forwardRef) => {
 
   const counterClasses = classNames(`${prefix}--label`, {
     [`${prefix}--label--disabled`]: disabled,
+    [`${prefix}--text-area__label-counter`]: true,
   });
 
   const helperTextClasses = classNames(`${prefix}--form__helper-text`, {
     [`${prefix}--form__helper-text--disabled`]: disabled,
   });
 
-  const label = labelText ? (
-    <Text as="label" htmlFor={id} className={labelClasses}>
+  const label = typeof labelText !== 'undefined' && labelText !== null && (
+    <Text as="label" htmlFor={id} className={labelClasses} ref={labelRef}>
       {labelText}
     </Text>
-  ) : null;
+  );
+
+  useNoInteractiveChildrenForLabel(
+    labelRef,
+    'The TextArea component `labelText` prop must have no interactive content'
+  );
 
   const counter =
     enableCounter &&
@@ -360,18 +445,27 @@ const TextArea = React.forwardRef((props: TextAreaProps, forwardRef) => {
     (counterMode === 'character' || counterMode === 'word') ? (
       <Text
         as="div"
-        className={counterClasses}>{`${textCount}/${maxCount}`}</Text>
+        className={counterClasses}
+        aria-hidden="true">{`${textCount}/${maxCount}`}</Text>
     ) : null;
 
-  const helperId = !helperText
+  const counterDescriptionId =
+    enableCounter && maxCount ? `${id}-counter-desc` : undefined;
+
+  const hasHelper = hasHelperText(helperText);
+  const helperId = !hasHelper
     ? undefined
     : `text-area-helper-text-${textAreaInstanceId}`;
 
-  const helper = helperText ? (
-    <Text as="div" id={helperId} className={helperTextClasses}>
+  const helper = hasHelper && (
+    <Text
+      as="div"
+      id={helperId}
+      className={helperTextClasses}
+      ref={helperTextRef}>
       {helperText}
     </Text>
-  ) : null;
+  );
 
   const errorId = id + '-error-msg';
 
@@ -380,7 +474,8 @@ const TextArea = React.forwardRef((props: TextAreaProps, forwardRef) => {
       as="div"
       role="alert"
       className={`${prefix}--form-requirement`}
-      id={errorId}>
+      id={errorId}
+      ref={errorTextRef}>
       {invalidText}
       {isFluid && (
         <WarningFilled className={`${prefix}--text-area__invalid-icon`} />
@@ -388,8 +483,15 @@ const TextArea = React.forwardRef((props: TextAreaProps, forwardRef) => {
     </Text>
   ) : null;
 
+  const warnId = id + '-warn-msg';
+
   const warning = warn ? (
-    <Text as="div" role="alert" className={`${prefix}--form-requirement`}>
+    <Text
+      as="div"
+      role="alert"
+      className={`${prefix}--form-requirement`}
+      id={warnId}
+      ref={warnTextRef}>
       {warnText}
       {isFluid && (
         <WarningAltFilled
@@ -400,10 +502,16 @@ const TextArea = React.forwardRef((props: TextAreaProps, forwardRef) => {
   ) : null;
 
   let ariaDescribedBy;
+  let ariaErrorMessage;
   if (invalid) {
-    ariaDescribedBy = errorId;
-  } else if (!invalid && !warn && !isFluid && helperText) {
-    ariaDescribedBy = helperId;
+    ariaErrorMessage = errorId;
+  } else if (warn && !isFluid) {
+    ariaDescribedBy = warnId;
+  } else {
+    const ids: string[] = [];
+    if (!isFluid && hasHelper && helperId) ids.push(helperId);
+    if (counterDescriptionId) ids.push(counterDescriptionId);
+    ariaDescribedBy = ids.length > 0 ? ids.join(' ') : undefined;
   }
 
   if (enableCounter) {
@@ -412,20 +520,61 @@ const TextArea = React.forwardRef((props: TextAreaProps, forwardRef) => {
       textareaProps.maxLength = maxCount;
     }
   }
-  const ariaAnnouncement = useAnnouncer(
+
+  const announcerRef = useRef<HTMLSpanElement>(null);
+  const [prevAnnouncement, setPrevAnnouncement] = useState('');
+  const ariaAnnouncement = getAnnouncement(
     textCount,
     maxCount,
-    counterMode === 'word' ? 'words' : undefined
+    counterMode === 'word'
+      ? {
+          remaining: 'carbon.text-area.counter.words.remaining',
+          maxReached: 'carbon.text-area.counter.words.max-reached',
+        }
+      : {
+          remaining: 'carbon.text-area.counter.characters.remaining',
+          maxReached: 'carbon.text-area.counter.characters.max-reached',
+        },
+    t
   );
+  useEffect(() => {
+    if (ariaAnnouncement && ariaAnnouncement !== prevAnnouncement) {
+      const announcer = announcerRef.current as HTMLSpanElement | null;
+      if (announcer) {
+        // Clear the content first
+        announcer.textContent = '';
+
+        // Set the new content after a small delay
+        const timeoutId = setTimeout(
+          () => {
+            if (announcer) {
+              announcer.textContent = ariaAnnouncement;
+              setPrevAnnouncement(ariaAnnouncement);
+            }
+          },
+          counterMode === 'word' ? 2000 : 1000
+        );
+
+        //clear the timeout
+        return () => {
+          if (timeoutId) {
+            clearTimeout(timeoutId);
+          }
+        };
+      }
+    }
+  }, [ariaAnnouncement, prevAnnouncement, counterMode]);
 
   const input = (
     <textarea
       {...other}
       {...textareaProps}
       placeholder={placeholder}
+      aria-readonly={other.readOnly}
       className={textareaClasses}
       aria-invalid={invalid}
       aria-describedby={ariaDescribedBy}
+      aria-errormessage={ariaErrorMessage}
       disabled={disabled}
       rows={rows}
       readOnly={other.readOnly}
@@ -433,13 +582,12 @@ const TextArea = React.forwardRef((props: TextAreaProps, forwardRef) => {
     />
   );
 
-  // Slug is always size `mini`
-  let normalizedSlug;
-  if (slug && slug['type']?.displayName === 'Slug') {
-    normalizedSlug = React.cloneElement(slug as React.ReactElement<any>, {
-      size: 'mini',
-    });
-  }
+  // AILabel is always size `mini`
+  const candidate = slug ?? decorator;
+  const candidateIsAILabel = isComponentElement(candidate, AILabel);
+  const normalizedDecorator = candidateIsAILabel
+    ? cloneElement(candidate, { size: 'mini' })
+    : candidate;
 
   return (
     <div className={formItemClasses}>
@@ -447,7 +595,25 @@ const TextArea = React.forwardRef((props: TextAreaProps, forwardRef) => {
         {label}
         {counter}
       </div>
-      <div className={textAreaWrapperClasses} data-invalid={invalid || null}>
+      {enableCounter && maxCount && (
+        <span
+          id={counterDescriptionId}
+          className={`${prefix}--visually-hidden`}>
+          {counterMode === 'word'
+            ? t('carbon.text-area.counter.words.limit', {
+                count: maxCount,
+                maxCount,
+              })
+            : t('carbon.text-area.counter.characters.limit', {
+                count: maxCount,
+                maxCount,
+              })}
+        </span>
+      )}
+      <div
+        ref={wrapperRef}
+        className={textAreaWrapperClasses}
+        data-invalid={invalid || null}>
         {invalid && !isFluid && (
           <WarningFilled className={`${prefix}--text-area__invalid-icon`} />
         )}
@@ -457,8 +623,21 @@ const TextArea = React.forwardRef((props: TextAreaProps, forwardRef) => {
           />
         )}
         {input}
-        {normalizedSlug}
-        <span className={`${prefix}--text-area__counter-alert`} role="alert">
+        {slug ? (
+          normalizedDecorator
+        ) : decorator ? (
+          <div className={`${prefix}--text-area__inner-wrapper--decorator`}>
+            {normalizedDecorator}
+          </div>
+        ) : (
+          ''
+        )}
+        <span
+          className={`${prefix}--text-area__counter-alert`}
+          role="alert"
+          aria-live="assertive"
+          aria-atomic="true"
+          ref={announcerRef}>
           {ariaAnnouncement}
         </span>
         {isFluid && <hr className={`${prefix}--text-area__divider`} />}
@@ -475,8 +654,7 @@ const TextArea = React.forwardRef((props: TextAreaProps, forwardRef) => {
 TextArea.displayName = 'TextArea';
 TextArea.propTypes = {
   /**
-   * Provide a custom className that is applied directly to the underlying
-   * `<textarea>` node
+   * Provide a custom className that is applied to the wrapper node
    */
   className: PropTypes.string,
 
@@ -489,6 +667,11 @@ TextArea.propTypes = {
    * Specify the method used for calculating the counter number
    */
   counterMode: PropTypes.oneOf(['character', 'word']),
+
+  /**
+   * **Experimental**: Provide a `decorator` component to be rendered inside the `TextArea` component
+   */
+  decorator: PropTypes.node,
 
   /**
    * Optionally provide the default value of the `<textarea>`
@@ -587,7 +770,16 @@ TextArea.propTypes = {
   /**
    * **Experimental**: Provide a `Slug` component to be rendered inside the `TextArea` component
    */
-  slug: PropTypes.node,
+  slug: deprecate(
+    PropTypes.node,
+    'The `slug` prop for `TextArea` has ' +
+      'been deprecated in favor of the new `decorator` prop. It will be removed in the next major release.'
+  ),
+
+  /**
+   * Translates component strings using your i18n tool.
+   */
+  translateWithId: PropTypes.func,
 
   /**
    * Provide the current value of the `<textarea>`

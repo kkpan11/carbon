@@ -12,7 +12,7 @@ import React, { type ChangeEventHandler, forwardRef } from 'react';
 import { useId } from '../../internal/useId';
 import { usePrefix } from '../../internal/usePrefix';
 
-interface SideNavSwitcherProps {
+export interface SideNavSwitcherProps {
   /**
    * Provide an optional class to be applied to the containing node
    */
@@ -39,7 +39,7 @@ interface SideNavSwitcherProps {
 }
 
 const SideNavSwitcher = forwardRef<HTMLSelectElement, SideNavSwitcherProps>(
-  function SideNavSwitcher(props, ref) {
+  (props, ref) => {
     const id = useId('side-nav-switcher');
     const prefix = usePrefix();
     const { className: customClassName, labelText, onChange, options } = props;
@@ -106,7 +106,6 @@ SideNavSwitcher.propTypes = {
    * `<option>`. The text value will be what is displayed to the user and is set
    * as the `value` prop for each `<option>`.
    */
-  // @ts-expect-error
   options: PropTypes.arrayOf(PropTypes.string).isRequired,
 };
 

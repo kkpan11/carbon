@@ -1,191 +1,188 @@
 /**
- * Copyright IBM Corp. 2016, 2023
+ * Copyright IBM Corp. 2016, 2026
  *
  * This source code is licensed under the Apache-2.0 license found in the
  * LICENSE file in the root directory of this source tree.
  */
 
-import React, { useState, useCallback } from 'react';
+import React from 'react';
 
 import { WithLayer } from '../../../.storybook/templates/WithLayer';
 
 import ExpandableSearch from '../ExpandableSearch';
 import Search from '.';
-import Button from '../Button';
+import SearchSkeleton from './Search.Skeleton';
+import mdx from './Search.mdx';
+
+const sharedArgs = {
+  closeButtonLabelText: 'Clear search input',
+  disabled: false,
+  defaultWidth: 800,
+  labelText: 'Site search',
+  placeholder: 'Placeholder text',
+  size: 'md',
+  type: 'search',
+};
 
 export default {
   title: 'Components/Search',
   component: Search,
+  args: sharedArgs,
   argTypes: {
     light: {
       table: {
         disable: true,
       },
     },
+    defaultWidth: {
+      control: { type: 'range', min: 300, max: 800, step: 50 },
+    },
+    closeButtonLabelText: {
+      control: {
+        type: 'text',
+      },
+    },
+    disabled: {
+      control: {
+        type: 'boolean',
+      },
+    },
+    defaultValue: {
+      control: {
+        type: 'text',
+      },
+    },
+    labelText: {
+      control: {
+        type: 'text',
+      },
+    },
+    placeholder: {
+      control: {
+        type: 'text',
+      },
+    },
+    size: {
+      options: ['xs', 'sm', 'md', 'lg'],
+      control: {
+        type: 'select',
+      },
+    },
+    tooltipAlignment: {
+      options: [
+        'top',
+        'top-start',
+        'top-end',
+        'bottom',
+        'bottom-start',
+        'bottom-end',
+        'left',
+        'left-start',
+        'left-end',
+        'right',
+        'right-start',
+        'right-end',
+      ],
+      control: {
+        type: 'select',
+      },
+    },
+    value: {
+      control: {
+        type: 'text',
+      },
+    },
   },
   subcomponents: {
     ExpandableSearch,
+    SearchSkeleton,
+  },
+  parameters: {
+    docs: {
+      page: mdx,
+    },
+    controls: {
+      exclude: ['id'],
+    },
   },
 };
 
-export const Test = () => {
-  const [isExpanded, setExpanded] = useState(false);
-
-  const handleToggleExpandClick = useCallback(() => {
-    setExpanded(!isExpanded);
-  }, [isExpanded]);
-
-  return (
-    <>
-      <div>isExpanded = {isExpanded.toString()}</div>
-      <ExpandableSearch isExpanded={isExpanded} />
-      <Button onClick={handleToggleExpandClick}>Toggle Expand</Button>
-    </>
-  );
+const defaultParameters = {
+  controls: {
+    exclude: ['isExpanded', 'renderIcon', 'role', 'tooltipAlignment'],
+  },
 };
 
-export const Default = () => (
-  <Search
-    size="lg"
-    placeholder="Find your items"
-    labelText="Search"
-    closeButtonLabelText="Clear search input"
-    id="search-1"
-    onChange={() => {}}
-    onKeyDown={() => {}}
-  />
-);
+const expandableParameters = {
+  controls: {
+    exclude: ['renderIcon', 'role'],
+  },
+};
 
-export const Disabled = () => (
-  <Search
-    disabled
-    size="lg"
-    placeholder="Find your items"
-    labelText="Search"
-    closeButtonLabelText="Clear search input"
-    id="search-1"
-    onChange={() => {}}
-    onKeyDown={() => {}}
-  />
-);
-
-export const Expandable = () => (
-  <ExpandableSearch
-    size="lg"
-    labelText="Search"
-    closeButtonLabelText="Clear search input"
-    id="search-expandable-1"
-    onChange={() => {}}
-    onKeyDown={() => {}}
-  />
-);
-
-export const _WithLayer = () => (
-  <WithLayer>
-    {(layer) => (
-      <Search
-        size="lg"
-        placeholder="Find your items"
-        labelText="Search"
-        closeButtonLabelText="Clear search input"
-        id={`search-${layer}`}
-        onChange={() => {}}
-        onKeyDown={() => {}}
-      />
-    )}
-  </WithLayer>
-);
-
-export const ExpandableWithLayer = () => (
-  <WithLayer>
-    {(layer) => (
-      <ExpandableSearch
-        size="lg"
-        placeholder="Search"
-        labelText="First Layer"
-        closeButtonLabelText="Clear search input"
-        id={`search-expandable-${layer}`}
-        onChange={() => {}}
-        onKeyDown={() => {}}
-      />
-    )}
-  </WithLayer>
-);
-
-export const Playground = (args) => (
-  <div style={{ width: args.playgroundWidth }}>
-    <Search id="search-playground-1" {...args} />
+export const Expandable = (args) => (
+  <div style={{ marginTop: '25px', width: args.defaultWidth }}>
+    <ExpandableSearch id="search-expandable-1" {...args} />
   </div>
 );
-
-Playground.args = {
-  playgroundWidth: 300,
-  closeButtonLabelText: 'Clear search input',
-  disabled: false,
-  defaultValue: 'Default value',
-  labelText: 'Label text',
-  placeholder: 'Placeholder text',
-  role: 'searchbox',
-  size: 'md',
-  type: 'text',
+Expandable.args = {
+  ...sharedArgs,
 };
+Expandable.parameters = { ...expandableParameters };
 
-Playground.argTypes = {
-  playgroundWidth: {
-    control: { type: 'range', min: 300, max: 800, step: 50 },
-  },
-  className: {
-    table: {
-      disable: true,
-    },
-  },
-  closeButtonLabelText: {
-    control: {
-      type: 'text',
-    },
-  },
-  disabled: {
-    control: {
-      type: 'boolean',
-    },
-  },
-  id: {
-    table: {
-      disable: true,
-    },
-  },
-  defaultValue: {
-    control: {
-      type: 'text',
-    },
-  },
-  labelText: {
-    control: {
-      type: 'text',
-    },
-  },
-  placeholder: {
-    control: {
-      type: 'text',
-    },
-  },
-  renderIcon: {
-    control: false,
-  },
-  role: {
-    control: {
-      type: 'text',
-    },
-  },
+export const _WithLayer = (args) => (
+  <WithLayer>
+    {(layer) => (
+      <div style={{ width: args.defaultWidth }}>
+        <Search id={`search-${layer}`} {...args} />
+      </div>
+    )}
+  </WithLayer>
+);
+_WithLayer.args = {
+  ...sharedArgs,
+};
+_WithLayer.parameters = { ...defaultParameters };
+
+export const ExpandableWithLayer = (args) => (
+  <WithLayer>
+    {(layer) => (
+      <div style={{ marginTop: '25px', width: args.defaultWidth }}>
+        <ExpandableSearch id={`search-expandable-${layer}`} {...args} />
+      </div>
+    )}
+  </WithLayer>
+);
+ExpandableWithLayer.args = {
+  ...sharedArgs,
+};
+ExpandableWithLayer.parameters = { ...expandableParameters };
+
+export const Default = (args) => (
+  <div style={{ width: args.defaultWidth }}>
+    <Search id="search-default-1" {...args} />
+  </div>
+);
+Default.args = {
+  ...sharedArgs,
+};
+Default.parameters = { ...defaultParameters };
+
+export const Skeleton = (args) => (
+  <div style={{ width: args.defaultWidth }}>
+    <SearchSkeleton size={args.size} />
+  </div>
+);
+Skeleton.args = {
+  defaultWidth: 800,
+  size: 'md',
+};
+Skeleton.argTypes = {
   size: {
-    options: ['sm', 'md', 'lg'],
-    control: {
-      type: 'select',
-    },
+    description: 'Specify the size of the SearchSkeleton',
   },
-  type: {
-    control: {
-      type: 'text',
-    },
+};
+Skeleton.parameters = {
+  controls: {
+    include: ['size', 'defaultWidth'],
   },
 };

@@ -1,12 +1,12 @@
 /**
- * Copyright IBM Corp. 2016, 2023
+ * Copyright IBM Corp. 2016, 2026
  *
  * This source code is licensed under the Apache-2.0 license found in the
  * LICENSE file in the root directory of this source tree.
  */
 
 import PropTypes from 'prop-types';
-import React, { type ElementType } from 'react';
+import React, { type ElementType, type JSX } from 'react';
 import type { PolymorphicProps } from '../../types/common';
 
 type HeadingLevel = 1 | 2 | 3 | 4 | 5 | 6;
@@ -17,13 +17,13 @@ type SectionBaseProps = {
   level?: HeadingLevel;
 };
 
-type SectionProps<E extends ElementType> = PolymorphicProps<
+export type SectionProps<E extends ElementType> = PolymorphicProps<
   E,
   SectionBaseProps
 >;
 
 export const Section = React.forwardRef(function Section<
-  E extends ElementType = 'section'
+  E extends ElementType = 'section',
 >(
   {
     as: BaseComponent = 'section' as E,
@@ -34,6 +34,7 @@ export const Section = React.forwardRef(function Section<
 ) {
   const parentLevel = React.useContext(HeadingContext);
   const level = levelOverride ?? parentLevel + 1;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- https://github.com/carbon-design-system/carbon/issues/20452
   const BaseComponentAsAny = BaseComponent as any;
 
   return (
@@ -67,14 +68,14 @@ Section.propTypes = {
 };
 
 type HeadingProps = JSX.IntrinsicElements[`h${HeadingLevel}`];
+export const Heading = React.forwardRef(
+  (props: HeadingProps, ref: React.Ref<HTMLHeadingElement>) => {
+    const HeadingIntrinsic = `h${React.useContext(HeadingContext)}` as const;
+    return <HeadingIntrinsic ref={ref} {...props} />;
+  }
+);
 
-export const Heading = React.forwardRef(function Heading(
-  props: HeadingProps,
-  ref: React.Ref<HTMLHeadingElement>
-) {
-  const HeadingIntrinsic = `h${React.useContext(HeadingContext)}` as const;
-  return <HeadingIntrinsic ref={ref} {...props} />;
-});
+Heading.displayName = 'Heading';
 
 Heading.propTypes = {
   /**

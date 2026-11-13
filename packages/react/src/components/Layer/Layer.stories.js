@@ -21,31 +21,23 @@ export default {
       page: mdx,
     },
   },
-  argTypes: {
-    as: {
-      table: {
-        disable: true,
-      },
-    },
-    children: {
-      table: {
-        disable: true,
-      },
-    },
-    className: {
-      table: {
-        disable: true,
-      },
-    },
-  },
-  args: {
-    level: 0,
+};
+
+const contentArgTypes = {
+  label: {
+    control: { type: 'text' },
   },
 };
 
-export const Default = () => {
+const contentParameters = {
+  controls: {
+    include: ['label'],
+  },
+};
+
+export const Default = (args) => {
   function TestComponent() {
-    return <div className="example-layer-test-component">Test component</div>;
+    return <div className="example-layer-test-component">{args.label}</div>;
   }
 
   return (
@@ -61,24 +53,75 @@ export const Default = () => {
   );
 };
 
-export const CustomLevel = () => {
+Default.args = {
+  label: 'Workspace settings',
+};
+Default.argTypes = contentArgTypes;
+Default.parameters = contentParameters;
+
+export const withBackground = (args) => {
   function TestComponent() {
-    return <div className="example-layer-test-component">Test component</div>;
+    return (
+      <div className="example-layer-test-component-no-background">
+        {args.label}
+      </div>
+    );
   }
 
   return (
-    <Layer level={2}>
+    <>
+      <TestComponent />
+      <Layer withBackground>
+        <TestComponent />
+        <Layer withBackground>
+          <TestComponent />
+        </Layer>
+      </Layer>
+    </>
+  );
+};
+
+withBackground.args = {
+  label: 'Workspace settings',
+};
+withBackground.argTypes = contentArgTypes;
+withBackground.parameters = contentParameters;
+
+export const CustomLevel = (args) => {
+  function TestComponent() {
+    return <div className="example-layer-test-component">{args.label}</div>;
+  }
+
+  return (
+    <Layer level={args.level}>
       <TestComponent />
     </Layer>
   );
 };
 
-export const UseLayer = () => {
+CustomLevel.args = {
+  label: 'Workspace settings',
+  level: 2,
+};
+CustomLevel.argTypes = {
+  ...contentArgTypes,
+  level: {
+    control: { type: 'select' },
+    options: [0, 1, 2],
+  },
+};
+CustomLevel.parameters = {
+  controls: {
+    include: ['label', 'level'],
+  },
+};
+
+export const UseLayer = (args) => {
   function ExampleComponent() {
     const { level } = useLayer();
     return (
       <div style={{ padding: '1rem', background: 'var(--cds-layer)' }}>
-        The current layer level is: {level}
+        {args.label}: {level}
       </div>
     );
   }
@@ -93,20 +136,12 @@ export const UseLayer = () => {
   );
 };
 
+UseLayer.args = {
+  label: 'Current layer level',
+};
+UseLayer.argTypes = contentArgTypes;
+UseLayer.parameters = contentParameters;
+
 UseLayer.story = {
   name: 'useLayer',
 };
-
-const PlaygroundStory = (args) => {
-  function TestComponent() {
-    return <div className="example-layer-test-component">Test component</div>;
-  }
-
-  return (
-    <Layer {...args}>
-      <TestComponent />
-    </Layer>
-  );
-};
-
-export const Playground = PlaygroundStory.bind({});

@@ -25,14 +25,13 @@ $-loading-gap-small: 110;
   .#{$prefix}--inline-loading {
     display: flex;
     align-items: center;
+    color: $text-secondary;
     inline-size: 100%;
     min-block-size: 2rem;
   }
 
   .#{$prefix}--inline-loading__text {
-    @include type-style('label-01');
-
-    color: $text-secondary;
+    @include type-style('label-02');
   }
 
   .#{$prefix}--inline-loading__animation {

@@ -5,15 +5,18 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import PropTypes from 'prop-types';
 import classnames from 'classnames';
-import setupGetInstanceId from '../../../tools/setupGetInstanceId';
+import { useId } from '../../../internal/useId';
 import Select from '../../Select';
 import SelectItem from '../../SelectItem';
 import { usePrefix } from '../../../internal/usePrefix';
 
-const getInstanceId = setupGetInstanceId();
+/**
+ * @deprecated Use `Pagination` with the `renderPageSelect` prop instead.
+ * `unstable_PageSelector` / `preview_PageSelector` will be removed in v12.
+ */
 function PageSelector({
   className = null,
   currentPage,
@@ -24,7 +27,16 @@ function PageSelector({
 }) {
   const prefix = usePrefix();
   const namespace = `${prefix}--unstable-pagination__page-selector`;
-  const instanceId = `${namespace}__select-${getInstanceId()}`;
+  const instanceId = `${namespace}__select-${useId()}`;
+
+  useEffect(() => {
+    if (process.env.NODE_ENV !== 'production') {
+      console.warn(
+        '[Carbon] `unstable_PageSelector` / `preview_PageSelector` is deprecated and will be removed in v12. ' +
+          'Use `Pagination` with the `renderPageSelect` prop instead.'
+      );
+    }
+  }, []);
 
   const renderPages = (total) => {
     const pages = [];

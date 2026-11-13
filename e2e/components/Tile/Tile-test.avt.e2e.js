@@ -1,5 +1,5 @@
 /**
- * Copyright IBM Corp. 2016, 2023
+ * Copyright IBM Corp. 2016, 2026
  *
  * This source code is licensed under the Apache-2.0 license found in the
  * LICENSE file in the root directory of this source tree.
@@ -79,17 +79,51 @@ test.describe('@avt Tile', () => {
 
   test('@avt-advanced-states ClickableTile', async ({ page }) => {
     await visitStory(page, {
-      component: 'Tile',
+      component: 'ClickableTile',
       id: 'components-tile--clickable',
       globals: {
         theme: 'white',
       },
       args: {
-        disabled: 'true',
+        disabled: true,
       },
     });
     await expect(page.locator('a#clickable-tile-1')).toBeDisabled();
     await expect(page).toHaveNoACViolations('ClickableTile-Disabled');
+  });
+
+  test('@avt-advanced-states SelectableTile selected', async ({ page }) => {
+    await visitStory(page, {
+      component: 'SelectableTile',
+      id: 'components-tile--selectable',
+      globals: {
+        theme: 'white',
+      },
+      args: {
+        selected: true,
+      },
+    });
+
+    await expect(page.getByRole('checkbox')).toHaveClass(
+      'cds--tile cds--tile--selectable cds--tile--is-selected'
+    );
+    await expect(page).toHaveNoACViolations('SelectableTile-Selected');
+  });
+
+  test('@avt-advanced-states RadioTile selected value', async ({ page }) => {
+    await visitStory(page, {
+      component: 'RadioTile',
+      id: 'components-tile--radio',
+      globals: {
+        theme: 'white',
+      },
+      args: {
+        defaultSelected: 'selected',
+      },
+    });
+
+    await expect(page.getByRole('radio').nth(2)).toBeChecked();
+    await expect(page).toHaveNoACViolations('RadioTile-Selected');
   });
 
   test('@avt-advanced-states ExpandableTile', async ({ page }) => {
@@ -101,11 +135,60 @@ test.describe('@avt Tile', () => {
       },
     });
     await expect(page.locator('body')).toBeFocused();
+
+    // Pause to ensure the initial animation finishes before we interact
+    await expect(
+      page.getByRole('button', { name: 'Above the fold content here' })
+    ).toBeVisible();
+
     await page.keyboard.press('Tab');
     await expect(page.locator('#expandable-tile-1')).toBeFocused();
     await page.keyboard.press('Enter');
     await expect(page.locator('#expandable-tile-1')).toHaveClass(
       'cds--tile cds--tile--expandable cds--tile--is-expanded'
+    );
+  });
+
+  test('@avt-advanced-states ExpandableTile expanded', async ({ page }) => {
+    await visitStory(page, {
+      component: 'ExpandableTile',
+      id: 'components-tile--expandable',
+      globals: {
+        theme: 'white',
+      },
+      args: {
+        expanded: true,
+      },
+    });
+
+    await expect(page.locator('#expandable-tile-1')).toHaveClass(
+      'cds--tile cds--tile--expandable cds--tile--is-expanded'
+    );
+    await expect(page).toHaveNoACViolations('ExpandableTile-Expanded');
+  });
+
+  test('@avt-advanced-states ExpandableTile with interactive spacebar', async ({
+    page,
+  }) => {
+    await visitStory(page, {
+      component: 'ExpandableTile',
+      id: 'components-tile--expandable-with-interactive',
+      globals: {
+        theme: 'white',
+      },
+    });
+    await expect(page.locator('body')).toBeFocused();
+
+    // Pause to ensure the initial animation finishes before we interact
+    await expect(page.getByLabel('Interact to Expand tile')).toBeVisible();
+
+    await page.keyboard.press('Tab');
+    await page.keyboard.press('Tab');
+
+    await expect(page.getByLabel('Interact to Expand tile')).toBeFocused();
+    await page.keyboard.press('Space');
+    await expect(page.locator('#expandable-tile-1')).toHaveClass(
+      'cds--tile cds--tile--expandable cds--tile--is-expanded cds--tile--expandable--interactive'
     );
   });
 
@@ -118,10 +201,14 @@ test.describe('@avt Tile', () => {
       },
     });
     await expect(page.locator('body')).toBeFocused();
+
+    // Pause to ensure the initial animation finishes before we interact
+    await expect(page.getByRole('checkbox')).toBeVisible();
+
     await page.keyboard.press('Tab');
-    await expect(page.locator('#selectable-tile-1')).toBeFocused();
+    await expect(page.getByRole('checkbox')).toBeFocused();
     await page.keyboard.press('Enter');
-    await expect(page.locator('#selectable-tile-1')).toHaveClass(
+    await expect(page.getByRole('checkbox')).toHaveClass(
       'cds--tile cds--tile--selectable cds--tile--is-selected'
     );
   });
@@ -135,9 +222,13 @@ test.describe('@avt Tile', () => {
       },
     });
     await expect(page.locator('body')).toBeFocused();
+
+    // Pause to ensure the initial animation finishes before we interact
+    await expect(page.getByRole('radio').nth(0)).toBeVisible();
+
     await page.keyboard.press('Tab');
-    await expect(page.locator('#radio-tile-2')).toBeFocused();
+    await expect(page.getByRole('radio').nth(1)).toBeFocused();
     await page.keyboard.press('ArrowUp');
-    await expect(page.locator('#radio-tile-1')).toBeChecked();
+    await expect(page.getByRole('radio').nth(0)).toBeChecked();
   });
 });

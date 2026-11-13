@@ -6,6 +6,7 @@
 //3
 
 @use '../../config' as *;
+@use '../../feature-flags' as *;
 @use '../../motion' as *;
 @use '../../spacing' as *;
 @use '../../theme' as *;
@@ -19,7 +20,7 @@
 /// Toggle styles
 /// @access public
 /// @group toggle
-@mixin toggle {
+@mixin toggle($enable-v12-toggle-reduced-label-spacing: false) {
   .#{$prefix}--toggle {
     display: inline-block;
     user-select: none;
@@ -31,6 +32,12 @@
     display: block;
     color: $text-secondary;
     margin-block-end: $spacing-05;
+    @if (
+      enabled('enable-v12-toggle-reduced-label-spacing') or
+        $enable-v12-toggle-reduced-label-spacing
+    ) {
+      margin-block-end: $spacing-03;
+    }
   }
 
   .#{$prefix}--toggle__button {
@@ -79,7 +86,14 @@
     .#{$prefix}--toggle__switch,
   .#{$prefix}--toggle:not(.#{$prefix}--toggle--disabled):active
     .#{$prefix}--toggle__switch {
-    box-shadow: 0 0 0 1px $focus-inset, 0 0 0 3px $focus;
+    &::after {
+      display: block;
+      border-radius: convert.to-rem(16px);
+      block-size: 100%;
+      content: '';
+      outline: 2px solid $focus;
+      outline-offset: 1px;
+    }
   }
 
   .#{$prefix}--toggle__switch--checked {
@@ -87,6 +101,12 @@
 
     &::before {
       transform: translateX(convert.to-rem(24px));
+    }
+  }
+
+  @media screen and (-ms-high-contrast: active), (forced-colors: active) {
+    .#{$prefix}--toggle__switch--checked {
+      background-color: Highlight;
     }
   }
 
@@ -162,7 +182,7 @@
     background-color: transparent;
 
     &::before {
-      background-color: $text-primary;
+      background-color: $icon-primary;
       inset-block-start: convert.to-rem(2px);
       inset-inline-start: convert.to-rem(2px);
     }
@@ -186,7 +206,6 @@
     @include high-contrast-mode('outline');
   }
 
-  // stylelint-disable-next-line no-duplicate-selectors
   .#{$prefix}--toggle__button:focus
     + .#{$prefix}--toggle__label
     .#{$prefix}--toggle__switch,

@@ -1,5 +1,5 @@
 /**
- * Copyright IBM Corp. 2016, 2023
+ * Copyright IBM Corp. 2016, 2026
  *
  * This source code is licensed under the Apache-2.0 license found in the
  * LICENSE file in the root directory of this source tree.
@@ -7,12 +7,17 @@
 
 import React from 'react';
 import CodeSnippet from '../';
-import { render, screen } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import copy from 'copy-to-clipboard';
 
-jest.mock('copy-to-clipboard', () => {
-  return jest.fn();
-});
+const mockUseResizeObserver = jest.fn();
+
+jest.mock('copy-to-clipboard', () => jest.fn());
+
+jest.mock('../../../internal/useResizeObserver', () => ({
+  useResizeObserver: (args) => mockUseResizeObserver(args),
+}));
 
 const inline = `node -v`;
 
@@ -27,7 +32,6 @@ const multiLong = `  "scripts": {
     "format:diff": "prettier --list-different '**/*.{js,md,scss,ts}' '!**/{build,es,lib,storybook,ts,umd}/**' '!packages/components/**'",
     "lint": "eslint actions config codemods packages",
     "lint:styles": "stylelint '**/*.{css,scss}' --report-needless-disables --report-invalid-scope-disables",
-    "sync": "carbon-cli sync",
     "test": "cross-env BABEL_ENV=test jest",
     "test:e2e": "cross-env BABEL_ENV=test jest --testPathPattern=e2e --testPathIgnorePatterns='examples,/packages/components/,/packages/react/'"
   },
@@ -48,7 +52,6 @@ const multiShort = `  "scripts": {
     "format:diff": "prettier --list-different '**/*.{js,md,scss,ts}' '!**/{build,es,lib,storybook,ts,umd}/**' '!packages/components/**'",
     "lint": "eslint actions config codemods packages",
     "lint:styles": "stylelint '**/*.{css,scss}' --report-needless-disables --report-invalid-scope-disables",
-    "sync": "carbon-cli sync",
     "test": "cross-env BABEL_ENV=test jest",
     "test:e2e": "cross-env BABEL_ENV=test jest --testPathPattern=e2e --testPathIgnorePatterns='examples,/packages/components/,/packages/react/'"
   },`;
@@ -62,12 +65,27 @@ const multi15 = `  "scripts": {
     "format:diff": "prettier --list-different '**/*.{js,md,scss,ts}' '!**/{build,es,lib,storybook,ts,umd}/**' '!packages/components/**'",
     "lint": "eslint actions config codemods packages",
     "lint:styles": "stylelint '**/*.{css,scss}' --report-needless-disables --report-invalid-scope-disables",
-    "sync": "carbon-cli sync",
     "test": "cross-env BABEL_ENV=test jest",
     "test:e2e": "cross-env BABEL_ENV=test jest --testPathPattern=e2e --testPathIgnorePatterns='examples,/packages/components/,/packages/react/'"
   },
   "resolutions": {
     "react": "~16.9.0",`;
+
+const triggerResizeObserver = () => {
+  const latestCall =
+    mockUseResizeObserver.mock.calls[
+      mockUseResizeObserver.mock.calls.length - 1
+    ];
+
+  act(() => {
+    latestCall[0].onResize();
+  });
+};
+
+beforeEach(() => {
+  copy.mockClear();
+  mockUseResizeObserver.mockClear();
+});
 
 describe('CodeSnippet', () => {
   it('should use the appropriate snippet class when it is type single', () => {
@@ -77,6 +95,16 @@ describe('CodeSnippet', () => {
       </CodeSnippet>
     );
     expect(screen.getByTestId('code-1')).toHaveClass('cds--snippet--single');
+  });
+
+  it('should default to the single snippet type when `type` is not provided', () => {
+    render(<CodeSnippet>{single}</CodeSnippet>);
+
+    triggerResizeObserver();
+
+    expect(screen.getByRole('textbox')).toHaveClass('cds--snippet-container', {
+      exact: true,
+    });
   });
 
   it('should use the appropriate snippet class when it is type multi', () => {
@@ -115,7 +143,7 @@ describe('CodeSnippet', () => {
         {inline}
       </CodeSnippet>
     );
-    // note: outtermost component is a Tooltip
+    // note: outermost component is a Tooltip
     expect(screen.getByTestId('code-5')).toHaveClass('custom-class');
   });
 
@@ -129,6 +157,17 @@ describe('CodeSnippet', () => {
     expect(screen.queryByRole('button')).not.toBeInTheDocument();
   });
 
+  it('should allow hiding the copy button for inline snippets', () => {
+    render(
+      <CodeSnippet type="inline" hideCopyButton>
+        {inline}
+      </CodeSnippet>
+    );
+
+    expect(screen.queryByRole('button')).not.toBeInTheDocument();
+    expect(screen.getByText(inline).tagName).toBe('CODE');
+  });
+
   it('should set disabled on copy button if it is passed via props', () => {
     render(
       <CodeSnippet type="single" disabled>
@@ -137,6 +176,82 @@ describe('CodeSnippet', () => {
     );
 
     expect(screen.getByRole('button')).toBeDisabled();
+  });
+
+  it('should use fallback container attributes when `type` is not recognized', () => {
+    const { container } = render(
+      <CodeSnippet aria-label={null} type="other">
+        {single}
+      </CodeSnippet>
+    );
+
+    triggerResizeObserver();
+
+    const snippetContainer = container.querySelector('.cds--snippet-container');
+
+    expect(snippetContainer).not.toHaveAttribute('role');
+    expect(snippetContainer).toHaveAttribute('aria-label', 'code-snippet');
+    expect(snippetContainer).not.toHaveAttribute('aria-readonly');
+  });
+
+  it('should omit collapsed inline styles when collapsed row limits are zero', () => {
+    render(
+      <CodeSnippet
+        type="multi"
+        maxCollapsedNumberOfRows={0}
+        minCollapsedNumberOfRows={0}>
+        {multiLong}
+      </CodeSnippet>
+    );
+
+    const textBox = screen.getByRole('textbox');
+
+    expect(textBox.style.maxHeight).toBe('');
+    expect(textBox.style.minHeight).toBe('');
+  });
+
+  it('should position tabindex, role, and ARIA attributes on container for single snippet', () => {
+    const { container } = render(
+      <CodeSnippet type="single" aria-label="single-label">
+        {single}
+      </CodeSnippet>
+    );
+
+    const snippetContainer = container.querySelector('.cds--snippet-container');
+    const preElement = container.querySelector('pre');
+
+    expect(snippetContainer).toHaveAttribute('role', 'textbox');
+    expect(snippetContainer).toHaveAttribute('tabindex', '0');
+    expect(snippetContainer).toHaveAttribute('aria-label', 'single-label');
+    expect(snippetContainer).toHaveAttribute('aria-readonly', 'true');
+
+    expect(preElement).not.toHaveAttribute('role');
+    expect(preElement).not.toHaveAttribute('tabindex');
+    expect(preElement).not.toHaveAttribute('aria-label');
+    expect(preElement).not.toHaveAttribute('aria-readonly');
+    expect(preElement).not.toHaveAttribute('aria-multiline');
+  });
+
+  it('should position tabindex, role, and ARIA attributes on pre for multi snippet', () => {
+    const { container } = render(
+      <CodeSnippet type="multi" aria-label="multi-label">
+        {multiLong}
+      </CodeSnippet>
+    );
+
+    const snippetContainer = container.querySelector('.cds--snippet-container');
+    const preElement = container.querySelector('pre');
+
+    expect(snippetContainer).not.toHaveAttribute('role');
+    expect(snippetContainer).not.toHaveAttribute('tabindex');
+    expect(snippetContainer).not.toHaveAttribute('aria-label');
+    expect(snippetContainer).not.toHaveAttribute('aria-readonly');
+
+    expect(preElement).toHaveAttribute('role', 'textbox');
+    expect(preElement).toHaveAttribute('tabindex', '0');
+    expect(preElement).toHaveAttribute('aria-label', 'multi-label');
+    expect(preElement).toHaveAttribute('aria-readonly', 'true');
+    expect(preElement).toHaveAttribute('aria-multiline', 'true');
   });
 });
 
@@ -151,6 +266,18 @@ describe('CodeSnippet events', () => {
 
     await userEvent.click(screen.getByRole('button'));
     expect(onClick).toHaveBeenCalled();
+  });
+
+  it('should copy text when the copy button is clicked without an `onClick` handler', async () => {
+    render(
+      <CodeSnippet copyText="copied value" type="single">
+        {single}
+      </CodeSnippet>
+    );
+
+    await userEvent.click(screen.getByRole('button'));
+
+    expect(copy).toHaveBeenCalledWith('copied value');
   });
 
   it('should call the click handler with type inline', async () => {
@@ -178,5 +305,70 @@ describe('Show more button', () => {
     render(<CodeSnippet type="multi">{multi15}</CodeSnippet>);
 
     expect(screen.queryByText('Show more')).not.toBeInTheDocument();
+  });
+
+  it('should show, expand, collapse, and hide the multi-line toggle based on measured height', async () => {
+    render(
+      <CodeSnippet
+        type="multi"
+        maxCollapsedNumberOfRows={3}
+        maxExpandedNumberOfRows={5}
+        minExpandedNumberOfRows={4}>
+        {multiLong}
+      </CodeSnippet>
+    );
+
+    const textBox = screen.getByRole('textbox');
+    const code = textBox.querySelector('code');
+    const getBoundingClientRectSpy = jest
+      .spyOn(code, 'getBoundingClientRect')
+      .mockReturnValue({ height: 80 });
+
+    triggerResizeObserver();
+
+    await userEvent.click(screen.getByRole('button', { name: 'Show more' }));
+
+    expect(
+      screen.getByRole('button', { name: 'Show less' })
+    ).toBeInTheDocument();
+    expect(textBox).toHaveStyle({ maxHeight: '80px', minHeight: '64px' });
+
+    getBoundingClientRectSpy.mockReturnValue({ height: 50 });
+    triggerResizeObserver();
+
+    expect(
+      screen.getByRole('button', { name: 'Show more' })
+    ).toBeInTheDocument();
+
+    getBoundingClientRectSpy.mockReturnValue({ height: 32 });
+    triggerResizeObserver();
+
+    expect(
+      screen.queryByRole('button', { name: 'Show more' })
+    ).not.toBeInTheDocument();
+  });
+
+  it('should omit expanded inline styles when expanded row limits are zero', async () => {
+    render(
+      <CodeSnippet
+        type="multi"
+        maxCollapsedNumberOfRows={3}
+        maxExpandedNumberOfRows={0}
+        minExpandedNumberOfRows={0}>
+        {multiLong}
+      </CodeSnippet>
+    );
+
+    const textBox = screen.getByRole('textbox');
+    const code = textBox.querySelector('code');
+
+    jest.spyOn(code, 'getBoundingClientRect').mockReturnValue({ height: 80 });
+
+    triggerResizeObserver();
+
+    await userEvent.click(screen.getByRole('button', { name: 'Show more' }));
+
+    expect(textBox.style.maxHeight).toBe('');
+    expect(textBox.style.minHeight).toBe('');
   });
 });

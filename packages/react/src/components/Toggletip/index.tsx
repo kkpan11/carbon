@@ -1,5 +1,5 @@
 /**
- * Copyright IBM Corp. 2016, 2023
+ * Copyright IBM Corp. 2016, 2026
  *
  * This source code is licensed under the Apache-2.0 license found in the
  * LICENSE file in the root directory of this source tree.
@@ -8,27 +8,30 @@
 import cx from 'classnames';
 import PropTypes from 'prop-types';
 import React, {
-  type ElementType,
+  forwardRef,
   useContext,
+  useEffect,
   useRef,
   useState,
-  type ReactNode,
   type ComponentProps,
-  type KeyboardEventHandler,
+  type ElementType,
   type FocusEventHandler,
+  type KeyboardEventHandler,
+  type ReactNode,
 } from 'react';
-import { Popover, type PopoverAlignment, PopoverContent } from '../Popover';
+import { Popover, PopoverContent, type PopoverBaseProps } from '../Popover';
 import { match, keys } from '../../internal/keyboard';
 import { useWindowEvent } from '../../internal/useEvent';
 import { useId } from '../../internal/useId';
 import { usePrefix } from '../../internal/usePrefix';
 import { PolymorphicProps } from '../../types/common';
+import { PolymorphicComponentPropWithRef } from '../../internal/PolymorphicProps';
 
 type ToggletipLabelProps<E extends ElementType> = {
-  as?: E | undefined;
+  as?: E;
   children?: ReactNode;
-  className?: string | undefined;
-};
+  className?: string;
+} & Omit<React.ComponentPropsWithoutRef<E>, 'as' | 'children' | 'className'>;
 
 /**
  * Used to render the label for a Toggletip
@@ -37,12 +40,16 @@ export function ToggletipLabel<E extends ElementType>({
   as: BaseComponent = 'span' as E,
   children,
   className: customClassName,
+  ...rest
 }: ToggletipLabelProps<E>) {
   const prefix = usePrefix();
   const className = cx(`${prefix}--toggletip-label`, customClassName);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- https://github.com/carbon-design-system/carbon/issues/20452
   const BaseComponentAsAny = BaseComponent as any;
   return (
-    <BaseComponentAsAny className={className}>{children}</BaseComponentAsAny>
+    <BaseComponentAsAny className={className} {...rest}>
+      {children}
+    </BaseComponentAsAny>
   );
 }
 
@@ -81,14 +88,12 @@ function useToggletip() {
   return useContext(ToggletipContext);
 }
 
-interface ToggletipProps<E extends ElementType> {
-  align?: PopoverAlignment | undefined;
-  as?: E | undefined;
-  autoAlign?: boolean | undefined;
-  className?: string | undefined;
-  children?: ReactNode;
-  defaultOpen?: boolean | undefined;
+export interface ToggletipBaseProps extends Omit<PopoverBaseProps, 'open'> {
+  defaultOpen?: boolean;
 }
+
+export type ToggletipProps<T extends ElementType> =
+  PolymorphicComponentPropWithRef<T, ToggletipBaseProps>;
 
 /**
  * Used as a container for the button and content of a toggletip. This component
@@ -110,6 +115,7 @@ export function Toggletip<E extends ElementType = 'span'>({
   const id = useId();
   const className = cx(`${prefix}--toggletip`, customClassName, {
     [`${prefix}--toggletip--open`]: open,
+    [`${prefix}--autoalign`]: autoAlign,
   });
   const actions = {
     toggle: () => {
@@ -135,6 +141,7 @@ export function Toggletip<E extends ElementType = 'span'>({
 
   const onKeyDown: KeyboardEventHandler = (event) => {
     if (open && match(event, keys.Escape)) {
+      event.stopPropagation();
       actions.close();
 
       // If the menu is closed while focus is still inside the menu, it should return to the trigger button  (#12922)
@@ -156,21 +163,52 @@ export function Toggletip<E extends ElementType = 'span'>({
     }
   };
 
-  // If the `Toggletip` is the last focusable item in the tab order, it shoudl also close when the browser window loses focus  (#12922)
+  // If the `Toggletip` is the last focusable item in the tab order, it should also close when the browser window loses focus  (#12922)
   useWindowEvent('blur', () => {
     if (open) {
       actions.close();
     }
   });
 
-  useWindowEvent('click', (event) => {
-    if (open && ref.current && !ref.current.contains(event.target as Node)) {
-      actions.close();
-    }
-  });
+  useEffect(() => {
+    if (!open || !ref.current) return;
+
+    const targetDocument = ref.current.ownerDocument || document;
+    const eventType: 'pointerdown' | 'mousedown' =
+      'PointerEvent' in window ? 'pointerdown' : 'mousedown';
+
+    const handleOutsideClick = (event: MouseEvent | PointerEvent) => {
+      const { current } = ref;
+      if (!current) return;
+
+      const isInsideCurrent = (target: EventTarget | null): target is Node =>
+        target instanceof Node && current.contains(target);
+
+      const isInside =
+        isInsideCurrent(event.target) ||
+        (typeof event.composedPath === 'function' &&
+          event.composedPath().some(isInsideCurrent));
+
+      if (!isInside) {
+        setOpen(false);
+      }
+    };
+
+    const options = { capture: true } as const;
+
+    targetDocument.addEventListener(eventType, handleOutsideClick, options);
+    return () => {
+      targetDocument.removeEventListener(
+        eventType,
+        handleOutsideClick,
+        options
+      );
+    };
+  }, [open]);
 
   return (
     <ToggletipContext.Provider value={value}>
+      {/*eslint-disable-next-line @typescript-eslint/no-explicit-any -- https://github.com/carbon-design-system/carbon/issues/20452 */}
       <Popover<any>
         align={align}
         as={as}
@@ -190,59 +228,15 @@ export function Toggletip<E extends ElementType = 'span'>({
   );
 }
 
+// Get all the properties from Popover except for "open".
+// The Typescript types for PropTypes are really messed up so we need lots of
+// casting.  It will be great when we can finally get rid of PropTypes altogether.
+const { open, ...popoverNonOpenPropTypes } = (Popover.propTypes ??
+  {}) as unknown as PopoverBaseProps;
+
 Toggletip.propTypes = {
-  /**
-   * Specify how the toggletip should align with the button
-   */
-  align: PropTypes.oneOf([
-    'top',
-    'top-left', // deprecated use top-start instead
-    'top-right', // deprecated use top-end instead
-
-    'bottom',
-    'bottom-left', // deprecated use bottom-start instead
-    'bottom-right', // deprecated use bottom-end instead
-
-    'left',
-    'left-bottom', // deprecated use left-end instead
-    'left-top', // deprecated use left-start instead
-
-    'right',
-    'right-bottom', // deprecated use right-end instead
-    'right-top', // deprecated use right-start instead
-
-    // new values to match floating-ui
-    'top-start',
-    'top-end',
-    'bottom-start',
-    'bottom-end',
-    'left-end',
-    'left-start',
-    'right-end',
-    'right-start',
-  ]),
-
-  /**
-   * Provide a custom element or component to render the top-level node for the
-   * component.
-   */
-  as: PropTypes.elementType,
-
-  /**
-   * Will auto-align the popover on first render if it is not visible. This prop is currently experimental and is subject to future changes.
-   */
-  autoAlign: PropTypes.bool,
-
-  /**
-   * Custom children to be rendered as the content of the label
-   */
-  children: PropTypes.node,
-
-  /**
-   * Provide a custom class name to be added to the outermost node in the
-   * component
-   */
-  className: PropTypes.string,
+  // Has all of Popover's PropTypes except for "open".
+  ...popoverNonOpenPropTypes,
 
   /**
    * Specify if the toggletip should be open by default
@@ -250,10 +244,10 @@ Toggletip.propTypes = {
   defaultOpen: PropTypes.bool,
 };
 
-interface ToggletipButtonBaseProps {
+export interface ToggletipButtonBaseProps {
   children?: ReactNode;
-  className?: string | undefined;
-  label?: string | undefined;
+  className?: string;
+  label?: string;
 }
 
 export type ToggleTipButtonProps<T extends React.ElementType> =
@@ -263,8 +257,8 @@ export type ToggleTipButtonProps<T extends React.ElementType> =
  * `ToggletipButton` controls the visibility of the Toggletip through mouse
  * clicks and keyboard interactions.
  */
-export const ToggletipButton = React.forwardRef(function ToggletipButton<
-  T extends React.ElementType
+export const ToggletipButton = forwardRef(function ToggletipButton<
+  T extends React.ElementType,
 >(
   {
     children,
@@ -278,6 +272,7 @@ export const ToggletipButton = React.forwardRef(function ToggletipButton<
   const toggletip = useToggletip();
   const prefix = usePrefix();
   const className = cx(`${prefix}--toggletip-button`, customClassName);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- https://github.com/carbon-design-system/carbon/issues/20452
   const ComponentToggle: any = BaseComponent ?? 'button';
 
   if (ComponentToggle !== 'button') {
@@ -320,29 +315,32 @@ ToggletipButton.propTypes = {
 
 ToggletipButton.displayName = 'ToggletipButton';
 
-interface ToggletipContentProps {
+export interface ToggletipContentProps {
   children?: ReactNode;
-  className?: string | undefined;
+  className?: string;
 }
+
+const frFn = forwardRef<HTMLDivElement, ToggletipContentProps>;
 
 /**
  * `ToggletipContent` is a wrapper around `PopoverContent`. It places the
  * `children` passed in as a prop inside of `PopoverContent` so that they will
  * be rendered inside of the popover for this component.
  */
-export function ToggletipContent({
-  children,
-  className: customClassName,
-}: ToggletipContentProps) {
+const ToggletipContent = frFn((props, ref) => {
+  const { children, className: customClassName } = props;
+
   const toggletip = useToggletip();
   const prefix = usePrefix();
   return (
-    <PopoverContent className={customClassName} {...toggletip?.contentProps}>
+    <PopoverContent
+      className={customClassName}
+      {...toggletip?.contentProps}
+      ref={ref}>
       <div className={`${prefix}--toggletip-content`}>{children}</div>
     </PopoverContent>
   );
-}
-
+});
 ToggletipContent.propTypes = {
   /**
    * Custom children to be rendered as the content of the label
@@ -356,9 +354,13 @@ ToggletipContent.propTypes = {
   className: PropTypes.string,
 };
 
-interface ToggleTipActionsProps {
+ToggletipContent.displayName = 'ToggletipContent';
+
+export { ToggletipContent };
+
+export interface ToggleTipActionsProps {
   children?: ReactNode;
-  className?: string | undefined;
+  className?: string;
 }
 
 /**
@@ -386,3 +388,5 @@ ToggletipActions.propTypes = {
    */
   className: PropTypes.string,
 };
+
+export default Toggletip;

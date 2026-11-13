@@ -9,15 +9,6 @@
 
 const fs = require('fs-extra');
 const path = require('path');
-const prettier = require('prettier'); //eslint-disable-line no-unused-vars
-const lerna = require('../lerna.json'); //eslint-disable-line no-unused-vars
-const packageJson = require('../package.json');
-
-//eslint-disable-next-line no-unused-vars
-const prettierOptions = {
-  ...packageJson.prettier,
-  parser: 'markdown',
-};
 
 const PACKAGES_DIR = path.resolve(__dirname, '../packages');
 const REPO_URL_BASE =
@@ -82,9 +73,7 @@ function sortFields(a, b) {
 
 async function sync() {
   const packagePaths = await Promise.all(
-    (
-      await fs.readdir(PACKAGES_DIR)
-    ).map(async (pkg) => {
+    (await fs.readdir(PACKAGES_DIR)).map(async (pkg) => {
       const packageJsonPath = path.join(PACKAGES_DIR, pkg, 'package.json');
       return {
         basename: pkg,
@@ -145,8 +134,7 @@ async function sync() {
     '**/tasks/**',
   ];
   await Promise.all(
-    //eslint-disable-next-line no-unused-vars
-    packages.map(async ({ packageJson, packagePath }) => {
+    packages.map(async ({ packagePath }) => {
       const ignorePath = path.join(packagePath, '.npmignore');
       const ignorePatterns = [...defaultIgnorePatterns];
 

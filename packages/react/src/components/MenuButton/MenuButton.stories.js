@@ -6,7 +6,7 @@
  */
 
 import React from 'react';
-import { action } from '@storybook/addon-actions';
+import { action } from 'storybook/actions';
 
 import { MenuItem, MenuItemDivider } from '../Menu';
 
@@ -15,9 +15,59 @@ import { Asset, User, Group } from '@carbon/react/icons';
 import { MenuButton } from './';
 import mdx from './MenuButton.mdx';
 
+const commonArgs = {
+  disabled: false,
+  kind: 'primary',
+  label: 'Actions',
+  menuAlignment: 'bottom',
+  menuBackgroundToken: 'layer',
+  menuBorder: false,
+  size: 'lg',
+  tabIndex: 0,
+};
+
+const commonArgTypes = {
+  disabled: {
+    control: { type: 'boolean' },
+  },
+  kind: {
+    control: { type: 'radio' },
+    options: ['primary', 'tertiary', 'ghost'],
+  },
+  label: {
+    control: { type: 'text' },
+  },
+  menuAlignment: {
+    control: { type: 'select' },
+    options: [
+      'top',
+      'top-start',
+      'top-end',
+      'bottom',
+      'bottom-start',
+      'bottom-end',
+    ],
+  },
+  menuBackgroundToken: {
+    control: { type: 'select' },
+    options: ['layer', 'background'],
+  },
+  menuBorder: {
+    control: { type: 'boolean' },
+  },
+  size: {
+    control: { type: 'radio' },
+    options: ['xs', 'sm', 'md', 'lg'],
+  },
+  tabIndex: {
+    control: { type: 'number' },
+  },
+};
+
 export default {
   title: 'Components/MenuButton',
   component: MenuButton,
+  argTypes: commonArgTypes,
   subcomponents: {
     MenuItem,
     MenuItemDivider,
@@ -26,24 +76,35 @@ export default {
     docs: {
       page: mdx,
     },
+    controls: {
+      exclude: ['children', 'menuTarget'],
+    },
   },
 };
 
-export const Default = () => (
-  <MenuButton label="Actions">
-    <MenuItem label="First action" />
-    <MenuItem label="Second action that is a longer item to test overflow and title." />
-    <MenuItem label="Third action" disabled />
-  </MenuButton>
-);
-export const ExperimentalAutoAlign = () => (
+export const Default = (args) => {
+  return (
+    <MenuButton {...args} onClick={action('onClick')}>
+      <MenuItem
+        label="First action with a long label description"
+        onClick={action('onClick')}
+      />
+      <MenuItem label="Second action" onClick={action('onClick')} />
+      <MenuItem label="Third action" onClick={action('onClick')} disabled />
+    </MenuButton>
+  );
+};
+
+Default.args = commonArgs;
+
+export const ExperimentalAutoAlign = (args) => (
   <div style={{ width: '5000px', height: '5000px' }}>
     <div
       style={{
         position: 'absolute',
         bottom: '20px',
       }}>
-      <MenuButton label="Actions">
+      <MenuButton {...args}>
         <MenuItem label="First action" />
         <MenuItem label="Second action that is a longer item to test overflow and title." />
         <MenuItem label="Third action" disabled />
@@ -51,114 +112,160 @@ export const ExperimentalAutoAlign = () => (
     </div>
   </div>
 );
-export const WithDanger = () => (
-  <MenuButton label="Actions">
-    <MenuItem label="First action" />
-    <MenuItem label="Second action" />
-    <MenuItem label="Third action" />
-    <MenuItemDivider />
-    <MenuItem label="Danger action" kind="danger" />
-  </MenuButton>
-);
 
-export const WithDividers = () => (
-  <MenuButton label="Actions">
-    <MenuItem label="Create service request" />
-    <MenuItem label="Create work order" />
-    <MenuItemDivider />
-    <MenuItem label="Add plan" />
-    <MenuItem label="Add flag" />
-    <MenuItemDivider />
-    <MenuItem label="Edit source location" />
-    <MenuItem label="Recalculate source" />
-  </MenuButton>
-);
+ExperimentalAutoAlign.args = commonArgs;
 
-export const WithIcons = () => (
-  <MenuButton label="Add">
-    <MenuItem label="Asset" renderIcon={Asset} />
-    <MenuItem label="User" renderIcon={User} />
-    <MenuItem label="User group" renderIcon={Group} />
-  </MenuButton>
-);
-
-export const WithMenuAlignment = () => (
-  <>
-    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-      <MenuButton label="Bottom" menuAlignment="bottom">
-        <MenuItem label="First action" />
-        <MenuItem label="Second action that is a longer item to test overflow and title." />
-        <MenuItem label="Third action" disabled />
-      </MenuButton>
-
-      <MenuButton label="Bottom start" menuAlignment="bottom-start">
-        <MenuItem label="First action" />
-        <MenuItem label="Second action that is a longer item to test overflow and title." />
-        <MenuItem label="Third action" disabled />
-      </MenuButton>
-
-      <MenuButton label="Bottom end" menuAlignment="bottom-end">
-        <MenuItem label="First action" />
-        <MenuItem label="Second action that is a longer item to test overflow and title." />
-        <MenuItem label="Third action" disabled />
-      </MenuButton>
-    </div>
-
-    <div
-      style={{
-        display: 'flex',
-        marginTop: '15rem',
-        justifyContent: 'space-between',
-      }}>
-      <MenuButton label="Top" menuAlignment="top">
-        <MenuItem label="First action" />
-        <MenuItem label="Second action that is a longer item to test overflow and title." />
-        <MenuItem label="Third action" disabled />
-      </MenuButton>
-
-      <MenuButton label="Top start" menuAlignment="top-start">
-        <MenuItem label="First action" />
-        <MenuItem label="Second action that is a longer item to test overflow and title." />
-        <MenuItem label="Third action" disabled />
-      </MenuButton>
-
-      <MenuButton label="Top end" menuAlignment="top-end">
-        <MenuItem label="First action" />
-        <MenuItem label="Second action that is a longer item to test overflow and title." />
-        <MenuItem label="Third action" disabled />
-      </MenuButton>
-    </div>
-  </>
-);
-
-export const Playground = (args) => {
-  const onClick = action('onClick (MenuItem)');
-
+export const WithDanger = (args) => {
   return (
     <MenuButton {...args}>
-      <MenuItem
-        label="First action with a long label description"
-        onClick={onClick}
-      />
-      <MenuItem label="Second action" onClick={onClick} />
-      <MenuItem label="Third action" onClick={onClick} disabled />
+      <MenuItem label="First action" />
+      <MenuItem label="Second action" />
+      <MenuItem label="Third action" />
+      <MenuItemDivider />
+      <MenuItem label="Danger action" kind="danger" />
     </MenuButton>
   );
 };
 
-Playground.args = {
-  label: 'Actions',
+WithDanger.args = commonArgs;
+
+export const WithDividers = (args) => {
+  return (
+    <MenuButton {...args}>
+      <MenuItem label="Create service request" />
+      <MenuItem label="Create work order" />
+      <MenuItemDivider />
+      <MenuItem label="Add plan" />
+      <MenuItem label="Add flag" />
+      <MenuItemDivider />
+      <MenuItem label="Edit source location" />
+      <MenuItem label="Recalculate source" />
+    </MenuButton>
+  );
 };
 
-Playground.argTypes = {
-  children: {
-    table: {
-      disable: true,
-    },
-  },
-  className: {
-    table: {
-      disable: true,
-    },
+WithDividers.args = commonArgs;
+
+export const WithIcons = (args) => {
+  return (
+    <MenuButton {...args}>
+      <MenuItem label="Asset" renderIcon={Asset} />
+      <MenuItem label="User" renderIcon={User} />
+      <MenuItem label="User group" renderIcon={Group} />
+    </MenuButton>
+  );
+};
+
+WithIcons.args = {
+  ...commonArgs,
+  label: 'Add',
+};
+
+export const WithNestedMenu = (args) => (
+  <MenuButton {...args}>
+    <MenuItem label="Save" shortcut="⌘S" />
+    <MenuItem label="Save as" shortcut="⌥⌘S" />
+    <MenuItem label="Export as">
+      <MenuItem label="PDF" />
+      <MenuItem label="JPG" />
+      <MenuItem label="PNG" />
+    </MenuItem>
+    <MenuItemDivider />
+    <MenuItem label="Delete" kind="danger" />
+  </MenuButton>
+);
+
+WithNestedMenu.args = commonArgs;
+
+export const WithMenuAlignment = (args) => {
+  const { disabled, kind, menuBackgroundToken, menuBorder, size, tabIndex } =
+    args;
+  const sharedProps = {
+    disabled,
+    kind,
+    menuBackgroundToken,
+    menuBorder,
+    size,
+    tabIndex,
+  };
+
+  return (
+    <>
+      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+        <MenuButton {...sharedProps} label="Bottom" menuAlignment="bottom">
+          <MenuItem label="First action" />
+          <MenuItem label="Second action that is a longer item to test overflow and title." />
+          <MenuItem label="Third action" disabled />
+        </MenuButton>
+
+        <MenuButton
+          {...sharedProps}
+          label="Bottom start"
+          menuAlignment="bottom-start">
+          <MenuItem label="First action" />
+          <MenuItem label="Second action that is a longer item to test overflow and title." />
+          <MenuItem label="Third action" disabled />
+        </MenuButton>
+
+        <MenuButton
+          {...sharedProps}
+          label="Bottom end"
+          menuAlignment="bottom-end">
+          <MenuItem label="First action" />
+          <MenuItem label="Second action that is a longer item to test overflow and title." />
+          <MenuItem label="Third action" disabled />
+        </MenuButton>
+      </div>
+
+      <div
+        style={{
+          display: 'flex',
+          marginTop: '15rem',
+          justifyContent: 'space-between',
+        }}>
+        <MenuButton {...sharedProps} label="Top" menuAlignment="top">
+          <MenuItem label="First action" />
+          <MenuItem label="Second action that is a longer item to test overflow and title." />
+          <MenuItem label="Third action" disabled />
+        </MenuButton>
+
+        <MenuButton
+          {...sharedProps}
+          label="Top start"
+          menuAlignment="top-start">
+          <MenuItem label="First action" />
+          <MenuItem label="Second action that is a longer item to test overflow and title." />
+          <MenuItem label="Third action" disabled />
+        </MenuButton>
+
+        <MenuButton {...sharedProps} label="Top end" menuAlignment="top-end">
+          <MenuItem label="First action" />
+          <MenuItem label="Second action that is a longer item to test overflow and title." />
+          <MenuItem label="Third action" disabled />
+        </MenuButton>
+      </div>
+    </>
+  );
+};
+
+WithMenuAlignment.args = {
+  disabled: commonArgs.disabled,
+  kind: commonArgs.kind,
+  menuBackgroundToken: commonArgs.menuBackgroundToken,
+  menuBorder: commonArgs.menuBorder,
+  size: commonArgs.size,
+  tabIndex: commonArgs.tabIndex,
+};
+
+WithMenuAlignment.parameters = {
+  controls: {
+    include: [
+      'disabled',
+      'kind',
+      'menuBackgroundToken',
+      'menuBorder',
+      'size',
+      'tabIndex',
+    ],
   },
 };

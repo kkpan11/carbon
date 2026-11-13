@@ -5,7 +5,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-const { snapshot } = require('./snapshot');
+const { expect } = require('@playwright/test');
 
 async function visitStory(page, options) {
   const { component, story, id, globals, args } = options;
@@ -33,7 +33,17 @@ async function visitStory(page, options) {
     url = url + `&globals=${values}`;
   }
 
+  // Playwright loads iframe.html directly. ibm-common.js then injects IBM's
+  // "Your privacy choices" pill, which fails the accessibility scan.
+  await page.route('**/common/stats/ibm-common.js', (route) => route.abort());
+
   await page.goto(url);
+  await expect(page).toContainAStory(options);
+
+  // Ensure Plex assets are fully available for accurate VRT
+  await page.evaluate(async () => {
+    await document.fonts.ready;
+  });
 }
 
 function getStoryUrl({ component, story, id }) {
@@ -47,25 +57,6 @@ function getStoryUrl({ component, story, id }) {
   return `/iframe.html?id=${normalized}&viewMode=story`;
 }
 
-async function snapshotStory(page, storyOptions) {
-  const { component, story, id, theme } = storyOptions;
-  await visitStory(page, {
-    component,
-    story,
-    id,
-    globals: {
-      theme,
-    },
-  });
-  await snapshot(page, {
-    theme,
-    component,
-    story,
-    id,
-  });
-}
-
 module.exports = {
-  snapshotStory,
   visitStory,
 };

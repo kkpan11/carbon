@@ -1,18 +1,17 @@
 /**
- * Copyright IBM Corp. 2016, 2023
+ * Copyright IBM Corp. 2016, 2026
  *
  * This source code is licensed under the Apache-2.0 license found in the
  * LICENSE file in the root directory of this source tree.
  */
 
 import cx from 'classnames';
-import PropTypes from 'prop-types';
+import PropTypes, { WeakValidationMap } from 'prop-types';
 import React, {
   ComponentType,
   ElementType,
-  ForwardedRef,
+  JSX,
   ReactNode,
-  WeakValidationMap,
   forwardRef,
   useContext,
 } from 'react';
@@ -20,8 +19,8 @@ import Link, { LinkProps, LinkPropTypes } from './Link';
 import SideNavIcon from './SideNavIcon';
 import SideNavItem from './SideNavItem';
 import SideNavLinkText from './SideNavLinkText';
+import { SideNavContext } from './SideNavContext';
 import { usePrefix } from '../../internal/usePrefix';
-import { SideNavContext } from './SideNav';
 
 export type SideNavLinkProps<E extends ElementType> = LinkProps<E> & {
   /**
@@ -43,7 +42,8 @@ export type SideNavLinkProps<E extends ElementType> = LinkProps<E> & {
   className?: string;
 
   /**
-   * Specify whether the link is the current page
+   * Specify whether the link is the current page. When `true`, the link also
+   * receives `aria-current="page"` unless `aria-current` is passed explicitly.
    */
   isActive?: boolean;
 
@@ -59,7 +59,7 @@ export type SideNavLinkProps<E extends ElementType> = LinkProps<E> & {
   large?: boolean;
 
   /**
-   * Provide an icon to render in the side navigation link. Should be a React class.
+   * A component used to render an icon.
    */
   renderIcon?: ComponentType;
 
@@ -70,17 +70,19 @@ export type SideNavLinkProps<E extends ElementType> = LinkProps<E> & {
 };
 
 export interface SideNavLinkComponent {
-  <E extends ElementType = 'a'>(
-    props: SideNavLinkProps<E> & { ref?: ForwardedRef<ElementType> }
-  ): JSX.Element | null;
+  <E extends ElementType = 'a'>(props: SideNavLinkProps<E>): JSX.Element | null;
   displayName?: string;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- https://github.com/carbon-design-system/carbon/issues/20452
   propTypes?: WeakValidationMap<SideNavLinkProps<any>>;
 }
 
-const SideNavLink: SideNavLinkComponent = forwardRef(function SideNavLink<
-  E extends ElementType = 'a'
->(
-  {
+// First define a non-generic base component to work with forwardRef
+type SideNavLinkPropsWithoutRef = Omit<SideNavLinkProps<'a'>, 'ref'>;
+
+const frFn = forwardRef<HTMLElement, SideNavLinkPropsWithoutRef>;
+
+const SideNavLink = frFn((props, ref) => {
+  const {
     children,
     className: customClassName,
     renderIcon: IconElement,
@@ -88,13 +90,16 @@ const SideNavLink: SideNavLinkComponent = forwardRef(function SideNavLink<
     isSideNavExpanded,
     large = false,
     tabIndex,
+    'aria-current': ariaCurrent,
     ...rest
-  }: SideNavLinkProps<E>,
-  ref: ForwardedRef<ElementType>
-) {
-  const isRail = useContext(SideNavContext);
+  } = props;
+  const { isRail, isSideNavExpanded: contextIsSideNavExpanded } =
+    useContext(SideNavContext);
+  const currentIsSideNavExpanded =
+    isSideNavExpanded ?? contextIsSideNavExpanded;
 
   const prefix = usePrefix();
+  const linkProps = rest as LinkProps<ElementType>;
   const className = cx({
     [`${prefix}--side-nav__link`]: true,
     [`${prefix}--side-nav__link--current`]: isActive,
@@ -104,12 +109,15 @@ const SideNavLink: SideNavLinkComponent = forwardRef(function SideNavLink<
   return (
     <SideNavItem large={large}>
       <Link
-        {...rest}
+        {...linkProps}
+        // `isActive` marks the current page visually; expose the same state to
+        // assistive technology unless the consumer set `aria-current` themselves.
+        aria-current={ariaCurrent ?? (isActive ? 'page' : undefined)}
         className={className}
         ref={ref}
         tabIndex={
           tabIndex === undefined
-            ? !isSideNavExpanded && !isRail
+            ? !currentIsSideNavExpanded && !isRail
               ? -1
               : 0
             : tabIndex
@@ -123,6 +131,7 @@ const SideNavLink: SideNavLinkComponent = forwardRef(function SideNavLink<
       </Link>
     </SideNavItem>
   );
+  // Cast preserves the generic call signature for consumers after forwardRef.
 }) as SideNavLinkComponent;
 
 SideNavLink.displayName = 'SideNavLink';
@@ -140,7 +149,8 @@ SideNavLink.propTypes = {
   className: PropTypes.string,
 
   /**
-   * Specify whether the link is the current page
+   * Specify whether the link is the current page. When `true`, the link also
+   * receives `aria-current="page"` unless `aria-current` is passed explicitly.
    */
   isActive: PropTypes.bool,
 
@@ -156,7 +166,7 @@ SideNavLink.propTypes = {
   large: PropTypes.bool,
 
   /**
-   * Provide an icon to render in the side navigation link. Should be a React class.
+   * A component used to render an icon.
    */
   // @ts-expect-error - PropTypes are unable to cover this case.
   renderIcon: PropTypes.oneOfType([PropTypes.func, PropTypes.object]),
@@ -167,9 +177,10 @@ SideNavLink.propTypes = {
   tabIndex: PropTypes.number,
 };
 
-// eslint-disable-next-line react/display-name
-export const createCustomSideNavLink = (element) => (props) => {
-  return <SideNavLink element={element} {...props} />;
+export const createCustomSideNavLink = (element) => {
+  return function CustomSideNavLink(props) {
+    return <SideNavLink element={element} {...props} />;
+  };
 };
 
 export default SideNavLink;

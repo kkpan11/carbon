@@ -1,4 +1,9 @@
-import { ArgsTable } from '@storybook/blocks';
+import { ArgTypes, Meta, Canvas } from '@storybook/addon-docs/blocks';
+import * as ToggletipStories from './Toggletip.stories';
+import Toggletip from '../Toggletip';
+import { stackblitzPrefillConfig } from '../../../previewer/codePreviewer';
+
+<Meta isTemplate />
 
 # Toggletip
 
@@ -12,6 +17,9 @@ import { ArgsTable } from '@storybook/blocks';
 
 - [Overview](#overview)
   - [Toggletips vs Tooltips](#toggletips-vs-tooltips)
+- [Alignment](#alignment)
+- [Customizing content](#customizing-content)
+- [Actions](#actions)
 - [Component API](#component-api)
 - [Feedback](#feedback)
 
@@ -24,6 +32,17 @@ content within a popover. If you do not have any interactive content inside of
 your `Toggletip`, consider using `Tooltip` instead. To use this component,
 you'll need to include a `Toggletip`, `ToggletipButton` for the trigger, and
 `ToggletipContent` for the content you would like to render within the popover.
+
+<Canvas
+  of={ToggletipStories.Default}
+  additionalActions={[
+    {
+      title: 'Open in Stackblitz',
+      onClick: () =>
+        stackblitzPrefillConfig({ story: ToggletipStories.Default }),
+    },
+  ]}
+/>
 
 ```jsx
 import { Toggletip, ToggletipButton, ToggletipContent } from '@carbon/react';
@@ -88,7 +107,7 @@ example:
 
 ## Component API
 
-<ArgsTable />
+<ArgTypes />
 
 ## Feedback
 

@@ -1,5 +1,5 @@
 /**
- * Copyright IBM Corp. 2016, 2023
+ * Copyright IBM Corp. 2016, 2026
  *
  * This source code is licensed under the Apache-2.0 license found in the
  * LICENSE file in the root directory of this source tree.
@@ -7,23 +7,18 @@
 
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import classnames from 'classnames';
-import FileUploaderItem from '../FileUploaderItem';
-import FileUploaderDropContainer from '../FileUploaderDropContainer';
-import FormItem from '../../FormItem';
+import {
+  FileUploaderItem,
+  FileUploaderDropContainer,
+  FormItem,
+} from '@carbon/react';
 
 const prefix = 'cds';
-
-// -- copied from internal/tools/uniqueId.js
-let lastId = 0;
-function uid(prefix = 'id') {
-  lastId++;
-  return `${prefix}${lastId}`;
-}
-// -- end copied
 
 const ExampleDropContainerApp = (props) => {
   const [files, setFiles] = useState([]);
   const uploaderButton = useRef(null);
+  const uniqueId = React.useId();
   const handleDrop = (e) => {
     e.preventDefault();
   };
@@ -50,7 +45,7 @@ const ExampleDropContainerApp = (props) => {
         iconDescription: 'Delete file',
         invalid: true,
         errorSubject: 'File size exceeds limit',
-        errorBody: '500kb max file size. Select a new file and try again.',
+        errorBody: '1 MB max file size. Select a new file and try again.',
       };
       setFiles((files) =>
         files.map((file) =>
@@ -111,8 +106,10 @@ const ExampleDropContainerApp = (props) => {
   const onAddFiles = useCallback(
     (evt, { addedFiles }) => {
       evt.stopPropagation();
+      // eslint-disable-next-line react/prop-types
+      props.onAddFiles?.(evt, { addedFiles });
       const newFiles = addedFiles.map((file) => ({
-        uuid: uid(),
+        uuid: uniqueId + file.name + file.size,
         name: file.name,
         filesize: file.size,
         status: 'uploading',
@@ -129,7 +126,7 @@ const ExampleDropContainerApp = (props) => {
       }
     },
     // eslint-disable-next-line react/prop-types
-    [files, props.multiple]
+    [files, props.multiple, props.onAddFiles]
   );
 
   const handleFileUploaderItemClick = useCallback(
@@ -154,7 +151,7 @@ const ExampleDropContainerApp = (props) => {
     <FormItem>
       <p className={labelClasses}>Upload files</p>
       <p className={helperTextClasses}>
-        Max file size is 500kb. Supported file types are .jpg and .png.
+        Max file size is 1 MB. Supported file types are .jpg and .png.
       </p>
       <FileUploaderDropContainer
         {...props}
@@ -177,7 +174,8 @@ const ExampleDropContainerApp = (props) => {
             ...rest
           }) => (
             <FileUploaderItem
-              key={uid()}
+              disabled={props.disabled} // or add per file disabled state as needed in files array
+              key={uuid}
               uuid={uuid}
               name={name}
               filesize={filesize}

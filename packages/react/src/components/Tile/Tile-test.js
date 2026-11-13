@@ -1,5 +1,5 @@
 /**
- * Copyright IBM Corp. 2016, 2023
+ * Copyright IBM Corp. 2016, 2026
  *
  * This source code is licensed under the Apache-2.0 license found in the
  * LICENSE file in the root directory of this source tree.
@@ -18,7 +18,7 @@ import userEvent from '@testing-library/user-event';
 import { render, screen } from '@testing-library/react';
 import Link from '../Link';
 import { Add } from '@carbon/icons-react';
-import { Slug } from '../Slug';
+import { AILabel } from '../AILabel';
 
 const prefix = 'cds';
 
@@ -48,11 +48,19 @@ describe('Tile', () => {
       expect(screen.getByText('Default tile')).toHaveClass('custom-tile-class');
     });
 
-    it('should respect slug prop', () => {
-      render(<Tile slug={<Slug />}>Default tile</Tile>);
+    it('should respect decorator prop', () => {
+      render(<Tile decorator={<AILabel />}>Default tile</Tile>);
       expect(
-        screen.getByRole('button', { name: 'AI - Show information' })
+        screen.getByRole('button', { name: 'AI Show information' })
       ).toBeInTheDocument();
+    });
+    it('should respect deprecated slug prop', () => {
+      const spy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+      render(<Tile slug={<AILabel />}>Default tile</Tile>);
+      expect(
+        screen.getByRole('button', { name: 'AI Show information' })
+      ).toBeInTheDocument();
+      spy.mockRestore();
     });
   });
 
@@ -90,27 +98,137 @@ describe('Tile', () => {
       expect(screen.getByTestId('test')).toBeInTheDocument();
     });
 
-    it('should respect slug prop', () => {
-      render(<ClickableTile slug={<Slug />}>Default tile</ClickableTile>);
+    it('should respect decorator prop', async () => {
+      const onClick = jest.fn();
+      render(
+        <ClickableTile href="/" decorator={<AILabel />} onClick={onClick}>
+          Default tile
+        </ClickableTile>
+      );
+      const aiLabel = screen.getByRole('button', {
+        name: 'AI Show information',
+      });
+      const tile = screen.getByRole('link');
+
+      expect(aiLabel).toBeInTheDocument();
+      expect(tile).not.toContainElement(aiLabel);
+
+      await userEvent.click(aiLabel);
+      expect(onClick).not.toHaveBeenCalled();
+    });
+
+    it('should respect deprecated slug prop', () => {
+      const spy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+      render(<ClickableTile slug>Default tile</ClickableTile>);
 
       // eslint-disable-next-line testing-library/no-node-access
       expect(document.querySelector('svg')).toHaveClass(
-        `${prefix}--tile--slug-icon`
+        `${prefix}--tile--ai-label-icon`
       );
+      spy.mockRestore();
+    });
+    it('should call onKeyDown', async () => {
+      const onKeyDown = jest.fn();
+      render(<ClickableTile onKeyDown={onKeyDown}>keytest</ClickableTile>);
+      await userEvent.type(screen.getByText('keytest'), 'one');
+      expect(onKeyDown).toHaveBeenCalledTimes(3);
+    });
+
+    it('should call onClick when Enter key is pressed', async () => {
+      const onClick = jest.fn();
+      render(<ClickableTile onClick={onClick}>Enter test</ClickableTile>);
+      const tile = screen.getByText('Enter test');
+      tile.focus();
+      await userEvent.keyboard('[Enter]');
+      expect(onClick).toHaveBeenCalledTimes(1);
+    });
+
+    it('should call onClick when Space key is pressed', async () => {
+      const onClick = jest.fn();
+      render(<ClickableTile onClick={onClick}>Space test</ClickableTile>);
+      const tile = screen.getByText('Space test');
+      tile.focus();
+      await userEvent.keyboard('[Space]');
+      expect(onClick).toHaveBeenCalledTimes(1);
+    });
+
+    it('should not call onClick when other keys are pressed', async () => {
+      const onClick = jest.fn();
+      render(<ClickableTile onClick={onClick}>Other keys test</ClickableTile>);
+      const tile = screen.getByText('Other keys test');
+      tile.focus();
+      await userEvent.keyboard('a');
+      await userEvent.keyboard('[Escape]');
+      await userEvent.keyboard('[Tab]');
+      expect(onClick).not.toHaveBeenCalled();
+    });
+
+    it('should call onClick when Enter key is pressed when using href', async () => {
+      const onClick = jest.fn();
+      render(
+        <ClickableTile href="/" onClick={onClick}>
+          Enter test
+        </ClickableTile>
+      );
+      const tile = screen.getByText('Enter test');
+      tile.focus();
+      await userEvent.keyboard('[Enter]');
+      expect(onClick).toHaveBeenCalledTimes(1);
+    });
+
+    it('should not call onClick when other keys are pressed when using href', async () => {
+      const onClick = jest.fn();
+      render(
+        <ClickableTile href="/" onClick={onClick}>
+          Other keys test
+        </ClickableTile>
+      );
+      const tile = screen.getByText('Other keys test');
+      tile.focus();
+      await userEvent.keyboard('a');
+      await userEvent.keyboard('[Space]');
+      await userEvent.keyboard('[Escape]');
+      await userEvent.keyboard('[Tab]');
+      expect(onClick).not.toHaveBeenCalled();
     });
   });
 
   describe('Multi Select', () => {
+    it('should warn without throwing for interactive content in children', () => {
+      const spy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+
+      expect(() => {
+        render(
+          <SelectableTile id="tile-1">
+            Default tile <button type="button">Help</button>
+          </SelectableTile>
+        );
+      }).not.toThrow();
+
+      expect(spy).toHaveBeenCalledWith(
+        expect.stringContaining(
+          'Warning: The SelectableTile component `children` prop must have no interactive content'
+        )
+      );
+
+      spy.mockRestore();
+    });
+
+    it('should allow non-interactive content in children', () => {
+      expect(() => {
+        render(
+          <SelectableTile id="tile-1">
+            Default tile <span>additional tile content</span>
+          </SelectableTile>
+        );
+      }).not.toThrow();
+    });
+
     it('does not invoke the click handler if SelectableTile is disabled', async () => {
       const onClick = jest.fn();
       render(
         <div role="group" aria-label="selectable tiles">
-          <SelectableTile
-            disabled
-            id="tile-1"
-            name="tiles"
-            onClick={onClick}
-            value="value">
+          <SelectableTile disabled id="tile-1" onClick={onClick}>
             <span role="img" aria-label="vertical traffic light">
               🚦
             </span>
@@ -124,25 +242,13 @@ describe('Tile', () => {
     it('should cycle elements in document tab order', async () => {
       render(
         <div role="group" aria-label="selectable tiles">
-          <SelectableTile
-            data-testid="element"
-            id="tile-1"
-            name="tiles"
-            value="value">
+          <SelectableTile data-testid="element" id="tile-1">
             tile 1
           </SelectableTile>
-          <SelectableTile
-            data-testid="element"
-            id="tile-2"
-            name="tiles"
-            value="value">
+          <SelectableTile data-testid="element" id="tile-2">
             tile 2
           </SelectableTile>
-          <SelectableTile
-            data-testid="element"
-            id="tile-3"
-            name="tiles"
-            value="value">
+          <SelectableTile data-testid="element" id="tile-3">
             tile 3
           </SelectableTile>
         </div>
@@ -172,15 +278,75 @@ describe('Tile', () => {
       expect(id1).toHaveFocus();
     });
 
-    it('should respect slug prop', () => {
-      render(
-        <SelectableTile slug={<Slug />} id="tile-1" name="tiles" value="value">
+    it('should respect decorator prop', async () => {
+      const onClick = jest.fn();
+      const { container } = render(
+        <SelectableTile decorator={<AILabel />} id="tile-1" onClick={onClick}>
           Default tile
         </SelectableTile>
       );
-      expect(
-        screen.getByRole('button', { name: 'AI - Show information' })
-      ).toBeInTheDocument();
+      const aiLabel = screen.getByRole('button', {
+        name: 'AI Show information',
+      });
+      const tile = screen.getByRole('checkbox');
+
+      expect(aiLabel).toBeInTheDocument();
+      expect(container.querySelector('label')).not.toContainElement(aiLabel);
+      expect(tile).not.toContainElement(aiLabel);
+
+      await userEvent.click(aiLabel);
+      expect(tile).not.toHaveClass(`${prefix}--tile--is-selected`);
+    });
+
+    it('should respect deprecated slug prop', () => {
+      const spy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+      const { container } = render(
+        <SelectableTile slug={<AILabel />} id="tile-1">
+          Default tile
+        </SelectableTile>
+      );
+      const aiLabel = screen.getByRole('button', {
+        name: 'AI Show information',
+      });
+      const tile = screen.getByRole('checkbox');
+
+      expect(aiLabel).toBeInTheDocument();
+      expect(container.querySelector('label')).not.toContainElement(aiLabel);
+      expect(tile).not.toContainElement(aiLabel);
+      spy.mockRestore();
+    });
+
+    it('should not render a title attribute when title prop is not provided', () => {
+      const { container } = render(
+        <SelectableTile id="tile-1">Default tile</SelectableTile>
+      );
+      expect(container.firstChild).not.toHaveAttribute('title');
+    });
+
+    it('should render the provided title attribute when title prop is passed', () => {
+      const { container } = render(
+        <SelectableTile id="tile-1" title="My tile">
+          Default tile
+        </SelectableTile>
+      );
+      expect(container.firstChild).toHaveAttribute('title', 'My tile');
+    });
+
+    it('should not give all tiles the same accessible name when title is omitted', () => {
+      render(
+        <div role="group" aria-label="selectable tiles">
+          <SelectableTile data-testid="tile-a" id="tile-1">
+            Tile 1
+          </SelectableTile>
+          <SelectableTile data-testid="tile-b" id="tile-2">
+            Tile 2
+          </SelectableTile>
+        </div>
+      );
+      const tileA = screen.getByTestId('tile-a');
+      const tileB = screen.getByTestId('tile-b');
+      expect(tileA).not.toHaveAttribute('title');
+      expect(tileB).not.toHaveAttribute('title');
     });
   });
 
@@ -278,7 +444,7 @@ describe('Tile', () => {
 
     it('supports setting expanded prop to true', () => {
       render(
-        <ExpandableTile expanded>
+        <ExpandableTile expanded tileExpandedLabel="expanded-test">
           <TileAboveTheFoldContent>
             <div>TestAbove</div>
           </TileAboveTheFoldContent>
@@ -288,9 +454,16 @@ describe('Tile', () => {
         </ExpandableTile>
       );
 
-      expect(screen.getByRole('button')).toHaveClass(
-        `${prefix}--tile--is-expanded`
-      );
+      const button = screen.getByRole('button');
+      expect(button).toHaveClass(`${prefix}--tile--is-expanded`);
+      expect(button).toHaveAttribute('aria-expanded', 'true');
+      const chevron = screen
+        .getByRole('button')
+        .querySelector('.cds--tile__chevron');
+      expect(chevron).toBeInTheDocument();
+
+      const span = chevron.querySelector('span');
+      expect(span).toHaveTextContent('expanded-test');
     });
 
     it('supports setting expanded prop to false', () => {
@@ -309,9 +482,9 @@ describe('Tile', () => {
       );
     });
 
-    it('should respect slug prop', () => {
+    it('should respect decorator prop', () => {
       render(
-        <ExpandableTile slug={<Slug />}>
+        <ExpandableTile decorator={<AILabel />}>
           <TileAboveTheFoldContent>
             <div>TestAbove</div>
           </TileAboveTheFoldContent>
@@ -321,8 +494,26 @@ describe('Tile', () => {
         </ExpandableTile>
       );
       expect(
-        screen.getByRole('button', { name: 'AI - Show information' })
+        screen.getByRole('button', { name: 'AI Show information' })
       ).toBeInTheDocument();
+    });
+
+    it('should respect deprecated slug prop', () => {
+      const spy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+      render(
+        <ExpandableTile slug={<AILabel />}>
+          <TileAboveTheFoldContent>
+            <div>TestAbove</div>
+          </TileAboveTheFoldContent>
+          <TileBelowTheFoldContent>
+            <div>TestBelow</div>
+          </TileBelowTheFoldContent>
+        </ExpandableTile>
+      );
+      expect(
+        screen.getByRole('button', { name: 'AI Show information' })
+      ).toBeInTheDocument();
+      spy.mockRestore();
     });
   });
 
@@ -397,6 +588,280 @@ describe('Tile', () => {
 
       expect(onClick).toHaveBeenCalled();
       expect(expandButton).toHaveAttribute('aria-expanded', 'true');
+    });
+    it('supports interactive elements in expanded state', async () => {
+      const onButtonClick = jest.fn();
+      render(
+        <ExpandableTile tileMaxHeight={100} tilePadding={0} expanded>
+          <TileAboveTheFoldContent>
+            <div>TestAbove</div>
+          </TileAboveTheFoldContent>
+          <TileBelowTheFoldContent>
+            <button onClick={onButtonClick}>Test Button</button>
+          </TileBelowTheFoldContent>
+        </ExpandableTile>
+      );
+      const expandButton = screen.getByRole('button', {
+        name: 'Interact to collapse Tile',
+      });
+      const testButton = screen.getByRole('button', { name: 'Test Button' });
+      await userEvent.click(testButton);
+
+      expect(onButtonClick).toHaveBeenCalled();
+      expect(expandButton).toHaveAttribute('aria-expanded', 'true');
+    });
+  });
+
+  it('respect selected prop', async () => {
+    const { container } = render(
+      <SelectableTile id="selectable-tile-1" selected>
+        Option 1
+      </SelectableTile>
+    );
+    const tile = container.firstChild;
+    expect(tile).toHaveClass(`${prefix}--tile--is-selected`);
+    await userEvent.click(tile);
+    expect(tile).not.toHaveClass(`${prefix}--tile--is-selected`);
+  });
+
+  it('SelectableTile Should call onChange with correct values', async () => {
+    const onChange = jest.fn();
+    const { container } = render(
+      <SelectableTile id="selectable-tile-1" onChange={onChange}>
+        Option 1
+      </SelectableTile>
+    );
+    const tile = container.firstChild;
+    await userEvent.click(tile);
+    expect(onChange).toHaveBeenCalled();
+    expect(onChange).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'click',
+      }),
+      true,
+      'selectable-tile-1'
+    );
+    // should de-select when user press enter key on selected tile.
+    tile.focus();
+    await userEvent.keyboard('[Enter]');
+    expect(onChange).toHaveBeenCalled();
+    expect(onChange).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'keydown',
+      }),
+      false,
+      'selectable-tile-1'
+    );
+  });
+
+  it('should call onKeyDown', async () => {
+    const onKeyUp = jest.fn();
+    render(<ExpandableTile onKeyUp={onKeyUp}>Test Content</ExpandableTile>);
+    await userEvent.type(screen.getByText('Test Content'), '{enter}');
+    expect(onKeyUp).toHaveBeenCalledTimes(1);
+  });
+
+  it('should toggle the expanded state when the expanded prop changes dynamically', async () => {
+    const { rerender } = render(
+      <ExpandableTile expanded={false}>
+        <TileAboveTheFoldContent>
+          <div>TestAbove</div>
+        </TileAboveTheFoldContent>
+        <TileBelowTheFoldContent>
+          <div>TestBelow</div>
+        </TileBelowTheFoldContent>
+      </ExpandableTile>
+    );
+    const button = screen.getByRole('button');
+    // Helper function to check the button's expanded state
+    const checkExpandedState = (isExpanded) => {
+      const className = `${prefix}--tile--is-expanded`;
+      expect(button).toHaveAttribute(
+        'aria-expanded',
+        isExpanded ? 'true' : 'false'
+      );
+      if (isExpanded) {
+        expect(button).toHaveClass(className);
+      } else {
+        expect(button).not.toHaveClass(className);
+      }
+    };
+    // Initial state: expanded = false
+    checkExpandedState(false);
+    // Update to expanded = true
+    rerender(
+      <ExpandableTile expanded={true}>
+        <TileAboveTheFoldContent>
+          <div>TestAbove</div>
+        </TileAboveTheFoldContent>
+        <TileBelowTheFoldContent>
+          <div>TestBelow</div>
+        </TileBelowTheFoldContent>
+      </ExpandableTile>
+    );
+    checkExpandedState(true);
+    // Update back to expanded = false
+    rerender(
+      <ExpandableTile expanded={false}>
+        <TileAboveTheFoldContent>
+          <div>TestAbove</div>
+        </TileAboveTheFoldContent>
+      </ExpandableTile>
+    );
+    checkExpandedState(false);
+  });
+
+  describe('SelectableTile React Strict Mode', () => {
+    it('Should call onChange only once per interaction in React Strict Mode', async () => {
+      const onChange = jest.fn();
+
+      // Wrap component in React.StrictMode to enable strict mode
+      const { container } = render(
+        <React.StrictMode>
+          <SelectableTile id="selectable-tile-1" onChange={onChange}>
+            Option 1
+          </SelectableTile>
+        </React.StrictMode>
+      );
+
+      const tile = container.firstChild;
+
+      // Clear any potential initial calls
+      onChange.mockClear();
+
+      // Test click interaction
+      await userEvent.click(tile);
+
+      // Should be called exactly once, not twice
+      expect(onChange).toHaveBeenCalledTimes(1);
+      expect(onChange).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'click',
+        }),
+        true,
+        'selectable-tile-1'
+      );
+
+      // Clear mock for next test
+      onChange.mockClear();
+
+      // Test keyboard interaction
+      tile.focus();
+      await userEvent.keyboard('[Enter]');
+
+      // Should be called exactly once for keyboard interaction too
+      expect(onChange).toHaveBeenCalledTimes(1);
+      expect(onChange).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'keydown',
+        }),
+        false,
+        'selectable-tile-1'
+      );
+    });
+
+    it('Should maintain correct state synchronization in Strict Mode when selected prop changes', async () => {
+      const onChange = jest.fn();
+
+      const { rerender } = render(
+        <React.StrictMode>
+          <SelectableTile
+            id="selectable-tile-1"
+            selected={false}
+            onChange={onChange}>
+            Option 1
+          </SelectableTile>
+        </React.StrictMode>
+      );
+
+      // Clear any potential initial calls
+      onChange.mockClear();
+
+      // Change the selected prop
+      rerender(
+        <React.StrictMode>
+          <SelectableTile
+            id="selectable-tile-1"
+            selected={true}
+            onChange={onChange}>
+            Option 1
+          </SelectableTile>
+        </React.StrictMode>
+      );
+
+      // onChange should NOT be called when prop changes
+      // (only when user interacts with the component)
+      expect(onChange).not.toHaveBeenCalled();
+    });
+
+    it('Should handle rapid successive interactions correctly in Strict Mode', async () => {
+      const onChange = jest.fn();
+
+      const { container } = render(
+        <React.StrictMode>
+          <SelectableTile id="selectable-tile-1" onChange={onChange}>
+            Option 1
+          </SelectableTile>
+        </React.StrictMode>
+      );
+
+      const tile = container.firstChild;
+      onChange.mockClear();
+
+      // Perform multiple rapid clicks
+      await userEvent.click(tile);
+      await userEvent.click(tile);
+      await userEvent.click(tile);
+
+      // Should be called exactly 3 times (once per click), not 6 times
+      expect(onChange).toHaveBeenCalledTimes(3);
+
+      // Verify the selection states are correct
+      expect(onChange).toHaveBeenNthCalledWith(
+        1,
+        expect.anything(),
+        true,
+        'selectable-tile-1'
+      );
+      expect(onChange).toHaveBeenNthCalledWith(
+        2,
+        expect.anything(),
+        false,
+        'selectable-tile-1'
+      );
+      expect(onChange).toHaveBeenNthCalledWith(
+        3,
+        expect.anything(),
+        true,
+        'selectable-tile-1'
+      );
+    });
+
+    // Comparison test - what would happen without the fix
+    // (This test would fail with the old implementation)
+    it('Should not have regression - onChange fires exactly once per user action', async () => {
+      const onChange = jest.fn();
+
+      const { container } = render(
+        <React.StrictMode>
+          <SelectableTile id="selectable-tile-1" onChange={onChange}>
+            Option 1
+          </SelectableTile>
+        </React.StrictMode>
+      );
+
+      const tile = container.firstChild;
+      onChange.mockClear();
+
+      // Single click should result in exactly one onChange call
+      await userEvent.click(tile);
+
+      expect(onChange).toHaveBeenCalledTimes(1);
+
+      // Verify it's not called multiple times after a short delay
+      // (to catch any delayed duplicate calls)
+      await new Promise((resolve) => setTimeout(resolve, 10));
+      expect(onChange).toHaveBeenCalledTimes(1);
     });
   });
 });

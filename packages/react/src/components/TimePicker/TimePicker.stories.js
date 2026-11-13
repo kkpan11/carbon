@@ -25,42 +25,13 @@ export default {
     docs: {
       page: mdx,
     },
+    controls: {
+      exclude: ['inputClassName', 'pickerClassName', 'id', 'light', 'pattern'],
+    },
   },
 };
 
-export const Default = () => {
-  return (
-    <TimePicker id="time-picker" labelText="Select a time">
-      <TimePickerSelect id="time-picker-select-1">
-        <SelectItem value="AM" text="AM" />
-        <SelectItem value="PM" text="PM" />
-      </TimePickerSelect>
-      <TimePickerSelect id="time-picker-select-2">
-        <SelectItem value="Time zone 1" text="Time zone 1" />
-        <SelectItem value="Time zone 2" text="Time zone 2" />
-      </TimePickerSelect>
-    </TimePicker>
-  );
-};
-
-export const _WithLayer = () => (
-  <WithLayer>
-    {(layer) => (
-      <TimePicker id={`time-picker-${layer}`} labelText="Select a time">
-        <TimePickerSelect id={`time-picker-select-${layer}-1`}>
-          <SelectItem value="AM" text="AM" />
-          <SelectItem value="PM" text="PM" />
-        </TimePickerSelect>
-        <TimePickerSelect id={`time-picker-select-${layer}-2`}>
-          <SelectItem value="Time zone 1" text="Time zone 1" />
-          <SelectItem value="Time zone 2" text="Time zone 2" />
-        </TimePickerSelect>
-      </TimePicker>
-    )}
-  </WithLayer>
-);
-
-export const Playground = (args) => {
+export const Default = (args) => {
   return (
     <TimePicker id="time-picker" labelText="Select a time" {...args}>
       <TimePickerSelect id="time-picker-select-1" disabled={args.disabled}>
@@ -75,29 +46,14 @@ export const Playground = (args) => {
   );
 };
 
-Playground.args = {
+Default.args = {
   disabled: false,
   hideLabel: false,
   invalid: false,
   warning: false,
 };
 
-Playground.argTypes = {
-  children: {
-    table: {
-      disable: true,
-    },
-  },
-  className: {
-    table: {
-      disable: true,
-    },
-  },
-  id: {
-    table: {
-      disable: true,
-    },
-  },
+Default.argTypes = {
   disabled: {
     control: {
       type: 'boolean',
@@ -131,14 +87,21 @@ Playground.argTypes = {
     options: ['sm', 'md', 'lg'],
     control: { type: 'select' },
   },
-  light: {
-    table: {
-      disable: true,
-    },
-  },
-  pattern: {
-    table: {
-      disable: true,
-    },
-  },
 };
+
+export const _WithLayer = () => (
+  <WithLayer>
+    {(layer) => (
+      <TimePicker id={`time-picker-${layer}`} labelText="Select a time">
+        <TimePickerSelect id={`time-picker-select-${layer}-1`}>
+          <SelectItem value="AM" text="AM" />
+          <SelectItem value="PM" text="PM" />
+        </TimePickerSelect>
+        <TimePickerSelect id={`time-picker-select-${layer}-2`}>
+          <SelectItem value="Time zone 1" text="Time zone 1" />
+          <SelectItem value="Time zone 2" text="Time zone 2" />
+        </TimePickerSelect>
+      </TimePicker>
+    )}
+  </WithLayer>
+);

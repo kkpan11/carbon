@@ -1,5 +1,5 @@
 /**
- * Copyright IBM Corp. 2022
+ * Copyright IBM Corp. 2022, 2023
  *
  * This source code is licensed under the Apache-2.0 license found in the
  * LICENSE file in the root directory of this source tree.
@@ -14,7 +14,7 @@ test.describe('@avt FluidTextArea', () => {
   test('@avt-default-state', async ({ page }) => {
     await visitStory(page, {
       component: 'FluidTextArea',
-      id: 'experimental-fluid-components-unstable-fluidtextarea--default',
+      id: 'components-fluid-components-fluidtextarea--default',
       globals: {
         theme: 'white',
       },
@@ -25,7 +25,7 @@ test.describe('@avt FluidTextArea', () => {
   test('@avt-advanced-states default-with-layers', async ({ page }) => {
     await visitStory(page, {
       component: 'FluidTextArea',
-      id: 'experimental-fluid-components-unstable-fluidtextarea--default-with-layers',
+      id: 'components-fluid-components-fluidtextarea--default-with-layers',
       globals: {
         theme: 'white',
       },
@@ -35,23 +35,23 @@ test.describe('@avt FluidTextArea', () => {
     );
   });
 
-  test('@avt-advanced-states default-with-tooltip', async ({ page }) => {
+  test('@avt-advanced-states default-with-toggletip', async ({ page }) => {
     await visitStory(page, {
       component: 'FluidTextArea',
-      id: 'experimental-fluid-components-unstable-fluidtextarea--default-with-tooltip',
+      id: 'components-fluid-components-fluidtextarea--default-with-toggletip',
       globals: {
         theme: 'white',
       },
     });
     await expect(page).toHaveNoACViolations(
-      'FluidTextArea-default-with-tooltip'
+      'FluidTextArea-default-with-toggletip'
     );
   });
 
   test('@avt-advanced-states skeleton', async ({ page }) => {
     await visitStory(page, {
       component: 'FluidTextArea',
-      id: 'experimental-fluid-components-unstable-fluidtextarea--skeleton',
+      id: 'components-fluid-components-fluidtextarea--skeleton',
       globals: {
         theme: 'white',
       },
@@ -62,7 +62,7 @@ test.describe('@avt FluidTextArea', () => {
   test('@avt-keyboard-nav FluidTextArea default', async ({ page }) => {
     await visitStory(page, {
       component: 'TextArea',
-      id: 'experimental-fluid-components-unstable-fluidtextarea--default',
+      id: 'components-fluid-components-fluidtextarea--default',
       globals: {
         theme: 'white',
       },
@@ -74,23 +74,23 @@ test.describe('@avt FluidTextArea', () => {
     await page.keyboard.press('Tab');
     await expect(textArea).toBeFocused();
 
-    // Writting a word to check functionality
+    // Writing a word to check functionality
     await textArea.fill('test');
     await expect(textArea).toHaveValue('test');
     await expect(page).toHaveNoACViolations('FluidTextArea default');
   });
 
-  test('@avt-keyboard-nav FluidTextArea with tooltip', async ({ page }) => {
+  test('@avt-keyboard-nav FluidTextArea with toggletip', async ({ page }) => {
     await visitStory(page, {
       component: 'TextArea',
-      id: 'experimental-fluid-components-unstable-fluidtextarea--default-with-tooltip',
+      id: 'components-fluid-components-fluidtextarea--default-with-toggletip',
       globals: {
         theme: 'white',
       },
     });
     await expect(page.getByText('Text Area label')).toBeVisible();
 
-    // Checking tooltip
+    // Checking toggletip
     await page.keyboard.press('Tab');
     await expect(page.getByLabel('Show information')).toBeFocused();
     await page.keyboard.press('Enter');
@@ -103,9 +103,9 @@ test.describe('@avt FluidTextArea', () => {
     await page.keyboard.press('Tab');
     await expect(textArea).toBeFocused();
 
-    // Writting a word to check functionality
+    // Writing a word to check functionality
     await textArea.fill('test');
     await expect(textArea).toHaveValue('test');
-    await expect(page).toHaveNoACViolations('FluidTextArea with tooltip');
+    await expect(page).toHaveNoACViolations('FluidTextArea with toggletip');
   });
 });

@@ -1,5 +1,5 @@
 /**
- * Copyright IBM Corp. 2016, 2023
+ * Copyright IBM Corp. 2016, 2026
  *
  * This source code is licensed under the Apache-2.0 license found in the
  * LICENSE file in the root directory of this source tree.
@@ -10,16 +10,18 @@ import PropTypes from 'prop-types';
 import React, {
   useRef,
   useState,
-  ReactNode,
   type ComponentProps,
-  type ForwardedRef,
+  type ReactNode,
 } from 'react';
+import { isComponentElement } from '../../internal';
 import { usePrefix } from '../../internal/usePrefix';
 import { keys, match } from '../../internal/keyboard';
 import { useWindowEvent } from '../../internal/useEvent';
 import { useMergedRefs } from '../../internal/useMergedRefs';
+import Switcher from './Switcher';
+import { noopFn } from '../../internal/noopFn';
 
-interface HeaderPanelProps {
+export interface HeaderPanelProps {
   /**
    * Specify whether focus and blur listeners are added. They are by default.
    */
@@ -52,9 +54,8 @@ interface HeaderPanelProps {
   onHeaderPanelFocus?: () => void;
 }
 
-const noopFn = () => {};
-const HeaderPanel: React.FC<HeaderPanelProps> = React.forwardRef(
-  function HeaderPanel(
+const HeaderPanel = React.forwardRef<HTMLDivElement, HeaderPanelProps>(
+  (
     {
       children,
       className: customClassName,
@@ -64,8 +65,8 @@ const HeaderPanel: React.FC<HeaderPanelProps> = React.forwardRef(
       href,
       ...rest
     },
-    ref: ForwardedRef<HTMLDivElement>
-  ) {
+    ref
+  ) => {
     const prefix = usePrefix();
     const headerPanelReference = useRef<HTMLDivElement>(null);
     const headerPanelRef = useMergedRefs([headerPanelReference, ref]);
@@ -75,7 +76,7 @@ const HeaderPanel: React.FC<HeaderPanelProps> = React.forwardRef(
     const expandedProp = controlled ? expanded : expandedState;
 
     const [lastClickedElement, setLastClickedElement] =
-      useState<HTMLElement | null>(null);
+      useState<Element | null>(null);
 
     const className = cx(`${prefix}--header-panel`, {
       [`${prefix}--header-panel--expanded`]: expandedProp,
@@ -90,7 +91,9 @@ const HeaderPanel: React.FC<HeaderPanelProps> = React.forwardRef(
       eventHandlers.onBlur = (event) => {
         if (
           !event.currentTarget.contains(event.relatedTarget) &&
-          !lastClickedElement?.classList?.contains('cds--switcher__item-link')
+          !lastClickedElement?.classList?.contains(
+            `${prefix}--switcher__item-link`
+          )
         ) {
           setExpandedState(false);
           setLastClickedElement(null);
@@ -110,16 +113,17 @@ const HeaderPanel: React.FC<HeaderPanelProps> = React.forwardRef(
       };
     }
 
-    useWindowEvent('click', () => {
-      const focusedElement = document.activeElement as HTMLElement;
-      setLastClickedElement(focusedElement);
+    useWindowEvent('click', (event: MouseEvent) => {
+      const { target } = event;
+      if (!(target instanceof Element)) return;
+      setLastClickedElement(target);
 
-      const childJsxElement = children as JSX.Element;
+      const isChildASwitcher = isComponentElement(children, Switcher);
 
       if (
-        childJsxElement.type?.displayName === 'Switcher' &&
-        !focusedElement?.closest(`.${prefix}--header-panel--expanded`) &&
-        !focusedElement?.closest(`.${prefix}--header__action`) &&
+        isChildASwitcher &&
+        !target.closest(`.${prefix}--header-panel--expanded`) &&
+        !target.closest(`.${prefix}--header__action`) &&
         !headerPanelReference?.current?.classList.contains(
           `${prefix}--switcher`
         ) &&

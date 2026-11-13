@@ -67,7 +67,8 @@
     align-items: center;
     block-size: convert.to-rem(40px);
     inline-size: 4.875rem;
-    transition: outline $duration-fast-01 motion(standard, productive),
+    transition:
+      outline $duration-fast-01 motion(standard, productive),
       background-color $duration-fast-01 motion(standard, productive);
 
     &::placeholder {
@@ -77,6 +78,7 @@
 
   .#{$prefix}--time-picker__input-field-error {
     inline-size: 6.175rem;
+    padding-inline-end: $spacing-08;
   }
 
   // V11: Possibly deprecate

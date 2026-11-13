@@ -1,5 +1,5 @@
 //
-// Copyright IBM Corp. 2018, 2023
+// Copyright IBM Corp. 2018, 2025
 //
 // This source code is licensed under the Apache-2.0 license found in the
 // LICENSE file in the root directory of this source tree.
@@ -18,6 +18,12 @@ $css--body: true !default;
 /// @group config
 $css--font-face: true !default;
 
+/// If true, emit the custom type properties in :root
+/// @access public
+/// @type Bool
+/// @group config
+$css--emit-type-custom-props: false !default;
+
 /// If true, include reset CSS
 /// @access public
 /// @type Bool
@@ -35,13 +41,19 @@ $css--default-type: true !default;
 /// @access public
 /// @type String
 /// @group config
-$font-display: 'swap' !default;
+$font-display: swap !default;
 
 /// Specify the base path for loading IBM Plex
 /// @access public
 /// @type String
 /// @group config
 $font-path: '~@ibm/plex' !default;
+
+/// Specify if the new per-family plex packages (e.g. @ibm/plex-sans) should be used
+/// @access public
+/// @type Boolean
+/// @group config
+$use-per-family-plex: false !default;
 
 /// Specify if IBM Plex should be provided by the IBM Akamai CDN
 /// @access public

@@ -1,17 +1,22 @@
 /**
- * Copyright IBM Corp. 2016, 2023
+ * Copyright IBM Corp. 2016, 2026
  *
  * This source code is licensed under the Apache-2.0 license found in the
  * LICENSE file in the root directory of this source tree.
  */
 
-import React from 'react';
+import React, { forwardRef, useEffect, useRef, useState } from 'react';
 import PropTypes from 'prop-types';
 import classNames from 'classnames';
 import { usePrefix } from '../../internal/usePrefix';
-import { ForwardRefReturn } from '../../types/common';
+import { ButtonKind } from '../Button/Button';
 
 export interface ButtonSetProps extends React.HTMLAttributes<HTMLDivElement> {
+  /**
+   * fluid: button set resize to the size of the container up to a maximum dependent on the
+   * number of buttons. Overrides `stacked` property.
+   */
+  fluid?: boolean;
   /**
    * Specify the button arrangement of the set (vertically stacked or
    * horizontal)
@@ -19,21 +24,108 @@ export interface ButtonSetProps extends React.HTMLAttributes<HTMLDivElement> {
   stacked?: boolean;
 }
 
-const ButtonSet: ForwardRefReturn<HTMLDivElement, ButtonSetProps> =
-  React.forwardRef(function ButtonSet(
-    { children, className, stacked, ...rest }: ButtonSetProps,
-    ref: React.Ref<HTMLDivElement>
+const buttonOrder = (kind) =>
+  ({
+    ghost: 1,
+    'danger--ghost': 2,
+    tertiary: 3,
+    danger: 5,
+    primary: 6,
+  })[kind] ?? 4;
+
+const getButtonKind = (element: unknown): ButtonKind | 'primary' => {
+  if (
+    React.isValidElement(element) &&
+    element.props &&
+    typeof element.props === 'object'
   ) {
-    const prefix = usePrefix();
-    const buttonSetClasses = classNames(className, `${prefix}--btn-set`, {
-      [`${prefix}--btn-set--stacked`]: stacked,
+    const props = element.props as { kind?: ButtonKind };
+    return props.kind ?? 'primary';
+  }
+  return 'primary';
+};
+
+const ButtonSet = forwardRef<HTMLDivElement, ButtonSetProps>((props, ref) => {
+  const { children, className, fluid, stacked, ...rest } = props;
+  const prefix = usePrefix();
+  const fluidInnerRef = useRef<HTMLDivElement>(null);
+  const [isStacked, setIsStacked] = useState(false);
+  const [sortedChildren, setSortedChildren] = useState(
+    React.Children.toArray(children)
+  );
+
+  /**
+   * Used to determine if the buttons are currently stacked.
+   * useEffect (not useLayoutEffect) is intentional: calling setState inside
+   * useLayoutEffect triggers a "setState during commit" warning in React 19,
+   * and queueMicrotask workarounds break act() in tests. useEffect fires after
+   * paint so there is a brief flash-of-unsorted-order risk, but it is
+   * act()-compatible and avoids the React 19 commit-phase constraint.
+   */
+  useEffect(() => {
+    const checkStacking = () => {
+      let newIsStacked = stacked || false;
+
+      if (fluidInnerRef && fluidInnerRef.current) {
+        const computedStyle = window.getComputedStyle(fluidInnerRef.current);
+
+        newIsStacked =
+          computedStyle?.getPropertyValue?.('--flex-direction') === 'column';
+      }
+      return newIsStacked;
+    };
+
+    setIsStacked(checkStacking());
+
+    if (!fluidInnerRef.current) {
+      return;
+    }
+
+    const resizeObserver = new ResizeObserver(() => {
+      setIsStacked(checkStacking());
     });
-    return (
-      <div {...rest} className={buttonSetClasses} ref={ref}>
-        {children}
-      </div>
-    );
+    resizeObserver.observe(fluidInnerRef.current);
+
+    return () => resizeObserver.disconnect();
+  }, [fluid, stacked]);
+
+  useEffect(() => {
+    const newSortedChildren = React.Children.toArray(children);
+
+    newSortedChildren.sort((a: unknown, b: unknown) => {
+      return (
+        (buttonOrder(getButtonKind(a)) - buttonOrder(getButtonKind(b))) *
+        (isStacked ? -1 : 1)
+      );
+    });
+    // useEffect already runs after the commit phase, so setState here is safe
+    // in React 19 and is fully compatible with act() in tests.
+    setSortedChildren(newSortedChildren);
+
+    // adding sortedChildren to deps causes an infinite loop
+  }, [children, isStacked]);
+
+  const buttonSetClasses = classNames(className, `${prefix}--btn-set`, {
+    [`${prefix}--btn-set--stacked`]: isStacked,
+    [`${prefix}--btn-set--fluid`]: fluid,
   });
+
+  return (
+    <div {...rest} className={buttonSetClasses} ref={ref}>
+      {fluid ? (
+        <div
+          ref={fluidInnerRef}
+          className={classNames(`${prefix}--btn-set__fluid-inner`, {
+            [`${prefix}--btn-set__fluid-inner--auto-stack`]: true,
+          })}>
+          {sortedChildren}
+        </div>
+      ) : (
+        children
+      )}
+    </div>
+  );
+});
 
 ButtonSet.displayName = 'ButtonSet';
 ButtonSet.propTypes = {
@@ -48,8 +140,14 @@ ButtonSet.propTypes = {
   className: PropTypes.string,
 
   /**
+   * fluid: button set resize to the size of the container up to a maximum dependent on the
+   * number of buttons.
+   */
+  fluid: PropTypes.bool,
+
+  /**
    * Specify the button arrangement of the set (vertically stacked or
-   * horizontal)
+   * horizontal) - ignored when fluid is true
    */
   stacked: PropTypes.bool,
 };

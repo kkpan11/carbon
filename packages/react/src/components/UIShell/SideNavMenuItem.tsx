@@ -1,18 +1,18 @@
 /**
- * Copyright IBM Corp. 2016, 2023
+ * Copyright IBM Corp. 2016, 2026
  *
  * This source code is licensed under the Apache-2.0 license found in the
  * LICENSE file in the root directory of this source tree.
  */
 
 import cx from 'classnames';
-import PropTypes from 'prop-types';
-import React, { ElementType, ForwardedRef, HTMLAttributes, Ref } from 'react';
+import PropTypes, { type WeakValidationMap } from 'prop-types';
+import React, { forwardRef, type ElementType, type JSX, type Ref } from 'react';
 import SideNavLinkText from './SideNavLinkText';
-import Link from './Link';
+import Link, { type LinkProps } from './Link';
 import { usePrefix } from '../../internal/usePrefix';
 
-interface SideNavMenuItemProps extends HTMLAttributes<HTMLElement> {
+export type SideNavMenuItemProps<E extends ElementType = 'a'> = LinkProps<E> & {
   /**
    * Specify the children to be rendered inside of the `SideNavMenuItem`
    */
@@ -25,49 +25,76 @@ interface SideNavMenuItemProps extends HTMLAttributes<HTMLElement> {
 
   /**
    * Optionally specify whether the link is "active". An active link is one that
-   * has an href that is the same as the current page. Can also pass in
-   * `aria-current="page"`, as well.
+   * has an href that is the same as the current page. When `true`, the link
+   * also receives `aria-current="page"` unless `aria-current` is passed
+   * explicitly.
    */
   isActive?: boolean;
 
   /**
-   * Optionally provide an href for the underlying li`
+   * The `href` for the rendered link.
    */
   href?: string;
+
+  /**
+   * Optional component to render instead of default Link
+   */
+  as?: ElementType;
+};
+
+export interface SideNavMenuItemComponent {
+  <E extends ElementType = 'a'>(
+    props: SideNavMenuItemProps<E>
+  ): JSX.Element | null;
+  displayName?: string;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- https://github.com/carbon-design-system/carbon/issues/20452
+  propTypes?: WeakValidationMap<SideNavMenuItemProps<any>>;
 }
 
-const SideNavMenuItem = React.forwardRef<HTMLElement, SideNavMenuItemProps>(
-  function SideNavMenuItem(props, ref: ForwardedRef<HTMLElement>) {
-    const prefix = usePrefix();
-    const {
-      children,
-      className: customClassName,
-      isActive,
-      href,
-      ...rest
-    } = props;
-    const className = cx(`${prefix}--side-nav__menu-item`, customClassName);
-    const linkClassName = cx({
-      [`${prefix}--side-nav__link`]: true,
-      [`${prefix}--side-nav__link--current`]: isActive,
-    });
+type SideNavMenuItemPropsWithoutRef = Omit<SideNavMenuItemProps<'a'>, 'ref'>;
 
-    return (
-      <li className={className}>
-        <Link
-          href={href}
-          {...rest}
-          className={linkClassName}
-          ref={ref as Ref<ElementType>}>
-          <SideNavLinkText>{children}</SideNavLinkText>
-        </Link>
-      </li>
-    );
-  }
-);
+const frFn = forwardRef<HTMLElement, SideNavMenuItemPropsWithoutRef>;
+
+const SideNavMenuItem = frFn((props, ref) => {
+  const prefix = usePrefix();
+  const {
+    children,
+    className: customClassName,
+    as: Component = Link,
+    isActive,
+    'aria-current': ariaCurrent,
+    ...rest
+  } = props;
+  const className = cx(`${prefix}--side-nav__menu-item`, customClassName);
+  const linkClassName = cx({
+    [`${prefix}--side-nav__link`]: true,
+    [`${prefix}--side-nav__link--current`]: isActive,
+  });
+
+  const ComponentAsElementType = Component as ElementType;
+
+  return (
+    <li className={className}>
+      <ComponentAsElementType
+        {...rest}
+        // `isActive` marks the current page visually; expose the same state to
+        // assistive technology unless the consumer set `aria-current` themselves.
+        aria-current={ariaCurrent ?? (isActive ? 'page' : undefined)}
+        className={linkClassName}
+        ref={ref as Ref<ElementType>}>
+        <SideNavLinkText>{children}</SideNavLinkText>
+      </ComponentAsElementType>
+    </li>
+  );
+}) as SideNavMenuItemComponent;
 
 SideNavMenuItem.displayName = 'SideNavMenuItem';
 SideNavMenuItem.propTypes = {
+  /**
+   * Optional component to render instead of default Link
+   */
+  as: PropTypes.elementType as PropTypes.Validator<React.ElementType>,
+
   /**
    * Specify the children to be rendered inside of the `SideNavMenuItem`
    */
@@ -79,14 +106,15 @@ SideNavMenuItem.propTypes = {
   className: PropTypes.string,
 
   /**
-   * Optionally provide an href for the underlying li`
+   * The `href` for the rendered link.
    */
   href: PropTypes.string,
 
   /**
    * Optionally specify whether the link is "active". An active link is one that
-   * has an href that is the same as the current page. Can also pass in
-   * `aria-current="page"`, as well.
+   * has an href that is the same as the current page. When `true`, the link
+   * also receives `aria-current="page"` unless `aria-current` is passed
+   * explicitly.
    */
   isActive: PropTypes.bool,
 };

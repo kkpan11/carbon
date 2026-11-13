@@ -1,7 +1,16 @@
-import { Story, ArgsTable, Canvas } from '@storybook/blocks';
-import ContentSwitcher from '../ContentSwitcher';
+import {
+  Story,
+  ArgTypes,
+  Canvas,
+  Meta,
+  Unstyled,
+} from '@storybook/addon-docs/blocks';
+import { ContentSwitcher } from '../ContentSwitcher';
 import Switch from '../Switch';
 import * as ContentSwitcherStories from './ContentSwitcher.stories.js';
+import { stackblitzPrefillConfig } from '../../../previewer/codePreviewer';
+
+<Meta isTemplate />
 
 # Content Switcher
 
@@ -11,11 +20,14 @@ import * as ContentSwitcherStories from './ContentSwitcher.stories.js';
 &nbsp;|&nbsp;
 [Accessibility](https://www.carbondesignsystem.com/components/content-switcher/accessibility)
 
-## Table of Contents
-
 {/* <!-- START doctoc generated TOC please keep comment here to allow auto update --> <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE --> */}
 
+## Table of Contents
+
 - [Overview](#overview)
+- [Icon Only](#icon-only)
+- [Icon Only With Layer](#icon-only-with-layer)
+- [With Layer](#with-layer)
 - [Component API](#component-api)
   - [ContentSwitcher `className`](#contentswitcher-classname)
   - [ContentSwitcher `light`](#contentswitcher-light)
@@ -37,13 +49,41 @@ Content switchers allow users to toggle between two or more content sections
 within the same space on screen. Only one content section is shown at a time.
 Create Switch components for each section in the content switcher.
 
-<Canvas>
-  <Story of={ContentSwitcherStories.Playground} />
-</Canvas>
+<Canvas
+  of={ContentSwitcherStories.Default}
+  additionalActions={[
+    {
+      title: 'Open in Stackblitz',
+      onClick: () =>
+        stackblitzPrefillConfig({ story: ContentSwitcherStories.Default }),
+    },
+  ]}
+/>
+
+## Icon Only
+
+<Canvas
+  of={ContentSwitcherStories.IconOnly}
+  additionalActions={[
+    {
+      title: 'Open in Stackblitz',
+      onClick: () =>
+        stackblitzPrefillConfig({ story: ContentSwitcherStories.IconOnly }),
+    },
+  ]}
+/>
+
+## Icon Only With Layer
+
+<Canvas of={ContentSwitcherStories.IconOnlyWithLayer} />
+
+## With Layer
+
+<Canvas of={ContentSwitcherStories._WithLayer} />
 
 ## Component API
 
-<ArgsTable />
+<ArgTypes />
 
 ### ContentSwitcher `className`
 
@@ -58,17 +98,19 @@ specifying a custom class name for layout.
 ### ContentSwitcher `light`
 
 In certain circumstances, a `ContentSwitcher` will exist on a container element
-with the same background color. To improve contrast, you can use the `light`
-property to toggle the light variant of the `ContentSwitcher`.
+with the same background color. To improve contrast, set the `light` property to
+toggle the light variant of the `ContentSwitcher`.
 
 ```jsx
-<ContentSwitcher light>...</ContentSwitcher>
+<ContentSwitcher light onChange={() => {}}>
+  ...
+</ContentSwitcher>
 ```
 
 ### ContentSwitcher `onChange`
 
-This is a required prop. You will need to specify a function to run when the
-selection of the `ContentSwitcher` is changed.
+This required prop specifies a function to run when the selection of the
+`ContentSwitcher` changes.
 
 ```jsx
 <ContentSwitcher
@@ -81,14 +123,17 @@ selection of the `ContentSwitcher` is changed.
 
 ### ContentSwitcher `selectedIndex`
 
-This prop allows you to specify which `ContentSwitcher` index you would like to
-be selected on initial render. This number defaults to `0`.
+This prop specifies which `ContentSwitcher` index should be selected. This
+number defaults to `0`, and updates to this prop will update the selected
+switch.
 
-<ContentSwitcher selectedIndex={2} onChange={() => {}}>
-  <Switch name="one" text="First section" />
-  <Switch name="two" text="Second section" />
-  <Switch name="three" text="Third section" />
-</ContentSwitcher>
+<Unstyled style={{ padding: '1rem', background: 'var(--cds-background)' }}>
+  <ContentSwitcher selectedIndex={2} onChange={() => {}}>
+    <Switch name="one" text="First section" />
+    <Switch name="two" text="Second section" />
+    <Switch name="three" text="Third section" />
+  </ContentSwitcher>
+</Unstyled>
 
 ```jsx
 <ContentSwitcher selectedIndex={2} onChange={() => {}}>
@@ -101,20 +146,22 @@ be selected on initial render. This number defaults to `0`.
 ### ContentSwitcher `selectionMode`
 
 By default, when a `ContentSwitcher` is focused and an arrow key is pressed, the
-selection is updated immediately and the `onChange` is fired. However, sometimes
-you may want to only change the `selectedIndex` once a selection has been made.
-To do this, you can set the `selectionMode` to `manual`, and the `onChange` will
-only fire when a selection is made.
+selection is updated immediately and the `onChange` is fired. In some cases, it
+is preferable to change `selectedIndex` only once a selection has been made. To
+do this, set `selectionMode` to `manual`, and the `onChange` will only fire when
+a selection is made.
 
-<ContentSwitcher
-  selectionMode="manual"
-  onChange={() => {
-    console.log('change');
-  }}>
-  <Switch name="one" text="First section" />
-  <Switch name="two" text="Second section" />
-  <Switch name="three" text="Third section" />
-</ContentSwitcher>
+<Unstyled style={{ padding: '1rem', background: 'var(--cds-background)' }}>
+  <ContentSwitcher
+    selectionMode="manual"
+    onChange={() => {
+      console.log('change');
+    }}>
+    <Switch name="one" text="First section" />
+    <Switch name="two" text="Second section" />
+    <Switch name="three" text="Third section" />
+  </ContentSwitcher>
+</Unstyled>
 
 ```jsx
 <ContentSwitcher
@@ -134,7 +181,7 @@ The className prop passed into `Switch` will be forwarded along to the
 underlying wrapper `button` element.
 
 ```jsx
-<ContentSwitcher>
+<ContentSwitcher onChange={() => {}}>
   <Switch className="switch-one" />
   <Switch className="switch-two " />
 </ContentSwitcher>
@@ -142,17 +189,19 @@ underlying wrapper `button` element.
 
 ### Switch `disabled`
 
-You can disable the `ContentSwitcher` by passing in `disabled` to the `Switch`
+The `ContentSwitcher` can be disabled by passing `disabled` to the `Switch`
 elements directly.
 
-<ContentSwitcher>
-  <Switch disabled name="one" text="First section" />
-  <Switch disabled name="two" text="Second section" />
-  <Switch disabled name="three" text="Third section" />
-</ContentSwitcher>
+<Unstyled style={{ padding: '1rem', background: 'var(--cds-background)' }}>
+  <ContentSwitcher onChange={() => {}}>
+    <Switch disabled name="one" text="First section" />
+    <Switch disabled name="two" text="Second section" />
+    <Switch disabled name="three" text="Third section" />
+  </ContentSwitcher>
+</Unstyled>
 
 ```jsx
-<ContentSwitcher>
+<ContentSwitcher onChange={() => {}}>
   <Switch disabled name="one" text="First section" />
   <Switch disabled name="two" text="Second section" />
   <Switch disabled name="three" text="Third section" />
@@ -163,15 +212,17 @@ elements directly.
 
 These are the values that will be returned in the `onChange` call.
 
-<ContentSwitcher
-  onChange={(obj) => {
-    const { index, name, text } = obj;
-    alert(`index: ${index} ||  name: ${name} || text: ${text}`);
-  }}>
-  <Switch name="one" text="First section" />
-  <Switch name="two" text="Second section" />
-  <Switch name="three" text="Third section" />
-</ContentSwitcher>
+<Unstyled style={{ padding: '1rem', background: 'var(--cds-background)' }}>
+  <ContentSwitcher
+    onChange={(obj) => {
+      const { index, name, text } = obj;
+      alert(`index: ${index} ||  name: ${name} || text: ${text}`);
+    }}>
+    <Switch name="one" text="First section" />
+    <Switch name="two" text="Second section" />
+    <Switch name="three" text="Third section" />
+  </ContentSwitcher>
+</Unstyled>
 
 ```jsx
 <ContentSwitcher

@@ -24,7 +24,7 @@ export default function HeaderName<E extends ElementType = 'a'>({
   const selectorPrefix = usePrefix();
   const className = cx(`${selectorPrefix}--header__name`, customClassName);
   return (
-    <Link {...rest} className={className}>
+    <Link {...(rest as LinkProps<E>)} className={className}>
       {prefix && (
         <>
           <span className={`${selectorPrefix}--header__name--prefix`}>
@@ -33,7 +33,7 @@ export default function HeaderName<E extends ElementType = 'a'>({
           &nbsp;
         </>
       )}
-      {children}
+      <span>{children}</span>
     </Link>
   );
 }

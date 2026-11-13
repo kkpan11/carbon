@@ -97,15 +97,36 @@ We're always looking for contributors to help us fix bugs, build new features,
 or help us improve the project documentation. If you're interested, definitely
 check out our [Contributing Guide](/.github/CONTRIBUTING.md)! 👀
 
+### Modifying color values
+
+Color values are defined in
+[`tokens/colors.tokens.json`](./tokens/colors.tokens.json) using the
+[DTCG token format](https://www.designtokens.org/tr/2025.10/format/). This is
+the single source of truth for the package — **do not edit generated files
+directly**.
+
+The following files are generated at build time by Style Dictionary and should
+not be hand-edited:
+
+- `js/generated/colors.js` / `js/generated/colors.d.ts` — JS exports
+- `index.scss` — Sass variables and maps
+
+To add or update a color:
+
+1. Edit `tokens/colors.tokens.json`
+2. Run `yarn build` in this package to regenerate all outputs
+3. Run `yarn test --testPathPatterns=packages/colors` from the repo root to
+   confirm nothing regressed
+
 ## 📝 License
 
 Licensed under the [Apache 2.0 License](/LICENSE).
 
 ## <picture><source height="20" width="20" media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/ibm-telemetry/telemetry-js/main/docs/images/ibm-telemetry-dark.svg"><source height="20" width="20" media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/ibm-telemetry/telemetry-js/main/docs/images/ibm-telemetry-light.svg"><img height="20" width="20" alt="IBM Telemetry" src="https://raw.githubusercontent.com/ibm-telemetry/telemetry-js/main/docs/images/ibm-telemetry-light.svg"></picture> IBM Telemetry
 
-This package uses IBM Telemetry to collect metrics data. By installing this
-package as a dependency you are agreeing to telemetry collection. To opt out,
-see
+This package uses IBM Telemetry to collect de-identified and anonymized metrics
+data. By installing this package as a dependency you are agreeing to telemetry
+collection. To opt out, see
 [Opting out of IBM Telemetry data collection](https://github.com/ibm-telemetry/telemetry-js/tree/main#opting-out-of-ibm-telemetry-data-collection).
 For more information on the data being collected, please see the
 [IBM Telemetry documentation](https://github.com/ibm-telemetry/telemetry-js/tree/main#ibm-telemetry-collection-basics).

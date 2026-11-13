@@ -1,5 +1,5 @@
 /**
- * Copyright IBM Corp. 2016, 2023
+ * Copyright IBM Corp. 2016, 2026
  *
  * This source code is licensed under the Apache-2.0 license found in the
  * LICENSE file in the root directory of this source tree.
@@ -7,12 +7,12 @@
 
 import cx from 'classnames';
 import PropTypes from 'prop-types';
-import React from 'react';
+import React, { forwardRef } from 'react';
 import { keys, match } from '../../internal/keyboard';
 import { usePrefix } from '../../internal/usePrefix';
 import { warning } from '../../internal/warning';
-import { ForwardRefReturn } from '../../types/common';
 import { Text } from '../Text';
+import { useId } from '../../internal/useId';
 
 export interface OverflowMenuItemProps
   extends React.HTMLAttributes<HTMLElement> {
@@ -25,6 +25,11 @@ export interface OverflowMenuItemProps
    * A callback to tell the parent menu component that the menu should be closed.
    */
   closeMenu?: () => void;
+
+  /**
+   * Specify the message read by screen readers for the danger overflow menu item variant
+   */
+  dangerDescription?: string;
 
   /**
    * `true` to make this menu item disabled.
@@ -59,6 +64,11 @@ export interface OverflowMenuItemProps
   isDelete?: boolean;
 
   /**
+   * accepts a ref to the button element
+   */
+  ref?: (element: HTMLElement) => void;
+
+  /**
    * `true` to require the title attribute.
    */
   requireTitle?: boolean;
@@ -74,120 +84,124 @@ export interface OverflowMenuItemProps
   wrapperClassName?: string;
 }
 
-export type OverflowMenuItemComponent = ForwardRefReturn<
-  HTMLElement,
-  OverflowMenuItemProps
->;
+const frFn = forwardRef<HTMLElement, OverflowMenuItemProps>;
 
-const OverflowMenuItem: OverflowMenuItemComponent = React.forwardRef(
-  function OverflowMenuItem(
+const OverflowMenuItem = frFn((props, ref) => {
+  const {
+    className,
+    closeMenu,
+    dangerDescription = '',
+    disabled = false,
+    handleOverflowMenuItemFocus,
+    hasDivider = false,
+    href,
+    isDelete = false,
+    index,
+    itemText = 'Provide itemText',
+    onClick = () => {},
+    onKeyDown = () => {},
+    requireTitle,
+    title,
+    wrapperClassName,
+    ...rest
+  } = props;
+  const prefix = usePrefix();
+
+  function setTabFocus(evt) {
+    if (match(evt, keys.ArrowDown)) {
+      handleOverflowMenuItemFocus?.({
+        currentIndex: index,
+        direction: 1,
+      });
+    }
+    if (match(evt, keys.ArrowUp)) {
+      handleOverflowMenuItemFocus?.({
+        currentIndex: index,
+        direction: -1,
+      });
+    }
+  }
+
+  function handleClick(evt) {
+    onClick(evt);
+    if (closeMenu) {
+      closeMenu();
+    }
+  }
+
+  warning(
+    !!closeMenu,
+    '`<OverflowMenuItem>` detected missing `closeMenu` prop. ' +
+      '`closeMenu` is required to let `<OverflowMenu>` close the menu upon actions on `<OverflowMenuItem>`. ' +
+      'Please make sure `<OverflowMenuItem>` is a direct child of `<OverflowMenu>.'
+  );
+
+  const overflowMenuBtnClasses = cx(
+    `${prefix}--overflow-menu-options__btn`,
+    className
+  );
+  const overflowMenuItemClasses = cx(
+    `${prefix}--overflow-menu-options__option`,
     {
-      className,
-      closeMenu,
-      disabled = false,
-      handleOverflowMenuItemFocus,
-      hasDivider = false,
-      href,
-      isDelete = false,
-      index,
-      itemText = 'Provide itemText',
-      onClick = () => {},
-      onKeyDown = () => {},
-      requireTitle,
-      title,
-      wrapperClassName,
-      ...rest
+      [`${prefix}--overflow-menu--divider`]: hasDivider,
+      [`${prefix}--overflow-menu-options__option--danger`]: isDelete,
+      [`${prefix}--overflow-menu-options__option--disabled`]: disabled,
     },
-    ref
-  ) {
-    const prefix = usePrefix();
+    wrapperClassName
+  );
 
-    function setTabFocus(evt) {
-      if (match(evt, keys.ArrowDown)) {
-        handleOverflowMenuItemFocus?.({
-          currentIndex: index,
-          direction: 1,
-        });
-      }
-      if (match(evt, keys.ArrowUp)) {
-        handleOverflowMenuItemFocus?.({
-          currentIndex: index,
-          direction: -1,
-        });
-      }
+  const TagToUse = href ? 'a' : 'button';
+  const hasDangerDescription = isDelete && Boolean(dangerDescription);
+
+  const assistiveId = useId('danger-description');
+
+  const OverflowMenuItemContent = (() => {
+    if (typeof itemText !== 'string') {
+      return itemText;
     }
-
-    function handleClick(evt) {
-      onClick(evt);
-      if (closeMenu) {
-        closeMenu();
-      }
-    }
-
-    if (__DEV__) {
-      warning(
-        closeMenu,
-        '`<OverflowMenuItem>` detected missing `closeMenu` prop. ' +
-          '`closeMenu` is required to let `<OverflowMenu>` close the menu upon actions on `<OverflowMenuItem>`. ' +
-          'Please make sure `<OverflowMenuItem>` is a direct child of `<OverflowMenu>.'
-      );
-    }
-
-    const overflowMenuBtnClasses = cx(
-      `${prefix}--overflow-menu-options__btn`,
-      className
-    );
-    const overflowMenuItemClasses = cx(
-      `${prefix}--overflow-menu-options__option`,
-      {
-        [`${prefix}--overflow-menu--divider`]: hasDivider,
-        [`${prefix}--overflow-menu-options__option--danger`]: isDelete,
-        [`${prefix}--overflow-menu-options__option--disabled`]: disabled,
-      },
-      wrapperClassName
-    );
-
-    const TagToUse = href ? 'a' : 'button';
-
-    const OverflowMenuItemContent = (() => {
-      if (typeof itemText !== 'string') {
-        return itemText;
-      }
-      return (
+    return (
+      <>
         <div className={`${prefix}--overflow-menu-options__option-content`}>
           {itemText}
         </div>
-      );
-    })();
-
-    return (
-      <Text as="li" className={overflowMenuItemClasses} role="none">
-        <TagToUse
-          className={overflowMenuBtnClasses}
-          disabled={disabled}
-          href={href}
-          onClick={handleClick}
-          onKeyDown={(evt) => {
-            setTabFocus(evt);
-            onKeyDown(evt);
-          }}
-          role="menuitem"
-          // ref as any: the type of `ref` is `ForwardedRef<HTMLButtonElement>` in `Button` component
-          // but `OverflowMenuItem` can be rendered as `a` tag as well, which is `HTMLAnchorElement`
-          // so we have to use `any` here
-          ref={ref as any}
-          tabIndex={-1}
-          // itemText as any: itemText may be a ReactNode, but `title` only accepts string
-          // to avoid compatibility issue, we use `any` here. Consider to enforce `itemText` to be `string?`
-          // in the next major release
-          title={requireTitle ? title || (itemText as any) : undefined}
-          {...rest}>
-          {OverflowMenuItemContent}
-        </TagToUse>
-      </Text>
+        {hasDangerDescription && (
+          <span id={assistiveId} className={`${prefix}--visually-hidden`}>
+            {dangerDescription}
+          </span>
+        )}
+      </>
     );
-  }
-);
+  })();
+
+  return (
+    <Text as="li" className={overflowMenuItemClasses} role="none">
+      <TagToUse
+        className={overflowMenuBtnClasses}
+        disabled={disabled}
+        href={href}
+        onClick={handleClick}
+        onKeyDown={(evt) => {
+          setTabFocus(evt);
+          onKeyDown(evt);
+        }}
+        role="menuitem"
+        // ref as any: the type of `ref` is `ForwardedRef<HTMLButtonElement>` in `Button` component
+        // but `OverflowMenuItem` can be rendered as `a` tag as well, which is `HTMLAnchorElement`
+        // so we have to use `any` here
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any -- https://github.com/carbon-design-system/carbon/issues/20452
+        ref={ref as any}
+        tabIndex={-1}
+        // itemText as any: itemText may be a ReactNode, but `title` only accepts string
+        // to avoid compatibility issue, we use `any` here. Consider to enforce `itemText` to be `string?`
+        // in the next major release
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any -- https://github.com/carbon-design-system/carbon/issues/20452
+        title={requireTitle ? title || (itemText as any) : undefined}
+        {...rest}>
+        {OverflowMenuItemContent}
+      </TagToUse>
+    </Text>
+  );
+});
 
 OverflowMenuItem.propTypes = {
   /**
@@ -199,6 +213,11 @@ OverflowMenuItem.propTypes = {
    * A callback to tell the parent menu component that the menu should be closed.
    */
   closeMenu: PropTypes.func,
+
+  /**
+   * Specify the message read by screen readers for the danger overflow menu item variant
+   */
+  dangerDescription: PropTypes.string,
 
   /**
    * `true` to make this menu item disabled.

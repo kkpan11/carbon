@@ -21,6 +21,83 @@ import { CheckmarkFilled } from '@carbon/icons-react';
 const prefix = 'cds';
 import StructuredListSkeleton from './StructuredList.Skeleton';
 
+const defaultArgs = {
+  'aria-label': 'Service status',
+  isCondensed: false,
+  isFlush: false,
+  selection: false,
+};
+
+const defaultArgTypes = {
+  'aria-label': {
+    control: {
+      type: 'text',
+    },
+  },
+  isCondensed: {
+    control: {
+      type: 'boolean',
+    },
+  },
+  isFlush: {
+    control: {
+      type: 'boolean',
+    },
+  },
+  selection: {
+    table: { readonly: true },
+  },
+};
+
+const defaultControls = ['aria-label', 'isCondensed', 'isFlush'];
+
+const selectionArgs = {
+  'aria-label': 'Deployment environments',
+  isCondensed: false,
+  selection: true,
+};
+
+const selectionArgTypes = {
+  'aria-label': {
+    control: {
+      type: 'text',
+    },
+  },
+  isCondensed: {
+    control: {
+      type: 'boolean',
+    },
+  },
+  selection: {
+    table: { readonly: true },
+  },
+};
+
+const selectionControls = ['aria-label', 'isCondensed'];
+
+const selectionRows = [
+  {
+    environment: 'Production',
+    region: 'Frankfurt',
+    purpose: 'Runs customer-facing services',
+  },
+  {
+    environment: 'Staging',
+    region: 'Dallas',
+    purpose: 'Validates releases before deployment',
+  },
+  {
+    environment: 'Development',
+    region: 'London',
+    purpose: 'Supports feature development and integration',
+  },
+  {
+    environment: 'Disaster recovery',
+    region: 'Sydney',
+    purpose: 'Provides a standby recovery environment',
+  },
+];
+
 export default {
   title: 'Components/StructuredList',
   component: StructuredListWrapper,
@@ -36,13 +113,6 @@ export default {
       page: mdx,
     },
   },
-  argTypes: {
-    children: {
-      table: {
-        disable: true,
-      },
-    },
-  },
 };
 
 export const Default = (args) => {
@@ -50,30 +120,24 @@ export const Default = (args) => {
     <StructuredListWrapper {...args}>
       <StructuredListHead>
         <StructuredListRow head>
-          <StructuredListCell head>ColumnA</StructuredListCell>
-          <StructuredListCell head>ColumnB</StructuredListCell>
-          <StructuredListCell head>ColumnC</StructuredListCell>
+          <StructuredListCell head>Service</StructuredListCell>
+          <StructuredListCell head>Status</StructuredListCell>
+          <StructuredListCell head>Description</StructuredListCell>
         </StructuredListRow>
       </StructuredListHead>
       <StructuredListBody>
         <StructuredListRow>
-          <StructuredListCell noWrap>Row 1</StructuredListCell>
-          <StructuredListCell>Row 1</StructuredListCell>
+          <StructuredListCell noWrap>API gateway</StructuredListCell>
+          <StructuredListCell>Online</StructuredListCell>
           <StructuredListCell>
-            Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nunc dui
-            magna, finibus id tortor sed, aliquet bibendum augue. Aenean posuere
-            sem vel euismod dignissim. Nulla ut cursus dolor. Pellentesque
-            vulputate nisl a porttitor interdum.
+            Routes and secures application traffic across environments.
           </StructuredListCell>
         </StructuredListRow>
         <StructuredListRow>
-          <StructuredListCell noWrap>Row 2</StructuredListCell>
-          <StructuredListCell>Row 2</StructuredListCell>
+          <StructuredListCell noWrap>Data warehouse</StructuredListCell>
+          <StructuredListCell>Maintenance</StructuredListCell>
           <StructuredListCell>
-            Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nunc dui
-            magna, finibus id tortor sed, aliquet bibendum augue. Aenean posuere
-            sem vel euismod dignissim. Nulla ut cursus dolor. Pellentesque
-            vulputate nisl a porttitor interdum.
+            Scheduled maintenance begins Friday at 22:00 UTC.
           </StructuredListCell>
         </StructuredListRow>
       </StructuredListBody>
@@ -81,39 +145,20 @@ export const Default = (args) => {
   );
 };
 
-Default.args = {
-  isCondensed: false,
-  isFlush: false,
-};
+Default.args = { ...defaultArgs };
 
-Default.argTypes = {
-  selection: {
-    control: {
-      disable: true,
-    },
-  },
-  isCondensed: {
-    control: {
-      type: 'boolean',
-    },
-  },
-  isFlush: {
-    control: {
-      type: 'boolean',
-    },
+Default.parameters = {
+  controls: {
+    include: defaultControls,
   },
 };
+Default.argTypes = { ...defaultArgTypes };
 const structuredListBodyRowGenerator = (numRows) => {
-  return Array.apply(null, Array(numRows)).map((n, i) => (
-    <StructuredListRow key={`row-${i}`}>
-      <StructuredListCell>Row {i}</StructuredListCell>
-      <StructuredListCell>Row {i}</StructuredListCell>
-      <StructuredListCell>
-        Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nunc dui magna,
-        finibus id tortor sed, aliquet bibendum augue. Aenean posuere sem vel
-        euismod dignissim. Nulla ut cursus dolor. Pellentesque vulputate nisl a
-        porttitor interdum.
-      </StructuredListCell>
+  return selectionRows.slice(0, numRows).map((row, i) => (
+    <StructuredListRow key={`row-${i}`} id={`row-${i}`}>
+      <StructuredListCell>{row.environment}</StructuredListCell>
+      <StructuredListCell>{row.region}</StructuredListCell>
+      <StructuredListCell>{row.purpose}</StructuredListCell>
       <StructuredListInput
         id={`row-${i}`}
         value={`row-${i}`}
@@ -134,12 +179,12 @@ const structuredListBodyRowGenerator = (numRows) => {
 
 export const Selection = (args) => {
   return (
-    <StructuredListWrapper selection {...args}>
+    <StructuredListWrapper {...args}>
       <StructuredListHead>
         <StructuredListRow head>
-          <StructuredListCell head>ColumnA</StructuredListCell>
-          <StructuredListCell head>ColumnB</StructuredListCell>
-          <StructuredListCell head>ColumnC</StructuredListCell>
+          <StructuredListCell head>Environment</StructuredListCell>
+          <StructuredListCell head>Region</StructuredListCell>
+          <StructuredListCell head>Purpose</StructuredListCell>
         </StructuredListRow>
       </StructuredListHead>
       <StructuredListBody>
@@ -149,28 +194,59 @@ export const Selection = (args) => {
   );
 };
 
-Selection.argTypes = {
-  isFlush: {
-    table: {
-      disable: true,
-    },
-  },
-  selection: {
-    control: {
-      disable: true,
-    },
+export const InitialSelection = (args) => {
+  return (
+    <StructuredListWrapper key={args.selectedInitialRow} {...args}>
+      <StructuredListHead>
+        <StructuredListRow head>
+          <StructuredListCell head>Environment</StructuredListCell>
+          <StructuredListCell head>Region</StructuredListCell>
+          <StructuredListCell head>Purpose</StructuredListCell>
+        </StructuredListRow>
+      </StructuredListHead>
+      <StructuredListBody>
+        {structuredListBodyRowGenerator(4)}
+      </StructuredListBody>
+    </StructuredListWrapper>
+  );
+};
+
+Selection.args = { ...selectionArgs };
+Selection.argTypes = { ...selectionArgTypes };
+Selection.parameters = {
+  controls: {
+    include: selectionControls,
   },
 };
 
-export const WithBackgroundLayer = () => {
+InitialSelection.args = {
+  ...selectionArgs,
+  selectedInitialRow: 'row-2',
+};
+InitialSelection.argTypes = {
+  ...selectionArgTypes,
+  selectedInitialRow: {
+    control: {
+      type: 'select',
+    },
+    options: ['row-0', 'row-1', 'row-2', 'row-3'],
+  },
+};
+InitialSelection.parameters = {
+  controls: {
+    include: [...selectionControls, 'selectedInitialRow'],
+  },
+};
+
+export const WithBackgroundLayer = (args) => {
   return (
     <WithLayer>
-      <StructuredListWrapper selection>
+      <StructuredListWrapper {...args}>
         <StructuredListHead>
           <StructuredListRow head>
-            <StructuredListCell head>ColumnA</StructuredListCell>
-            <StructuredListCell head>ColumnB</StructuredListCell>
-            <StructuredListCell head>ColumnC</StructuredListCell>
+            <StructuredListCell head>Environment</StructuredListCell>
+            <StructuredListCell head>Region</StructuredListCell>
+            <StructuredListCell head>Purpose</StructuredListCell>
           </StructuredListRow>
         </StructuredListHead>
         <StructuredListBody>
@@ -181,50 +257,36 @@ export const WithBackgroundLayer = () => {
   );
 };
 
-export const Skeleton = (args) => (
-  <div style={{ width: '800px' }}>
-    <StructuredListSkeleton {...args} />
-  </div>
-);
+WithBackgroundLayer.args = { ...selectionArgs };
+WithBackgroundLayer.argTypes = { ...selectionArgTypes };
+WithBackgroundLayer.parameters = {
+  controls: {
+    include: selectionControls,
+  },
+};
+
+export const Skeleton = (args) => <StructuredListSkeleton {...args} />;
+
+Skeleton.decorators = [
+  (story) => <div style={{ width: '800px' }}>{story()}</div>,
+];
 
 Skeleton.args = {
   rowCount: 5,
 };
 
+Skeleton.parameters = {
+  controls: {
+    include: ['rowCount'],
+  },
+};
+
 Skeleton.argTypes = {
-  isFlush: {
-    table: {
-      disable: true,
-    },
-  },
-  isCondensed: {
-    table: {
-      disable: true,
-    },
-  },
-  ariaLabel: {
-    table: {
-      disable: true,
-    },
-  },
-  ['aria-label']: {
-    table: {
-      disable: true,
-    },
-  },
-  className: {
-    table: {
-      disable: true,
-    },
-  },
-  selection: {
-    table: {
-      disable: true,
-    },
-  },
   rowCount: {
     control: {
       type: 'number',
+      min: 1,
+      max: 10,
     },
   },
 };

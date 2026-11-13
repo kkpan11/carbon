@@ -1,5 +1,5 @@
 /**
- * Copyright IBM Corp. 2016, 2023
+ * Copyright IBM Corp. 2016, 2026
  *
  * This source code is licensed under the Apache-2.0 license found in the
  * LICENSE file in the root directory of this source tree.
@@ -9,15 +9,17 @@ import {
   Subtitle,
   Description,
   Primary,
-  ArgsTable,
   Stories,
-} from '@storybook/blocks';
+  ArgTypes,
+} from '@storybook/addon-docs/blocks';
+import { allModes } from './modes';
 
 import './styles.scss';
 import '../src/feature-flags';
 
 import { white, g10, g90, g100 } from '@carbon/themes';
-import React from 'react';
+import React, { useEffect, useState } from 'react';
+import useIsomorphicEffect from '../src/internal/useIsomorphicEffect';
 import { breakpoints } from '@carbon/layout';
 import { GlobalTheme } from '../src/components/Theme';
 import { Layout } from '../src/components/Layout';
@@ -30,7 +32,7 @@ const devTools = {
     description: "Set the layout context's size",
     defaultValue: false,
     toolbar: {
-      title: 'dev :: unstable__Layout size',
+      title: 'dev :: preview__Layout size',
       items: [
         {
           value: false,
@@ -49,7 +51,7 @@ const devTools = {
     description: "Set the layout context's density",
     defaultValue: false,
     toolbar: {
-      title: 'dev :: unstable__Layout density',
+      title: 'dev :: preview__Layout density',
       items: [
         {
           value: false,
@@ -62,11 +64,12 @@ const devTools = {
   },
 };
 
+// always use full locale code strings for values
 const globalTypes = {
   locale: {
     name: 'Locale',
     description: 'Set the localization for the storybook',
-    defaultValue: 'en',
+    defaultValue: 'en-US',
     toolbar: {
       icon: 'globe',
       title: 'Locale',
@@ -74,12 +77,22 @@ const globalTypes = {
         {
           right: '🇺🇸',
           title: 'English',
-          value: 'en',
+          value: 'en-US',
+        },
+        {
+          right: '🇩🇪',
+          title: 'German',
+          value: 'de-DE',
         },
         {
           right: '🇵🇸',
           title: 'Arabic',
-          value: 'ar',
+          value: 'ar-SA',
+        },
+        {
+          right: '🇯🇵',
+          title: 'Japanese',
+          value: 'ja-JP',
         },
       ],
     },
@@ -108,16 +121,6 @@ const globalTypes = {
           value: 'rtl',
         },
       ],
-    },
-  },
-  theme: {
-    name: 'Theme',
-    description: 'Set the global theme for displaying components',
-    defaultValue: 'white',
-    toolbar: {
-      icon: 'paintbrush',
-      title: 'Theme',
-      items: ['white', 'g10', 'g90', 'g100'],
     },
   },
   ...(process.env.NODE_ENV === 'development' ? devTools : {}),
@@ -149,24 +152,12 @@ const parameters = {
       cellSize: 8,
       opacity: 0.5,
     },
-    values: [
-      {
-        name: 'white',
-        value: white.background,
-      },
-      {
-        name: 'g10',
-        value: g10.background,
-      },
-      {
-        name: 'g90',
-        value: g90.background,
-      },
-      {
-        name: 'g100',
-        value: g100.background,
-      },
-    ],
+    options: {
+      white: { name: 'white', value: white.background },
+      g10: { name: 'g10', value: g10.background },
+      g90: { name: 'g90', value: g90.background },
+      g100: { name: 'g100', value: g100.background },
+    },
   },
   controls: {
     // https://storybook.js.org/docs/react/essentials/controls#show-full-documentation-for-each-property
@@ -191,18 +182,14 @@ const parameters = {
         <Subtitle />
         <Description />
         <Primary />
-        <ArgsTable />
+        <ArgTypes />
         <Stories includePrimary={false} />
       </>
     ),
+    codePanel: true,
   },
-  // Small (<672)
-  // Medium (672 - 1056px)
-  // Large (1056 - 1312px)
-  // X-Large (1312 - 1584px)
-  // Max (>1584)
   viewport: {
-    viewports: {
+    options: {
       sm: {
         name: 'Small',
         styles: {
@@ -242,12 +229,10 @@ const parameters = {
   },
   options: {
     storySort: (storyA, storyB) => {
-      const isUsingV6Store = process.env.STORYBOOK_STORE_7 === 'false';
-
-      const idA = isUsingV6Store ? storyA[1].id : storyA.id;
-      const idB = isUsingV6Store ? storyB[1].id : storyB.id;
-      const titleA = isUsingV6Store ? storyA[1].title : storyA.title;
-      const titleB = isUsingV6Store ? storyB[1].title : storyB.title;
+      const idA = storyA.id;
+      const idB = storyB.id;
+      const titleA = storyA.title;
+      const titleB = storyB.title;
 
       if (idA.includes('welcome')) {
         return -1;
@@ -267,19 +252,30 @@ const parameters = {
         return titleA.localeCompare(titleB);
       }
 
+      if (titleA !== titleB) {
+        if (idA.includes('flag-details') && !idB.includes('flag-details')) {
+          return -1;
+        }
+        if (idB.includes('flag-details') && !idA.includes('flag-details')) {
+          return 1;
+        }
+        return titleA.localeCompare(titleB);
+      }
+
       // To sort the stories, we first build up a list of matches based on
       // keywords. Each keyword has a specific weight that will be used to
       // determine order later on.
-      const UNKNOWN_KEYWORD = 4;
+      const UNKNOWN_KEYWORD = 5;
       const keywords = new Map([
         ['welcome', 0],
         ['overview', 1],
         ['default', 2],
         ['usage', 3],
-        ['playground', 5],
-        ['development', 6],
-        ['deprecated', 7],
-        ['unstable', 8],
+        ['flag-details', 4],
+        ['playground', 6],
+        ['development', 7],
+        ['deprecated', 8],
+        ['unstable', 9],
       ]);
       const matches = new Map();
 
@@ -321,18 +317,45 @@ const parameters = {
       return idA.localeCompare(idB);
     },
   },
+  chromatic: {
+    // g90 is intentionally excluded from global Chromatic coverage to reduce
+    // snapshot volume. Individual stories can opt into g90 coverage by setting
+    // parameters.chromatic.modes to include allModes.g90
+    modes: {
+      g10: allModes['g10'],
+      g100: allModes['g100'],
+      'breakpoint-sm': allModes['breakpoint-sm'],
+    },
+  },
 };
+
+// Helper function to map background values to theme names
+function getThemeFromBackground(backgroundValue) {
+  const backgroundThemeMap = {
+    [white.background]: 'white',
+    white: 'white',
+    [g10.background]: 'g10',
+    g10: 'g10',
+    [g90.background]: 'g90',
+    g90: 'g90',
+    [g100.background]: 'g100',
+    g100: 'g100',
+  };
+  return backgroundThemeMap[backgroundValue] ?? 'white';
+}
 
 const decorators = [
   (Story, context) => {
-    const { layoutDensity, layoutSize, locale, dir, theme } = context.globals;
-    const [randomKey, setRandomKey] = React.useState(1);
+    const { layoutDensity, layoutSize, locale, dir } = context.globals;
+    const backgroundValue = context.globals.backgrounds?.value;
+    const [randomKey, setRandomKey] = useState(1);
+    const theme = getThemeFromBackground(backgroundValue);
 
-    React.useEffect(() => {
+    useEffect(() => {
       document.documentElement.setAttribute('data-carbon-theme', theme);
     }, [theme]);
 
-    React.useLayoutEffect(() => {
+    useIsomorphicEffect(() => {
       document.documentElement.lang = locale;
       document.documentElement.dir = dir;
       // Need to set random key to recalculate Popover coordinates
@@ -358,6 +381,60 @@ const preview = {
   parameters,
   decorators,
   globalTypes,
+  tags: ['autodocs'],
 };
+
+// Array that stores strings and regexes of controls that should be hidden in all stories
+const GLOBAL_EXCLUDED_CONTROLS = [
+  'className',
+  'children',
+  'as',
+  'decorator',
+  'slug',
+  'ref',
+  'ariaLabel',
+  /^(?:on[A-Z]\w*)$/,
+];
+
+/**
+ * ArgTypes enhancer that enforces a global control filter across all stories.
+ * Args matching elements in the GLOBAL_EXCLUDED_CONTROLS array are not shown in the
+ * `controls` table
+ */
+export const argTypesEnhancers = [
+  (context) => {
+    const current = context.argTypes || {};
+    const next = { ...current };
+
+    // Do not hide in the ArgTypes table in Overview page,
+    // let them be visible for documentation purposes
+    if (context?.name === '__meta') return current;
+
+    const strings = new Set();
+    const regexes = [];
+    for (const p of GLOBAL_EXCLUDED_CONTROLS) {
+      if (typeof p === 'string') strings.add(p);
+      else if (p instanceof RegExp) regexes.push(p);
+    }
+
+    // helper function to hide controls
+    const disable = (name) => {
+      const prev = next[name] || {};
+      next[name] = { ...prev, table: { ...(prev.table || {}), disable: true } };
+    };
+
+    strings.forEach((name) => {
+      if (name in next) disable(name);
+    });
+    if (regexes.length) {
+      Object.keys(next).forEach((name) => {
+        if (strings.has(name)) return;
+        if (regexes.some((re) => re.test(name))) disable(name);
+      });
+    }
+
+    return next;
+  },
+];
 
 export default preview;

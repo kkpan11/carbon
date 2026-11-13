@@ -1,5 +1,5 @@
 /**
- * Copyright IBM Corp. 2016, 2023
+ * Copyright IBM Corp. 2016, 2026
  *
  * This source code is licensed under the Apache-2.0 license found in the
  * LICENSE file in the root directory of this source tree.
@@ -7,23 +7,19 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import classnames from 'classnames';
-import FileUploaderItem from '../FileUploaderItem';
-import FileUploaderDropContainer from '../FileUploaderDropContainer';
-import FormItem from '../../FormItem';
+import {
+  FileUploaderItem,
+  FileUploaderDropContainer,
+  FormItem,
+} from '@carbon/react';
 
 const prefix = 'cds';
-
-// -- copied from internal/tools/uniqueId.js
-let lastId = 0;
-function uid(prefix = 'id') {
-  lastId++;
-  return `${prefix}${lastId}`;
-}
-// -- end copied
 
 const ExampleDropContainerApp = (props) => {
   const [file, setFile] = useState();
   const uploaderButton = useRef(null);
+  const uniqueId = React.useId();
+  const { disabled, size } = props;
   const handleDrop = (e) => {
     e.preventDefault();
   };
@@ -43,21 +39,21 @@ const ExampleDropContainerApp = (props) => {
 
   const uploadFile = async (fileToUpload) => {
     // file size validation
-    if (fileToUpload[0].filesize > 512000) {
+    if (Array.isArray(fileToUpload) && fileToUpload[0].filesize > 512000) {
       const updatedFile = {
         ...fileToUpload[0],
         status: 'edit',
         iconDescription: 'Delete file',
         invalid: true,
         errorSubject: 'File size exceeds limit',
-        errorBody: '500kb max file size. Select a new file and try again.',
+        errorBody: '1 MB max file size. Select a new file and try again.',
       };
       setFile(updatedFile);
       return;
     }
 
     // file type validation
-    if (fileToUpload.invalidFileType) {
+    if (Array.isArray(fileToUpload) && fileToUpload[0].invalidFileType) {
       const updatedFile = {
         ...fileToUpload[0],
         status: 'edit',
@@ -92,12 +88,14 @@ const ExampleDropContainerApp = (props) => {
     }, rand + 1000);
   };
 
-  const onAddFilesButton = (event) => {
-    const file = event.target.files;
+  const onAddFilesButton = (event, { addedFiles }) => {
+    // eslint-disable-next-line react/prop-types
+    props.onAddFiles?.(event, { addedFiles });
+    const file = addedFiles;
 
     const newFile = [
       {
-        uuid: uid(),
+        uuid: uniqueId + file[0].name + file[0].size,
         name: file[0].name,
         filesize: file[0].size,
         status: 'uploading',
@@ -115,13 +113,11 @@ const ExampleDropContainerApp = (props) => {
   };
 
   const labelClasses = classnames(`${prefix}--file--label`, {
-    // eslint-disable-next-line react/prop-types
-    [`${prefix}--file--label--disabled`]: props.disabled,
+    [`${prefix}--file--label--disabled`]: disabled,
   });
 
   const helperTextClasses = classnames(`${prefix}--label-description`, {
-    // eslint-disable-next-line react/prop-types
-    [`${prefix}--label-description--disabled`]: props.disabled,
+    [`${prefix}--label-description--disabled`]: disabled,
   });
 
   return (
@@ -145,14 +141,14 @@ const ExampleDropContainerApp = (props) => {
         )}>
         {file !== undefined && (
           <FileUploaderItem
-            key={uid()}
+            disabled={disabled}
+            key={file.uuid}
             uuid={file.uuid}
             name={file.name}
             filesize={file.filesize}
             errorSubject="File size exceeds limit"
-            errorBody="500kb max file size. Select a new file and try again."
-            // eslint-disable-next-line react/prop-types
-            size={props.size}
+            errorBody="1 MB max file size. Select a new file and try again."
+            size={size}
             status={file.status}
             iconDescription={file.iconDescription}
             invalid={file.invalid}

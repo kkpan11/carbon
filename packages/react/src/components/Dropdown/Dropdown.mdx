@@ -1,7 +1,16 @@
-import { Story, ArgsTable, Canvas } from '@storybook/blocks';
+import {
+  Story,
+  ArgTypes,
+  Canvas,
+  Meta,
+  Unstyled,
+} from '@storybook/addon-docs/blocks';
 import Dropdown from '../Dropdown';
 import DropdownSkeleton from './Dropdown.Skeleton';
 import * as DropdownStories from './Dropdown.stories';
+import { stackblitzPrefillConfig } from '../../../previewer/codePreviewer';
+
+<Meta isTemplate />
 
 # Dropdown
 
@@ -11,13 +20,15 @@ import * as DropdownStories from './Dropdown.stories';
 &nbsp;|&nbsp;
 [Accessibility](https://www.carbondesignsystem.com/components/dropdown/accessibility)
 
-## Table of Contents
-
 {/* <!-- START doctoc generated TOC please keep comment here to allow auto update --> <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE --> */}
 
+## Table of Contents
+
 - [Overview](#overview)
-  - [Inline dropdown](#inline-dropdown)
+  - [Inline Dropdown](#inline-dropdown)
+  - [Experimental Auto Align](#experimental-auto-align)
   - [Skeleton state](#skeleton-state)
+  - [AI label](#ai-label)
 - [Component API](#component-api)
   - [Dropdown `direction`](#dropdown-direction)
   - [Dropdown `downshiftProps`](#dropdown-downshiftprops)
@@ -25,7 +36,7 @@ import * as DropdownStories from './Dropdown.stories';
   - [Dropdown `itemToElement`](#dropdown-itemtoelement)
   - [Dropdown `itemToString`](#dropdown-itemtostring)
   - [Dropdown `items`](#dropdown-items)
-  - [Dropdown `light`](#dropdown-light)
+  - [Dropdown `light` **deprecated**](#dropdown-light-deprecated)
   - [Dropdown `selectedItem`](#dropdown-selecteditem)
   - [Dropdown `size`](#dropdown-size)
   - [Dropdown `titleText`](#dropdown-titletext)
@@ -41,18 +52,46 @@ Dropdowns present a list of options from which a user can select one option, or
 several. A selected option can represent a value in a form, or can be used as an
 action to filter or sort existing content.
 
-<Canvas>
-  <Story of={DropdownStories.Default} />
-</Canvas>
+<Canvas
+  of={DropdownStories.Default}
+  additionalActions={[
+    {
+      title: 'Open in Stackblitz',
+      onClick: () =>
+        stackblitzPrefillConfig({ story: DropdownStories.Default }),
+    },
+  ]}
+/>
 
-### Inline dropdown
+### Inline Dropdown
 
 You can place a `Dropdown` inline with other content by using the `inline`
 variant
 
-<Canvas>
-  <Story of={DropdownStories.Inline} />
-</Canvas>
+<Canvas
+  of={DropdownStories.Inline}
+  additionalActions={[
+    {
+      title: 'Open in Stackblitz',
+      onClick: () => stackblitzPrefillConfig({ story: DropdownStories.Inline }),
+    },
+  ]}
+/>
+
+### Experimental Auto Align
+
+<Canvas
+  of={DropdownStories.ExperimentalAutoAlign}
+  additionalActions={[
+    {
+      title: 'Open in Stackblitz',
+      onClick: () =>
+        stackblitzPrefillConfig({
+          story: DropdownStories.ExperimentalAutoAlign,
+        }),
+    },
+  ]}
+/>
 
 ### Skeleton state
 
@@ -60,34 +99,60 @@ You can use the `DropdownSkeleton` component to render a skeleton variant of a
 `Dropdown`. This is useful to display on initial page load or when data needs to
 be fetched from an external API.
 
-<Canvas>
-  <Story of={DropdownStories.Skeleton} />
-</Canvas>
+<Canvas
+  of={DropdownStories.Skeleton}
+  additionalActions={[
+    {
+      title: 'Open in Stackblitz',
+      onClick: () =>
+        stackblitzPrefillConfig({ story: DropdownStories.Skeleton }),
+    },
+  ]}
+/>
+
+### AI label
+
+<Canvas
+  of={DropdownStories.withAILabel}
+  additionalActions={[
+    {
+      title: 'Open in Stackblitz',
+      onClick: () =>
+        stackblitzPrefillConfig({ story: DropdownStories.withAILabel }),
+    },
+  ]}
+/>
 
 ## Component API
 
-<ArgsTable />
+<ArgTypes />
 
 ### Dropdown `direction`
 
 When a `Dropdown` is near the bottom of a page, you may want to render the menu
 to the top of the screen. To do this, specify `direction="top"`
 
-<Dropdown
-  items={[
-    { id: 'option-0', text: 'Option 0' },
-    {
-      id: 'option-1',
-      text: 'Option 1',
-    },
-    { id: 'option-2', text: 'Option 2' },
-  ]}
-  itemToString={(item) => (item ? item.text : '')}
-  label="Select an option..."
-  direction="top"
-  id="direction"
-  titleText="Dropdown label"
-/>
+<Unstyled
+  style={{
+    padding: '1rem',
+    background: 'var(--cds-background)',
+  }}>
+  <Dropdown
+    items={[
+      { id: 'option-0', text: 'Option 0' },
+      {
+        id: 'option-1',
+        text: 'Option 1',
+      },
+      { id: 'option-2', text: 'Option 2' },
+    ]}
+    itemToString={(item) => (item ? item.text : '')}
+    label="Select an option..."
+    direction="top"
+    id="direction"
+    titleText="Label"
+  />
+</Unstyled>
 
 ```jsx
 <Dropdown direction="top" />
@@ -98,6 +163,11 @@ to the top of the screen. To do this, specify `direction="top"`
 Our `Dropdown` component utilizes [Downshift](https://www.downshift-js.com/)
 under the hood to help provide complex yet accessible custom dropdown
 components. We provide access to the built in Downshift features with this prop.
+
+Use with caution: anything you define here overrides the components' internal
+handling of that prop. Downshift internals are subject to change, and in some
+cases they can not be shimmed to shield you from potentially breaking changes.
+
 For more information, checkout the Downshift prop
 [documentation](https://www.downshift-js.com/downshift#props-used-in-examples)
 
@@ -109,7 +179,7 @@ want to fully control the component, you can use `initialSelectedItem`.
 ```jsx
 const items = ['Option 1', 'Option 2', 'Option 3']
 
-<Dropdown initialSelectedItem={items[2]} />;
+<Dropdown initialSelectedItem={items[2]} />
 ```
 
 ### Dropdown `itemToElement`
@@ -120,25 +190,31 @@ dropdown item in a custom element. The
 [`itemToString` prop](#dropdown-itemtostring) can be used with this to provide
 the text of the item in the input on selection.
 
-<Dropdown
-  items={[
-    { id: 'option-0', text: 'Option 0' },
-    { id: 'option-1', text: 'Option 1' },
-    { id: 'option-2', text: 'Option 2' },
-  ]}
-  itemToElement={(item) =>
-    item ? (
-      <span className="test" style={{ color: 'red' }}>
-        {item.text} 🔥
-      </span>
-    ) : (
-      ''
-    )
-  }
-  label="Select an option..."
-  id="item-to-element"
-  titleText="Dropdown label"
-/>
+<Unstyled
+  style={{
+    padding: '1rem',
+    background: 'var(--cds-background)',
+  }}>
+  <Dropdown
+    items={[
+      { id: 'option-0', text: 'Option 0' },
+      { id: 'option-1', text: 'Option 1' },
+      { id: 'option-2', text: 'Option 2' },
+    ]}
+    itemToElement={(item) =>
+      item ? (
+        <span className="test" style={{ color: 'red' }}>
+          {item.text} 🔥
+        </span>
+      ) : (
+        ''
+      )
+    }
+    label="Select an option..."
+    id="item-to-element"
+    titleText="Label"
+  />
+</Unstyled>
 
 ```jsx
 <Dropdown
@@ -157,7 +233,7 @@ the text of the item in the input on selection.
     )
   }
   label="Select an option..."
-  titleText="Dropdown label"
+  titleText="Label"
 />
 ```
 
@@ -166,26 +242,32 @@ the text of the item in the input on selection.
 If the `items` array is not an array of strings, you'll need to use
 `itemToString` to grab the text to be used as the `Dropdown` item text.
 
-<Dropdown
-  items={[
-    { id: 'option-0', text: 'Option 0' },
-    { id: 'option-1', text: 'Option 1' },
-    { id: 'option-2', text: 'Option 2' },
-  ]}
-  itemToString={(item) => (item ? item.text : '')}
-  itemToElement={(item) =>
-    item ? (
-      <span className="test" style={{ color: 'red' }}>
-        {item.text} 🔥
-      </span>
-    ) : (
-      ''
-    )
-  }
-  label="Select an option..."
-  id="item-to-element"
-  titleText="Dropdown label"
-/>
+<Unstyled
+  style={{
+    padding: '1rem',
+    background: 'var(--cds-background)',
+  }}>
+  <Dropdown
+    items={[
+      { id: 'option-0', text: 'Option 0' },
+      { id: 'option-1', text: 'Option 1' },
+      { id: 'option-2', text: 'Option 2' },
+    ]}
+    itemToString={(item) => (item ? item.text : '')}
+    itemToElement={(item) =>
+      item ? (
+        <span className="test" style={{ color: 'red' }}>
+          {item.text} 🔥
+        </span>
+      ) : (
+        ''
+      )
+    }
+    label="Select an option..."
+    id="item-to-element"
+    titleText="Label"
+  />
+</Unstyled>
 
 ```jsx
 <Dropdown
@@ -206,7 +288,7 @@ If the `items` array is not an array of strings, you'll need to use
   }
   label="Select an option..."
   id="item-to-element"
-  titleText="Dropdown label"
+  titleText="Label"
 />
 ```
 
@@ -262,51 +344,57 @@ const [currentItem, setCurrentItem] = useState(items[4]);
 
 ### Dropdown `size`
 
-There are three sizes of `Dropdown` available: `sm`, `lg` (the default), and
-`xl`.
+There are three sizes of `Dropdown` available: `sm`, `md` (the default), and
+`lg`.
 
-<Dropdown
-  items={['Option 1', 'Option 2', 'Option 3']}
-  size="sm"
-  label="Small [sm]"
-  id="sm"
-  titleText="Dropdown label"
-/>
-<br />
-<Dropdown
-  items={['Option 1', 'Option 2', 'Option 3']}
-  label="Medium [md]"
-  id="md"
-  size="md"
-  titleText="Dropdown label"
-/>
-<br />
-<Dropdown
-  items={['Option 1', 'Option 2', 'Option 3']}
-  size="lg"
-  label="Large [lg]"
-  id="lg"
-  titleText="Dropdown label"
-/>
+<Unstyled
+  style={{
+    padding: '1rem',
+    background: 'var(--cds-background)',
+  }}>
+  <Dropdown
+    items={['Option 1', 'Option 2', 'Option 3']}
+    size="sm"
+    label="Small [sm]"
+    id="sm"
+    titleText="Label"
+  />
+  <br />
+  <Dropdown
+    items={['Option 1', 'Option 2', 'Option 3']}
+    label="Medium [md]"
+    id="md"
+    size="md"
+    titleText="Label"
+  />
+  <br />
+  <Dropdown
+    items={['Option 1', 'Option 2', 'Option 3']}
+    size="lg"
+    label="Large [lg]"
+    id="lg"
+    titleText="Label"
+  />
+</Unstyled>
 
 ```jsx
 <Dropdown
   items={['Option 1', 'Option 2', 'Option 3']}
   size="sm"
   label="Small [sm]"
-  titleText="Dropdown label"
+  titleText="Label"
 />
 <Dropdown
   items={['Option 1', 'Option 2', 'Option 3']}
   label="Medium [md]"
   size="md"
-  titleText="Dropdown label"
+  titleText="Label"
 />
 <Dropdown
   items={['Option 1', 'Option 2', 'Option 3']}
   size="lg"
   label="Large [lg]"
-  titleText="Dropdown label"
+  titleText="Label"
 />
 ```
 
@@ -315,7 +403,7 @@ There are three sizes of `Dropdown` available: `sm`, `lg` (the default), and
 This is the text that will be used as a label for the `Dropdown`
 
 ```jsx
-<Dropdown titleText="This is the Dropdown label" />
+<Dropdown titleText="Label" />
 ```
 
 ### Dropdown `type`
@@ -323,13 +411,19 @@ This is the text that will be used as a label for the `Dropdown`
 Sometimes you will need to place a `Dropdown` inline with other content. To do
 that, pass in `type="inline"` to the `Dropdown`
 
-<Dropdown
-  items={['Option 1', 'Option 2', 'Option 3']}
-  label="Inline"
-  type="inline"
-  id="inline"
-  titleText="Dropdown label"
-/>
+<Unstyled
+  style={{
+    padding: '1rem',
+    background: 'var(--cds-background)',
+  }}>
+  <Dropdown
+    items={['Option 1', 'Option 2', 'Option 3']}
+    label="Inline"
+    type="inline"
+    id="inline"
+    titleText="Label"
+  />
+</Unstyled>
 
 ```jsx
 <Dropdown
@@ -337,7 +431,7 @@ that, pass in `type="inline"` to the `Dropdown`
   label="Inline"
   type="inline"
   is="inline"
-  titleText="Dropdown label"
+  titleText="Label"
 />
 ```
 

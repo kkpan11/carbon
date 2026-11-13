@@ -1,17 +1,16 @@
 /**
- * Copyright IBM Corp. 2016, 2023
+ * Copyright IBM Corp. 2016, 2026
  *
  * This source code is licensed under the Apache-2.0 license found in the
  * LICENSE file in the root directory of this source tree.
  */
 
 import PropTypes from 'prop-types';
-import React, { useRef } from 'react';
-import { IconButton, IconButtonKind } from '../IconButton';
-import { composeEventHandlers } from '../../tools/events';
-import { PolymorphicProps } from '../../types/common';
+import React from 'react';
+import { IconButton, IconButtonKind, IconButtonKinds } from '../IconButton';
 import { PopoverAlignment } from '../Popover';
 import ButtonBase from './ButtonBase';
+import { PolymorphicComponentPropWithRef } from '../../internal/PolymorphicProps';
 
 export const ButtonKinds = [
   'primary',
@@ -26,7 +25,7 @@ export const ButtonKinds = [
 
 export type ButtonKind = (typeof ButtonKinds)[number];
 
-export const ButtonSizes = ['sm', 'md', 'lg', 'xl', '2xl'] as const;
+export const ButtonSizes = ['xs', 'sm', 'md', 'lg', 'xl', '2xl'] as const;
 
 export type ButtonSize = (typeof ButtonSizes)[number];
 
@@ -41,7 +40,7 @@ export type ButtonTooltipPosition = (typeof ButtonTooltipPositions)[number];
 export interface ButtonBaseProps
   extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   /**
-   * Specify the message read by screen readers for the danger button variant
+   * Specify the message read by screen readers for the danger button variants
    */
   dangerDescription?: string;
 
@@ -53,7 +52,7 @@ export interface ButtonBaseProps
   /**
    * Optionally specify an href for your Button to become an `<a>` element
    */
-  href?: string;
+  href?: React.AnchorHTMLAttributes<HTMLAnchorElement>['href'];
 
   /**
    * If specifying the `renderIcon` prop, provide a description for that icon that can
@@ -67,18 +66,24 @@ export interface ButtonBaseProps
   isExpressive?: boolean;
 
   /**
-   * Specify whether the Button is currently selected. Only applies to the Ghost variant.
+   * Specify whether the Button is currently selected. Only applies to the icon only Ghost variant.
    */
   isSelected?: boolean;
 
   /**
    * Specify the kind of Button you want to create
    */
-  kind?: ButtonKind;
+  kind?: ButtonBaseProps['hasIconOnly'] extends true
+    ? IconButtonKind
+    : ButtonKind;
 
   /**
-   * Optional prop to allow overriding the icon rendering.
-   * Can be a React component class
+   * Optionally specify a `rel` when using an `<a>` element.
+   */
+  rel?: React.AnchorHTMLAttributes<HTMLAnchorElement>['rel'];
+
+  /**
+   * A component used to render an icon.
    */
   renderIcon?: React.ElementType;
 
@@ -88,32 +93,49 @@ export interface ButtonBaseProps
   size?: ButtonSize;
 
   /**
+   * Optionally specify a `target` when using an `<a>` element.
+   */
+  target?: React.AnchorHTMLAttributes<HTMLAnchorElement>['target'];
+
+  /**
    * Specify the alignment of the tooltip to the icon-only button.
-   * Can be one of: start, center, or end.
+   * Can be one of: `start`, `center`, or `end`.
    */
   tooltipAlignment?: ButtonTooltipAlignment;
 
   /**
+   * Enable drop shadow for tooltips for icon-only buttons.
+   */
+  tooltipDropShadow?: boolean;
+
+  /**
+   * Enable high-contrast theme for tooltips on icon-only buttons.
+   * Defaults to true.
+   */
+  tooltipHighContrast?: boolean;
+
+  /**
    * Specify the direction of the tooltip for icon-only buttons.
-   * Can be either top, right, bottom, or left.
+   * Can be either `top`, `right`, `bottom`, or `left`.
    */
   tooltipPosition?: ButtonTooltipPosition;
 }
 
-export type ButtonProps<T extends React.ElementType> = PolymorphicProps<
-  T,
-  ButtonBaseProps
->;
+export type ButtonProps<T extends React.ElementType> =
+  PolymorphicComponentPropWithRef<T, ButtonBaseProps>;
 
-export type ButtonComponent = <T extends React.ElementType>(
+export type ButtonComponent = <T extends React.ElementType = 'button'>(
   props: ButtonProps<T>,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- https://github.com/carbon-design-system/carbon/issues/20452
   context?: any
-) => React.ReactElement<any, any> | null;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- https://github.com/carbon-design-system/carbon/issues/20452
+) => React.ReactElement | any;
 
 function isIconOnlyButton(
   hasIconOnly: ButtonBaseProps['hasIconOnly'],
-  _kind: ButtonBaseProps['kind']
-): _kind is IconButtonKind {
+  kind: ButtonBaseProps['kind']
+): kind is IconButtonKind;
+function isIconOnlyButton(hasIconOnly: ButtonBaseProps['hasIconOnly']) {
   if (hasIconOnly === true) {
     return true;
   }
@@ -121,84 +143,108 @@ function isIconOnlyButton(
   return false;
 }
 
-const Button = React.forwardRef(function Button<T extends React.ElementType>(
-  props: ButtonProps<T>,
-  ref: React.Ref<unknown>
-) {
-  const tooltipRef = useRef(null);
-  const {
-    as,
-    children,
-    hasIconOnly = false,
-    iconDescription,
-    kind = 'primary',
-    onBlur,
-    onClick,
-    onFocus,
-    onMouseEnter,
-    onMouseLeave,
-    renderIcon: ButtonImageElement,
-    size,
-    tooltipAlignment = 'center',
-    tooltipPosition = 'top',
-    ...rest
-  } = props;
+const Button: ButtonComponent = React.forwardRef(
+  <T extends React.ElementType = 'button'>(
+    props: ButtonProps<T>,
+    ref: React.Ref<unknown>
+  ) => {
+    const {
+      as,
+      autoAlign,
+      children,
+      hasIconOnly = false,
+      tooltipHighContrast = true,
+      tooltipDropShadow = false,
+      iconDescription,
+      kind = 'primary',
+      onBlur,
+      onClick,
+      onFocus,
+      onMouseEnter,
+      onMouseLeave,
+      renderIcon: ButtonImageElement,
+      size,
+      tooltipAlignment = 'center',
+      tooltipPosition = 'top',
+      ...rest
+    } = props;
 
-  const handleClick = (evt: React.MouseEvent) => {
-    // Prevent clicks on the tooltip from triggering the button click event
-    if (evt.target === tooltipRef.current) {
-      evt.preventDefault();
+    if (ButtonImageElement && !children && !iconDescription) {
+      // eslint-disable-next-line no-console
+      console.error(
+        'Button: renderIcon property specified without also providing an iconDescription property. ' +
+          'This may impact accessibility for screen reader users.'
+      );
     }
-  };
 
-  const iconOnlyImage = !ButtonImageElement ? null : <ButtonImageElement />;
+    const iconOnlyImage = !ButtonImageElement ? null : <ButtonImageElement />;
 
-  if (!isIconOnlyButton(hasIconOnly, kind)) {
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { tooltipAlignment, ...propsWithoutTooltipAlignment } = props;
-    return <ButtonBase ref={ref} {...propsWithoutTooltipAlignment} />;
-  } else {
-    let align: PopoverAlignment | undefined = undefined;
+    if (!isIconOnlyButton(hasIconOnly, kind)) {
+      const {
+        autoAlign,
+        tooltipAlignment,
+        tooltipDropShadow,
+        tooltipHighContrast,
+        tooltipPosition,
+        ...propsWithoutIconOnlyTooltipProps
+      } = props;
+      return <ButtonBase ref={ref} {...propsWithoutIconOnlyTooltipProps} />;
+    } else {
+      let align: PopoverAlignment | undefined = undefined;
 
-    if (tooltipPosition === 'top' || tooltipPosition === 'bottom') {
-      if (tooltipAlignment === 'center') {
+      if (tooltipPosition === 'top' || tooltipPosition === 'bottom') {
+        if (tooltipAlignment === 'center') {
+          align = tooltipPosition;
+        }
+        if (tooltipAlignment === 'end') {
+          align = `${tooltipPosition}-end`;
+        }
+        if (tooltipAlignment === 'start') {
+          align = `${tooltipPosition}-start`;
+        }
+      }
+
+      if (tooltipPosition === 'right' || tooltipPosition === 'left') {
         align = tooltipPosition;
       }
-      if (tooltipAlignment === 'end') {
-        align = `${tooltipPosition}-end`;
-      }
-      if (tooltipAlignment === 'start') {
-        align = `${tooltipPosition}-start`;
-      }
-    }
 
-    if (tooltipPosition === 'right' || tooltipPosition === 'left') {
-      align = tooltipPosition;
+      return (
+        // @ts-expect-error - `IconButton` does not support all `size`s that
+        // `Button` supports.
+        //
+        // TODO: What should be done here?
+        // 1. Should the `IconButton` not be rendered if the `size` is not
+        //    supported?
+        // 2. Should an error be thrown?
+        // 3. Something else?
+        <IconButton
+          {...rest}
+          ref={ref}
+          as={as}
+          align={align}
+          label={iconDescription}
+          kind={kind}
+          size={size}
+          highContrast={tooltipHighContrast}
+          dropShadow={tooltipDropShadow}
+          onMouseEnter={onMouseEnter}
+          onMouseLeave={onMouseLeave}
+          onFocus={onFocus}
+          onBlur={onBlur}
+          autoAlign={autoAlign}
+          onClick={onClick}
+          renderIcon={iconOnlyImage ? null : ButtonImageElement} // avoid doubling the icon.
+        >
+          {iconOnlyImage ?? children}
+        </IconButton>
+      );
     }
-
-    return (
-      <IconButton
-        {...rest}
-        ref={ref}
-        as={as}
-        align={align}
-        label={iconDescription}
-        kind={kind}
-        size={size}
-        onMouseEnter={onMouseEnter}
-        onMouseLeave={onMouseLeave}
-        onFocus={onFocus}
-        onBlur={onBlur}
-        onClick={composeEventHandlers([onClick, handleClick])}
-        renderIcon={iconOnlyImage ? null : ButtonImageElement} // avoid doubling the icon.
-      >
-        {iconOnlyImage ?? children}
-      </IconButton>
-    );
   }
-});
+);
 
+// @ts-expect-error - `displayName` isn't typed.
 Button.displayName = 'Button';
+// @ts-expect-error - `propTypes` isn't typed.
 Button.propTypes = {
   /**
    * Specify how the button itself should be rendered.
@@ -211,6 +257,13 @@ Button.propTypes = {
   ]),
 
   /**
+   * **Experimental**: Will attempt to automatically align the tooltip. Requires
+   * React v17+
+   * @see https://github.com/carbon-design-system/carbon/issues/18714
+   */
+  autoAlign: PropTypes.bool,
+
+  /**
    * Specify the content of your Button
    */
   children: PropTypes.node,
@@ -221,7 +274,7 @@ Button.propTypes = {
   className: PropTypes.string,
 
   /**
-   * Specify the message read by screen readers for the danger button variant
+   * Specify the message read by screen readers for the danger button variants
    */
   dangerDescription: PropTypes.string,
 
@@ -259,15 +312,31 @@ Button.propTypes = {
   isExpressive: PropTypes.bool,
 
   /**
-   * Specify whether the Button is currently selected. Only applies to the Ghost variant.
+   * Specify whether the Button is currently selected. Only applies to the icon only Ghost variant.
    */
   isSelected: PropTypes.bool,
 
   /**
    * Specify the kind of Button you want to create
    */
-  // TODO: this should be either ButtonKinds or IconButtonKinds based on the value of "hasIconOnly"
-  kind: PropTypes.oneOf(ButtonKinds),
+  kind: (props, propName, componentName) => {
+    const { hasIconOnly } = props;
+    const validKinds = hasIconOnly ? IconButtonKinds : ButtonKinds;
+
+    if (props[propName] === undefined) {
+      return null;
+    }
+
+    if (!validKinds.includes(props[propName])) {
+      return new Error(
+        `Invalid prop \`${propName}\` supplied to \`${componentName}\`. Expected one of ${validKinds.join(
+          ', '
+        )}.`
+      );
+    }
+
+    return null;
+  },
 
   /**
    * Provide an optional function to be called when the button element
@@ -300,8 +369,12 @@ Button.propTypes = {
   onMouseLeave: PropTypes.func,
 
   /**
-   * Optional prop to allow overriding the icon rendering.
-   * Can be a React component class
+   * Optionally specify a `rel` when using an `<a>` element.
+   */
+  rel: PropTypes.string,
+
+  /**
+   * A component used to render an icon.
    */
   renderIcon: PropTypes.oneOfType([PropTypes.func, PropTypes.object]),
 
@@ -313,7 +386,7 @@ Button.propTypes = {
   /**
    * Specify the size of the button, from the following list of sizes:
    */
-  size: PropTypes.oneOf(['sm', 'md', 'lg', 'xl', '2xl']),
+  size: PropTypes.oneOf(['xs', 'sm', 'md', 'lg', 'xl', '2xl']),
 
   /**
    * Optional prop to specify the tabIndex of the Button
@@ -321,14 +394,30 @@ Button.propTypes = {
   tabIndex: PropTypes.number,
 
   /**
+   * Optionally specify a `target` when using an `<a>` element.
+   */
+  target: PropTypes.string,
+
+  /**
    * Specify the alignment of the tooltip to the icon-only button.
-   * Can be one of: start, center, or end.
+   * Can be one of: `start`, `center`, or `end`.
    */
   tooltipAlignment: PropTypes.oneOf(['start', 'center', 'end']),
 
   /**
+   * Enable drop shadow for tooltips for icon-only buttons.
+   */
+  tooltipDropShadow: PropTypes.bool,
+
+  /**
+   * Enable high-contrast theme for tooltips for icon-only buttons.
+   * Defaults to true.
+   */
+  tooltipHighContrast: PropTypes.bool,
+
+  /**
    * Specify the direction of the tooltip for icon-only buttons.
-   * Can be either top, right, bottom, or left.
+   * Can be either `top`, `right`, `bottom`, or `left`.
    */
   tooltipPosition: PropTypes.oneOf(['top', 'right', 'bottom', 'left']),
 

@@ -1,16 +1,14 @@
 /**
- * Copyright IBM Corp. 2016, 2023
+ * Copyright IBM Corp. 2016, 2026
  *
  * This source code is licensed under the Apache-2.0 license found in the
  * LICENSE file in the root directory of this source tree.
  */
 
-import { act, render } from '@testing-library/react';
-import { getByText } from '@carbon/test-utils/dom';
+import { act, render, fireEvent, screen } from '@testing-library/react';
 import React from 'react';
-import { Simulate } from 'react-dom/test-utils';
 import { FileUploaderButton } from '../';
-import { uploadFiles } from '../test-helpers';
+import userEvent from '@testing-library/user-event';
 
 describe('FileUploaderButton', () => {
   describe('automated accessibility tests', () => {
@@ -27,103 +25,151 @@ describe('FileUploaderButton', () => {
 
   it('should call `onClick` if the label is clicked', () => {
     const onClick = jest.fn();
-    const { container } = render(
-      <FileUploaderButton labelText="test" onClick={onClick} />
-    );
-    // eslint-disable-next-line testing-library/prefer-screen-queries
-    const label = getByText(container, 'test');
-    Simulate.click(label);
+    render(<FileUploaderButton labelText="test" onClick={onClick} />);
+    const label = screen.getByRole('button', { name: 'test' });
+    fireEvent.click(label);
     expect(onClick).toHaveBeenCalledTimes(1);
   });
 
-  it('should call `onChange` if the value of the input changes', () => {
+  it('should call `onChange` if the value of the input changes', async () => {
     const onChange = jest.fn();
-    const { container } = render(
-      <FileUploaderButton onChange={onChange} accept={['.png']} />
-    );
-    // eslint-disable-next-line testing-library/no-container, testing-library/no-node-access
-    const input = container.querySelector('input');
+    render(<FileUploaderButton onChange={onChange} accept={['.png']} />);
+
+    const input = screen.getByLabelText('Add file');
     const file = new File(['test'], 'test.png', { type: 'image/png' });
-    uploadFiles(input, file);
+
+    await userEvent.upload(input, file);
+
+    expect(onChange).toHaveBeenCalledTimes(1);
+  });
+
+  it('should not trigger multiple file dialogs when using keyboard Enter', async () => {
+    const onChange = jest.fn();
+
+    render(<FileUploaderButton onChange={onChange} labelText="Add file" />);
+
+    const button = screen.getByRole('button', { name: /add file/i });
+    const input = screen.getByLabelText(/add file/i);
+
+    // Simulate keyboard interaction
+    button.focus();
+    await userEvent.keyboard('{Enter}');
+
+    // Simulate file upload (since real dialog can't be tested)
+    const file = new File(['test'], 'test.png', { type: 'image/png' });
+    await userEvent.upload(input, file);
+
     expect(onChange).toHaveBeenCalledTimes(1);
   });
 
   it('should not support multiple files by default', () => {
-    const { container } = render(<FileUploaderButton />);
-    // eslint-disable-next-line testing-library/no-container, testing-library/no-node-access
-    const input = container.querySelector('input');
+    render(<FileUploaderButton />);
+    const input = screen.getByLabelText('Add file');
     expect(input.getAttribute('multiple')).toBeFalsy();
   });
 
   it('should have a unique id', () => {
-    const { container } = render(
+    render(
       <>
         <FileUploaderButton />
         <FileUploaderButton />
       </>
     );
-    // eslint-disable-next-line testing-library/no-container, testing-library/no-node-access
-    const inputs = container.querySelectorAll('input');
+    const inputs = screen.getAllByLabelText('Add file');
+    expect(inputs).toHaveLength(2);
     expect(inputs[0].getAttribute('id')).not.toBe(inputs[1].getAttribute('id'));
   });
 
-  it('should reset the input value when the label is clicked', () => {
-    const { container } = render(
-      <FileUploaderButton accept={['.png']} labelText="test" />
-    );
-    // eslint-disable-next-line testing-library/no-container, testing-library/no-node-access
-    const input = container.querySelector('button');
+  it('should reset the input value when the label is clicked', async () => {
+    render(<FileUploaderButton accept={['.png']} labelText="test" />);
 
-    const filename = 'test.png';
-    const file = new File(['test'], filename, { type: 'image/png' });
-    uploadFiles(input, [file]);
+    const input = screen.getByLabelText('test');
+    const file = new File(['test'], 'test.png', { type: 'image/png' });
+
+    await userEvent.upload(input, file);
 
     expect(input.files.length).toBe(1);
-    Simulate.click(input);
+
+    // Use the button text that's actually rendered
+    await userEvent.click(screen.getByRole('button'));
+
     expect(input.files.length).toBe(0);
   });
 
   it('should update the label text if it receives a new value from props', () => {
-    const container = document.createElement('div');
-    render(<FileUploaderButton labelText="test" />, { container });
-    // eslint-disable-next-line testing-library/prefer-screen-queries
-    expect(getByText(container, 'test')).toBeInstanceOf(HTMLElement);
+    const { rerender } = render(<FileUploaderButton labelText="test" />);
+    expect(screen.getByRole('button', { name: 'test' })).toBeInTheDocument();
 
-    render(<FileUploaderButton labelText="tester" />, { container });
-    // eslint-disable-next-line testing-library/prefer-screen-queries
-    expect(getByText(container, 'tester')).toBeInstanceOf(HTMLElement);
+    rerender(<FileUploaderButton labelText="tester" />);
+    expect(screen.getByRole('button', { name: 'tester' })).toBeInTheDocument();
+  });
+
+  it('should warn without throwing for interactive content in labelText', () => {
+    const spy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+
+    expect(() => {
+      render(
+        <FileUploaderButton
+          labelText={
+            <>
+              FileUploaderButton label
+              <a href="/">Help</a>
+            </>
+          }
+        />
+      );
+    }).not.toThrow();
+
+    expect(spy).toHaveBeenCalledWith(
+      expect.stringContaining(
+        'Warning: The FileUploaderButton component `labelText` prop must have no interactive content'
+      )
+    );
+
+    spy.mockRestore();
+  });
+
+  it('should allow non-interactive content in labelText', () => {
+    expect(() => {
+      render(
+        <FileUploaderButton
+          labelText={
+            <>
+              FileUploaderButton label
+              <span>additional label content</span>
+            </>
+          }
+        />
+      );
+    }).not.toThrow();
   });
 
   describe('FileUploaderButton label', () => {
-    it('should update the label when a file is selected', () => {
-      const { container } = render(
-        <FileUploaderButton accept={['.png']} labelText="test" />
-      );
-      // eslint-disable-next-line testing-library/no-container, testing-library/no-node-access
-      const input = container.querySelector('input');
-      // eslint-disable-next-line testing-library/prefer-screen-queries
-      const label = getByText(container, 'test');
-      expect(label).toBeInstanceOf(HTMLElement);
+    it('should update the label when a file is selected', async () => {
+      render(<FileUploaderButton accept={['.png']} labelText="test" />);
+
+      const input = screen.getByLabelText('test');
+
+      expect(screen.getByRole('button', { name: 'test' })).toBeInTheDocument();
 
       const filename = 'test.png';
       const file = new File(['test'], filename, { type: 'image/png' });
-      act(() => {
-        uploadFiles(input, [file]);
-      });
 
-      // eslint-disable-next-line testing-library/prefer-screen-queries
-      expect(getByText(container, filename)).toBeInstanceOf(HTMLElement);
+      await userEvent.upload(input, file);
+
+      expect(
+        screen.getByRole('button', { name: filename })
+      ).toBeInTheDocument();
     });
 
-    it('should update the label when multiple files are selected', () => {
-      const { container } = render(
+    it('should update the label when multiple files are selected', async () => {
+      render(
         <FileUploaderButton accept={['.png']} labelText="test" multiple />
       );
-      // eslint-disable-next-line testing-library/no-container, testing-library/no-node-access
-      const input = container.querySelector('input');
-      // eslint-disable-next-line testing-library/prefer-screen-queries
-      const label = getByText(container, 'test');
-      expect(label).toBeInstanceOf(HTMLElement);
+
+      const input = screen.getByLabelText('test');
+
+      expect(screen.getByRole('button', { name: 'test' })).toBeInTheDocument();
 
       const files = [
         new File(['test-1'], 'test-1.png', { type: 'image/png' }),
@@ -131,35 +177,32 @@ describe('FileUploaderButton', () => {
         new File(['test-3'], 'test-1.png', { type: 'image/png' }),
       ];
 
-      act(() => {
-        uploadFiles(input, files);
-      });
-      // eslint-disable-next-line testing-library/prefer-screen-queries
-      expect(getByText(container, `${files.length} files`)).toBeInstanceOf(
-        HTMLElement
-      );
+      await userEvent.upload(input, files);
+
+      expect(
+        screen.getByRole('button', { name: `${files.length} files` })
+      ).toBeInTheDocument();
     });
 
-    it('should not update the label when files are selected but `disableLabelChanges` is false', () => {
-      const { container } = render(
+    it('should not update the label when files are selected but `disableLabelChanges` is false', async () => {
+      render(
         <FileUploaderButton
           accept={['.png']}
           labelText="test"
           disableLabelChanges
         />
       );
-      // eslint-disable-next-line testing-library/no-container, testing-library/no-node-access
-      const input = container.querySelector('input');
-      // eslint-disable-next-line testing-library/prefer-screen-queries
-      const label = getByText(container, 'test');
-      expect(label).toBeInstanceOf(HTMLElement);
+
+      const input = screen.getByLabelText('test');
+
+      expect(screen.getByRole('button', { name: 'test' })).toBeInTheDocument();
 
       const filename = 'test.png';
       const file = new File(['test'], filename, { type: 'image/png' });
-      uploadFiles(input, [file]);
 
-      // eslint-disable-next-line testing-library/prefer-screen-queries
-      expect(getByText(container, 'test')).toBeInstanceOf(HTMLElement);
+      await userEvent.upload(input, file);
+
+      expect(screen.getByRole('button', { name: 'test' })).toBeInTheDocument();
     });
   });
 });

@@ -1,15 +1,11 @@
 /**
- * Copyright IBM Corp. 2023
+ * Copyright IBM Corp. 2023, 2026
  *
  * This source code is licensed under the Apache-2.0 license found in the
  * LICENSE file in the root directory of this source tree.
  */
 
-import React from 'react';
-import { action } from '@storybook/addon-actions';
-
-import { ArrowsVertical } from '@carbon/icons-react';
-
+import React, { useRef, useEffect } from 'react';
 import {
   MenuItem,
   MenuItemDivider,
@@ -17,14 +13,89 @@ import {
   MenuItemRadioGroup,
   MenuItemSelectable,
 } from '../Menu';
-
-import { OverflowMenu } from './';
-import mdx from './next/OverflowMenu.mdx';
-
+import { OverflowMenu } from './next';
 import { WithFeatureFlags } from '../../../.storybook/templates/WithFeatureFlags';
+import { FeatureFlags } from '../FeatureFlags';
+
+const args = {
+  disabled: false,
+  label: 'Options',
+  menuAlignment: 'bottom-start',
+  size: 'md',
+  tooltipAlignment: 'top',
+  tooltipDefaultOpen: false,
+  tooltipEnterDelayMs: 100,
+  tooltipLeaveDelayMs: 100,
+};
+
+const tooltipAlignmentOptions = [
+  'top',
+  'top-start',
+  'top-end',
+  'bottom',
+  'bottom-start',
+  'bottom-end',
+  'left',
+  'left-start',
+  'left-end',
+  'right',
+  'right-start',
+  'right-end',
+];
+
+const argTypes = {
+  autoAlign: {
+    control: { type: 'boolean' },
+    description:
+      'Will attempt to automatically align the menu with the trigger button to avoid collisions with the viewport',
+  },
+  disabled: {
+    control: { type: 'boolean' },
+    description: 'Specify whether the trigger button should be disabled',
+  },
+  label: {
+    control: { type: 'text' },
+  },
+  menuAlignment: {
+    options: ['bottom-start', 'bottom-end', 'top-start', 'top-end'],
+    control: { type: 'select' },
+    description:
+      'Specify how the menu should align with the trigger button `bottom-start` `bottom-end` `top-start` `top-end`',
+  },
+  size: {
+    options: ['xs', 'sm', 'md', 'lg'],
+    control: { type: 'select' },
+  },
+  tooltipAlignment: {
+    options: tooltipAlignmentOptions,
+    control: { type: 'select' },
+    description:
+      'Specify how the tooltip on the trigger button should be aligned',
+  },
+  tooltipAutoAlign: {
+    control: { type: 'boolean' },
+    description:
+      'Will attempt to automatically align the tooltip on the trigger button to avoid collisions with the viewport',
+  },
+  tooltipDefaultOpen: {
+    control: { type: 'boolean' },
+    description:
+      'Specify whether the tooltip on the trigger button should be open when it first renders',
+  },
+  tooltipEnterDelayMs: {
+    control: { type: 'number' },
+    description:
+      'Specify the duration in milliseconds to delay before displaying the tooltip on the trigger button',
+  },
+  tooltipLeaveDelayMs: {
+    control: { type: 'number' },
+    description:
+      'Specify the duration in milliseconds to delay before hiding the tooltip on the trigger button',
+  },
+};
 
 export default {
-  title: 'Experimental/Feature Flags/OverflowMenu',
+  title: 'Components/OverflowMenu/Feature Flag',
   component: OverflowMenu,
   subcomponents: {
     MenuItem,
@@ -33,11 +104,7 @@ export default {
     MenuItemRadioGroup,
     MenuItemDivider,
   },
-  parameters: {
-    docs: {
-      page: mdx,
-    },
-  },
+  tags: ['!autodocs'],
   decorators: [
     (Story) => (
       <WithFeatureFlags>
@@ -45,61 +112,88 @@ export default {
       </WithFeatureFlags>
     ),
   ],
+  args,
+  argTypes,
+  parameters: {
+    controls: {
+      exclude: ['renderIcon', 'menuTarget'],
+    },
+  },
 };
 
-export const _OverflowMenu = () => {
-  const onClick = action('onClick (MenuItem)');
+export const AutoAlign = (args) => {
+  const ref = useRef();
+
+  useEffect(() => {
+    ref?.current?.scrollIntoView({ block: 'center', inline: 'center' });
+  });
 
   return (
-    <OverflowMenu>
-      <MenuItem label="Stop app" onClick={onClick} />
-      <MenuItem label="Restart app" onClick={onClick} />
-      <MenuItem label="Rename app" onClick={onClick} />
-      <MenuItem label="Edit routes and access" onClick={onClick} />
-      <MenuItemDivider />
-      <MenuItem label="Delete app" kind="danger" onClick={onClick} />
-    </OverflowMenu>
+    <div style={{ width: '4900px', height: '4900px' }}>
+      <div
+        style={{
+          position: 'absolute',
+          top: '2450px',
+          left: '2450px',
+        }}
+        ref={ref}>
+        <OverflowMenu {...args}>
+          <MenuItem label="Stop app" />
+          <MenuItem label="Restart app" />
+          <MenuItem label="Rename app" />
+          <MenuItem label="Edit routes and access" />
+          <MenuItemDivider />
+          <MenuItem label="Delete app" kind="danger" />
+        </OverflowMenu>
+      </div>
+    </div>
   );
 };
 
-export const Nested = () => {
-  return (
-    <OverflowMenu>
-      <MenuItem label="Level 1" />
-      <MenuItem label="Level 1" />
-      <MenuItem label="Level 1">
-        <MenuItem label="Level 2" />
-        <MenuItem label="Level 2" />
-        <MenuItem label="Level 2" />
-      </MenuItem>
-      <MenuItem label="Level 1" />
-    </OverflowMenu>
-  );
+AutoAlign.args = {
+  autoAlign: true,
 };
 
-export const CustomIcon = () => {
+AutoAlign.argTypes = {
+  autoAlign: {
+    table: { readonly: true },
+  },
+};
+
+export const Nested = (args) => {
   return (
-    <OverflowMenu renderIcon={ArrowsVertical}>
-      <MenuItemRadioGroup
-        label="Sort by"
-        items={['Name', 'Date created', 'Date last modified', 'Size']}
-        defaultSelectedItem="Date created"
-      />
-      <MenuItemDivider />
-      <MenuItemRadioGroup
-        label="Sorting direction"
-        items={['Ascending', 'Descending']}
-        defaultSelectedItem="Descending"
-      />
-    </OverflowMenu>
+    <FeatureFlags
+      flags={{
+        'enable-v12-overflowmenu': true,
+        'enable-v12-dynamic-floating-styles': false,
+      }}>
+      <OverflowMenu {...args}>
+        <MenuItem label="Level 1" />
+        <MenuItem label="Level 1" />
+        <MenuItem label="Level 1">
+          <MenuItem label="Level 2">
+            <MenuItem label="Level 3" />
+            <MenuItem label="Level 3">
+              <MenuItem label="Level 4" />
+            </MenuItem>
+          </MenuItem>
+          <MenuItem label="Level 2" />
+          <MenuItem label="Level 2" />
+        </MenuItem>
+        <MenuItem label="Level 1" />
+      </OverflowMenu>
+    </FeatureFlags>
   );
 };
 
 export const WithMenuAlignment = (args) => {
+  const { autoAlign, label, size } = args;
+  const menuArgs = { autoAlign, label, size };
+
   return (
     <>
       <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-        <OverflowMenu {...args} menuAlignment="bottom-start">
+        <OverflowMenu {...menuArgs} menuAlignment="bottom-start">
           <MenuItem label="Stop app" />
           <MenuItem label="Restart app" />
           <MenuItem label="Rename app" />
@@ -108,7 +202,7 @@ export const WithMenuAlignment = (args) => {
           <MenuItem label="Delete app" kind="danger" />
         </OverflowMenu>
 
-        <OverflowMenu {...args} menuAlignment="bottom-end">
+        <OverflowMenu {...menuArgs} menuAlignment="bottom-end">
           <MenuItem label="Stop app" />
           <MenuItem label="Restart app" />
           <MenuItem label="Rename app" />
@@ -125,7 +219,7 @@ export const WithMenuAlignment = (args) => {
           justifyContent: 'space-between',
         }}>
         <OverflowMenu
-          {...args}
+          {...menuArgs}
           menuAlignment="top-start"
           tooltipAlignment="bottom">
           <MenuItem label="Stop app" />
@@ -137,7 +231,7 @@ export const WithMenuAlignment = (args) => {
         </OverflowMenu>
 
         <OverflowMenu
-          {...args}
+          {...menuArgs}
           menuAlignment="top-end"
           tooltipAlignment="bottom">
           <MenuItem label="Stop app" />
@@ -152,7 +246,28 @@ export const WithMenuAlignment = (args) => {
   );
 };
 
-export const Playground = (args) => {
+WithMenuAlignment.parameters = {
+  controls: {
+    include: ['autoAlign', 'label', 'size'],
+  },
+};
+
+export const FloatingStyles = (args) => {
+  return (
+    <div>
+      <OverflowMenu {...args}>
+        <MenuItem label="Stop app" />
+        <MenuItem label="Restart app" />
+        <MenuItem label="Rename app" />
+        <MenuItem label="Edit routes and access" />
+        <MenuItemDivider />
+        <MenuItem label="Delete app" kind="danger" />
+      </OverflowMenu>
+    </div>
+  );
+};
+
+export const Default = (args) => {
   return (
     <OverflowMenu {...args}>
       <MenuItem label="Stop app" />
@@ -163,33 +278,4 @@ export const Playground = (args) => {
       <MenuItem label="Delete app" kind="danger" />
     </OverflowMenu>
   );
-};
-
-Playground.args = {
-  label: 'Options',
-};
-
-Playground.argTypes = {
-  children: {
-    table: {
-      disable: true,
-    },
-  },
-  className: {
-    table: {
-      disable: true,
-    },
-  },
-  renderIcon: {
-    table: {
-      disable: true,
-    },
-  },
-  menuAlignment: {
-    options: ['bottom-start', 'bottom-end', 'top-start', 'top-end'],
-    control: { type: 'select' },
-    description:
-      'Specify how the menu should align with the button element `bottom-start` `bottom-end` `top-start` `top-end`',
-    default: 'bottom-start',
-  },
 };

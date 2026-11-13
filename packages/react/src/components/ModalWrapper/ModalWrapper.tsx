@@ -1,5 +1,5 @@
 /**
- * Copyright IBM Corp. 2016, 2023
+ * Copyright IBM Corp. 2016, 2026
  *
  * This source code is licensed under the Apache-2.0 license found in the
  * LICENSE file in the root directory of this source tree.
@@ -14,7 +14,7 @@ import { ButtonKinds } from '../Button';
 import { noopFn } from '../../internal/noopFn';
 import { keys, match } from '../../internal/keyboard';
 
-interface ModalWrapperProps {
+export interface ModalWrapperProps {
   buttonTriggerClassName?: string;
   buttonTriggerText?: ReactNode;
   children?: ReactNode;
@@ -45,17 +45,21 @@ interface ModelWrapperState {
 }
 
 let didWarnAboutDeprecation = false;
+const isDev = process.env.NODE_ENV !== 'production';
 
 export default class ModalWrapper extends React.Component<
   ModalWrapperProps,
   ModelWrapperState
 > {
-  if(__DEV__) {
-    warning(
-      didWarnAboutDeprecation,
-      '`<ModalWrapper>` has been deprecated in favor of `<ComposedModal/>` and will be removed in the next major version, `@carbon/react@v2.x`'
-    );
-    didWarnAboutDeprecation = true;
+  constructor(props: ModalWrapperProps) {
+    super(props);
+    if (isDev) {
+      warning(
+        didWarnAboutDeprecation,
+        '`<ModalWrapper>` has been deprecated in favor of `<ComposedModal/>` and will be removed in the next major version, `@carbon/react@v2.x`'
+      );
+      didWarnAboutDeprecation = true;
+    }
   }
 
   static propTypes = {
@@ -139,10 +143,10 @@ export default class ModalWrapper extends React.Component<
       triggerButtonIconDescription = 'Provide icon description if icon is used',
       triggerButtonKind = 'primary',
       disabled = false,
-      handleSubmit, // eslint-disable-line @typescript-eslint/no-unused-vars
-      shouldCloseAfterSubmit = true, // eslint-disable-line @typescript-eslint/no-unused-vars
+      handleSubmit,
+      shouldCloseAfterSubmit,
       selectorPrimaryFocus = '[data-modal-primary-focus]',
-      preventCloseOnClickOutside = false, // eslint-disable-line @typescript-eslint/no-unused-vars
+      preventCloseOnClickOutside,
       ...other
     } = this.props;
 

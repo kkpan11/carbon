@@ -1,5 +1,5 @@
 /**
- * Copyright IBM Corp. 2023
+ * Copyright IBM Corp. 2023, 2026
  *
  * This source code is licensed under the Apache-2.0 license found in the
  * LICENSE file in the root directory of this source tree.
@@ -9,19 +9,43 @@ import React from 'react';
 
 import { Accordion, AccordionItem } from '../Accordion';
 import Button from '../Button';
+import Tag from '../Tag';
 import { HStack, VStack } from '../Stack';
 import { TextInput } from '../TextInput';
 
 import { Layout, LayoutConstraint } from './';
 import mdx from './Layout.mdx';
 
+const args = {
+  density: 'normal',
+  size: 'md',
+};
+
+const argTypes = {
+  density: {
+    control: 'radio',
+    description: 'Specify the density of components within the layout context.',
+    options: ['condensed', 'normal'],
+  },
+  size: {
+    control: 'select',
+    description: 'Specify the size of components within the layout context.',
+    options: ['xs', 'sm', 'md', 'lg', 'xl', '2xl'],
+  },
+};
+
 export default {
-  title: 'Experimental/unstable__Layout',
+  title: 'Preview/preview__Layout',
   component: Layout,
   subcomponents: {
     LayoutConstraint,
   },
+  args,
+  argTypes,
   parameters: {
+    controls: {
+      include: ['density', 'size'],
+    },
     docs: {
       page: mdx,
     },
@@ -35,6 +59,9 @@ const Demo = () => (
       <div style={{ display: 'flex', alignItems: 'flex-end' }}>
         <Button>&lt;Button /&gt;</Button>
       </div>
+      <div style={{ display: 'flex', alignItems: 'flex-end' }}>
+        <Tag>&lt;Tag /&gt;</Tag>
+      </div>
       <TextInput
         labelText='<TextInput size="sm" />'
         size="sm"
@@ -43,6 +70,9 @@ const Demo = () => (
       <div style={{ display: 'flex', alignItems: 'flex-end' }}>
         <Button size="sm">&lt;Button size=&quot;sm&quot; /&gt;</Button>
       </div>
+      <div style={{ display: 'flex', alignItems: 'flex-end' }}>
+        <Tag size="sm">&lt;Tag size&quot;sm&quot; /&gt;</Tag>
+      </div>
     </HStack>
     <Accordion>
       <AccordionItem title="<AccordionItem />">Content</AccordionItem>
@@ -50,7 +80,7 @@ const Demo = () => (
   </VStack>
 );
 
-export const Playground = (args) => {
+export const Default = (args) => {
   return (
     <VStack gap={10}>
       <h1>Layout demo</h1>

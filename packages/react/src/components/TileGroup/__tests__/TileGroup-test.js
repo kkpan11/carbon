@@ -1,13 +1,14 @@
 /**
- * Copyright IBM Corp. 2022
+ * Copyright IBM Corp. 2022, 2026
  *
  * This source code is licensed under the Apache-2.0 license found in the
  * LICENSE file in the root directory of this source tree.
  */
 
 import React from 'react';
-import TileGroup from '../TileGroup';
+import { TileGroup } from '../TileGroup';
 import RadioTile from '../../RadioTile/RadioTile';
+import Button from '../../Button';
 import userEvent from '@testing-library/user-event';
 import { render, screen } from '@testing-library/react';
 import { FeatureFlags } from '../../FeatureFlags';
@@ -44,12 +45,7 @@ describe('TileGroup', () => {
         </TileGroup>
       );
 
-      const fieldset = screen
-        .getByText('TestGroup', {
-          selector: 'legend',
-        })
-        // eslint-disable-next-line testing-library/no-node-access
-        .closest('fieldset');
+      const fieldset = screen.getByRole('group', { name: 'TestGroup' });
       expect(fieldset).toContainElement(screen.getByDisplayValue('test-1'));
       expect(fieldset).toContainElement(screen.getByDisplayValue('test-2'));
     });
@@ -94,6 +90,39 @@ describe('TileGroup', () => {
       expect(screen.getByDisplayValue('test-2')).toBeRequired();
     });
 
+    it('should handle non-RadioTile (null) children', async () => {
+      const ToggleableRadioTiles = () => {
+        const [showSecondTile, setShowSecondTile] = React.useState(true);
+        return (
+          <>
+            <Button onClick={() => setShowSecondTile(!showSecondTile)}>
+              Toggle second tile
+            </Button>
+
+            <TileGroup defaultSelected="test-1" legend="TestGroup" name="test">
+              <RadioTile id="test-1" value="test-1">
+                Option 1
+              </RadioTile>
+              {showSecondTile && (
+                <RadioTile id="test-2" value="test-2">
+                  Option 2
+                </RadioTile>
+              )}
+            </TileGroup>
+          </>
+        );
+      };
+      render(<ToggleableRadioTiles />);
+
+      expect(screen.getByDisplayValue('test-1')).toBeVisible();
+      expect(screen.getByDisplayValue('test-2')).toBeVisible();
+
+      await userEvent.click(screen.getByRole('button'));
+
+      expect(screen.getByDisplayValue('test-1')).toBeVisible();
+      expect(screen.queryByDisplayValue('test-2')).not.toBeInTheDocument();
+    });
+
     it('should support a custom `className` on the outermost element', () => {
       const { container } = render(
         <TileGroup
@@ -129,13 +158,30 @@ describe('TileGroup', () => {
         </TileGroup>
       );
 
-      const fieldset = screen
-        .getByText('TestGroup', {
-          selector: 'legend',
-        })
-        // eslint-disable-next-line testing-library/no-node-access
-        .closest('fieldset');
+      const fieldset = screen.getByRole('group', { name: 'TestGroup' });
       expect(fieldset).toBeDisabled();
+    });
+
+    it('should support passing in aria-label to the <fieldset>', () => {
+      render(
+        <TileGroup
+          aria-label="Radio tile options"
+          defaultSelected="test-1"
+          name="test">
+          <RadioTile id="test-1" value="test-1">
+            Option 1
+          </RadioTile>
+          <RadioTile id="test-2" value="test-2">
+            Option 2
+          </RadioTile>
+        </TileGroup>
+      );
+
+      expect(
+        screen.getByRole('group', {
+          name: 'Radio tile options',
+        })
+      ).toBeInTheDocument();
     });
 
     it('should support `defaultSelected` as a way to select a radio button', () => {
@@ -164,10 +210,7 @@ describe('TileGroup', () => {
     //Feature flag : enable-v12-tile-radio-icons
     it('should keep radio unselected if no `defaultSelected` is provided', () => {
       render(
-        <FeatureFlags
-          flags={{
-            'enable-v12-tile-radio-icons': true,
-          }}>
+        <FeatureFlags enableV12TileRadioIcons>
           <TileGroup legend="TestGroup" name="test">
             <RadioTile id="test-1" value="test-1">
               Option 1

@@ -5,9 +5,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-'use strict';
-
-const { default: babelJest } = require('babel-jest');
+import babelJest from 'babel-jest';
 const { createTransformer } = babelJest;
 
 const babelOptions = {
@@ -20,20 +18,37 @@ const babelOptions = {
         },
       },
     ],
-    '@babel/preset-react',
-    '@babel/preset-typescript',
+    () => ({
+      plugins: ['@babel/plugin-transform-class-properties'],
+    }),
+    [
+      '@babel/preset-typescript',
+      // Babel 8 defaults this to true, which keeps `import { Type }` as a
+      // runtime require. Carbon does not use verbatimModuleSyntax.
+      { onlyRemoveTypeImports: false },
+    ],
+  ],
+  // Skip JSX parsing on `.ts` files so generic params like `<T>` are not
+  // treated as JSX. Babel 8's preset-react default runtime is `"automatic"`;
+  // keep `"classic"` (`React.createElement`) for Carbon's existing output.
+  overrides: [
+    {
+      test: /\.(js|jsx|tsx)$/,
+      presets: [
+        [
+          '@babel/preset-react',
+          {
+            runtime: 'classic',
+          },
+        ],
+      ],
+    },
   ],
   plugins: [
-    '@babel/plugin-proposal-class-properties',
     '@babel/plugin-proposal-export-default-from',
-    '@babel/plugin-proposal-export-namespace-from',
-    [
-      '@babel/plugin-transform-runtime',
-      {
-        regenerator: true,
-      },
-    ],
+    '@babel/plugin-transform-export-namespace-from',
+    '@babel/plugin-transform-runtime',
   ],
 };
 
-module.exports = createTransformer(babelOptions);
+export default createTransformer(babelOptions);

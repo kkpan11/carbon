@@ -1,5 +1,19 @@
-import { ArgsTable, Canvas, Story } from '@storybook/blocks';
+import { ArgTypes, Canvas, Meta } from '@storybook/addon-docs/blocks';
 import * as PopoverStories from './Popover.stories';
+import { stackblitzPrefillConfig } from '../../../previewer/codePreviewer';
+
+export const prefixDef = `const prefix = 'cds';`;
+export const checkboxIconImport = `import { Checkbox as CheckboxIcon } from '@carbon/icons-react';`;
+export const useOpenStateDef = `const useOpenState = (open) => {
+  const [isOpen, setIsOpen] = useState(open);
+
+useEffect(() => { setIsOpen(open); }, [open]);
+
+return [isOpen, setIsOpen]; };`; export const autoAlignStoryContainerStyleDef = `const
+autoAlignStoryContainerStyle = { display: 'grid', placeItems: 'center', width: '200vw',
+minWidth: '1200px', height: '200vh', minHeight: '1200px', };`;
+
+<Meta isTemplate />
 
 # Popover
 
@@ -7,12 +21,16 @@ import * as PopoverStories from './Popover.stories';
 &nbsp;|&nbsp;
 [Usage guidelines](https://www.carbondesignsystem.com/components/popover/usage)
 &nbsp;|&nbsp;
+[Accessibility](https://www.carbondesignsystem.com/components/popover/accessibility)
 
 {/* <!-- START doctoc generated TOC please keep comment here to allow auto update --> <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE --> */}
 
 ## Table of Contents
 
 - [Overview](#overview)
+- [Visibility](#visibility)
+- [Alignment](#alignment)
+- [Appearance](#appearance)
 - [Component API](#component-api)
 - [Feedback](#feedback)
 
@@ -21,8 +39,7 @@ import * as PopoverStories from './Popover.stories';
 ## Overview
 
 `Popover` is a primitive component used to build custom components which render
-over other elements on the page. For example, `Popover` is used to build our
-popover components in Carbon.
+over other elements on the page.
 
 The `Popover` component accepts two items as `children`: a trigger element and a
 `PopoverContent` component which contains the content to be rendered inside of
@@ -52,6 +69,22 @@ function CustomComponent() {
 }
 ```
 
+<Canvas
+  of={PopoverStories.Default}
+  additionalActions={[
+    {
+      title: 'Open in Stackblitz',
+      onClick: () =>
+        stackblitzPrefillConfig({
+          story: PopoverStories.Default,
+          customImports: [checkboxIconImport],
+          customFunctionDefs: [useOpenStateDef],
+          styles: PopoverStories.default.parameters.styles,
+        }),
+    },
+  ]}
+/>
+
 ## Visibility
 
 The `open` prop allows you to control the visibility of the `Popover`. This is
@@ -65,9 +98,20 @@ clicks outside of a popover will close the popover. This is achieved by using
 state in conjunction with the callback prop to set `open` to false when
 `onRequestClose` is called.
 
-<Canvas>
-  <Story of={PopoverStories.TabTip} />
-</Canvas>
+<Canvas
+  of={PopoverStories.TabTip}
+  additionalActions={[
+    {
+      title: 'Open in Stackblitz',
+      onClick: () =>
+        stackblitzPrefillConfig({
+          story: PopoverStories.TabTip,
+          customFunctionDefs: [prefixDef, useOpenStateDef],
+          styles: PopoverStories.default.parameters.styles,
+        }),
+    },
+  ]}
+/>
 
 ## Alignment
 
@@ -88,6 +132,60 @@ or right edges of the popover.
 If you are using `align="left"` or `align="right"`, you can use `top` or
 `bottom` to control this alignment.
 
+<Canvas
+  of={PopoverStories.ExperimentalAutoAlign}
+  additionalActions={[
+    {
+      title: 'Open in Stackblitz',
+      onClick: () =>
+        stackblitzPrefillConfig({
+          story: PopoverStories.ExperimentalAutoAlign,
+          customImports: [checkboxIconImport],
+          customFunctionDefs: [
+            autoAlignStoryContainerStyleDef,
+            useOpenStateDef,
+          ],
+          styles: PopoverStories.default.parameters.styles,
+        }),
+    },
+  ]}
+/>
+
+<Canvas
+  of={PopoverStories.ExperimentalAutoAlignBoundary}
+  additionalActions={[
+    {
+      title: 'Open in Stackblitz',
+      onClick: () =>
+        stackblitzPrefillConfig({
+          story: PopoverStories.ExperimentalAutoAlignBoundary,
+          customImports: [checkboxIconImport],
+          customFunctionDefs: [useOpenStateDef],
+          styles: PopoverStories.default.parameters.styles,
+        }),
+    },
+  ]}
+/>
+
+<Canvas
+  of={PopoverStories.TabTipExperimentalAutoAlign}
+  additionalActions={[
+    {
+      title: 'Open in Stackblitz',
+      onClick: () =>
+        stackblitzPrefillConfig({
+          story: PopoverStories.TabTipExperimentalAutoAlign,
+          customImports: [checkboxIconImport],
+          customFunctionDefs: [
+            autoAlignStoryContainerStyleDef,
+            useOpenStateDef,
+          ],
+          styles: PopoverStories.default.parameters.styles,
+        }),
+    },
+  ]}
+/>
+
 ## Appearance
 
 The `Popover` component has several props which you can use to customize its
@@ -97,10 +195,12 @@ appearance, including:
   beside the trigger element
 - `dropShadow`: to display a drop shadow on the popover content
 - `highContrast`: to display a high contrast variant of the popover
+- `border`: to display a border on the popover
+- `backgroundToken`: to change the token for the color of the background
 
 ## Component API
 
-<ArgsTable />
+<ArgTypes />
 
 ## Feedback
 

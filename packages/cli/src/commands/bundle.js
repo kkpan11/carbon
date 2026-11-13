@@ -1,19 +1,17 @@
 /**
- * Copyright IBM Corp. 2019, 2023
+ * Copyright IBM Corp. 2019, 2025
  *
  * This source code is licensed under the Apache-2.0 license found in the
  * LICENSE file in the root directory of this source tree.
  */
 
-'use strict';
-
-const path = require('path');
-const { createLogger } = require('../logger');
-const bundlers = require('./bundle/bundlers');
+import path from 'path';
+import { createLogger } from '../logger.js';
+import bundlers from './bundle/bundlers.js';
 
 const logger = createLogger('bundle');
 
-async function bundle({ entrypoint, name, globals }) {
+async function bundle({ entrypoint, name, globals, dts }) {
   logger.start('bundle');
 
   const cwd = process.cwd();
@@ -31,6 +29,7 @@ async function bundle({ entrypoint, name, globals }) {
     await bundle(path.join(cwd, entrypoint), {
       name,
       globals,
+      dts,
     });
   } catch (error) {
     logger.info(`Unexpected error occurred while bundling ${entrypoint}:`);
@@ -41,27 +40,30 @@ async function bundle({ entrypoint, name, globals }) {
   logger.stop();
 }
 
-module.exports = {
-  command: 'bundle <entrypoint>',
-  desc: 'bundle the given .js entrypoint',
-  builder(yargs) {
-    yargs.positional('entrypoint', {
-      type: 'string',
-      describe: 'the entrypoint Javascript file',
-    });
+export const builder = (yargs) => {
+  yargs.positional('entrypoint', {
+    type: 'string',
+    describe: 'the entrypoint Javascript file',
+  });
 
-    yargs.options({
-      n: {
-        alias: 'name',
-        describe: 'the name of the module for the UMD build',
-        type: 'string',
-      },
-      g: {
-        alias: 'globals',
-        describe: 'global module names',
-        type: 'string',
-      },
-    });
-  },
-  handler: bundle,
+  yargs.options({
+    n: {
+      alias: 'name',
+      describe: 'the name of the module for the UMD build',
+      type: 'string',
+    },
+    g: {
+      alias: 'globals',
+      describe: 'global module names',
+      type: 'string',
+    },
+    dts: {
+      describe: 'emit TypeScript declaration files',
+      type: 'boolean',
+      default: false,
+    },
+  });
 };
+export const command = 'bundle <entrypoint>';
+export const desc = 'bundle the given .js entrypoint';
+export const handler = bundle;

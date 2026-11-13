@@ -1,20 +1,21 @@
 /**
- * Copyright IBM Corp. 2016, 2023
+ * Copyright IBM Corp. 2016, 2025
  *
  * This source code is licensed under the Apache-2.0 license found in the
  * LICENSE file in the root directory of this source tree.
  */
 
-import React, { useState, useRef } from 'react';
+import React, { useState } from 'react';
 import ReactDOM from 'react-dom';
-import { action } from '@storybook/addon-actions';
+import { action } from 'storybook/actions';
 import Modal from './Modal';
 import Button from '../Button';
 import Select from '../Select';
-import MultiSelect from '../MultiSelect';
+import { MultiSelect } from '../MultiSelect';
 import Dropdown from '../Dropdown';
 import SelectItem from '../SelectItem';
 import TextInput from '../TextInput';
+import ComboBox from '../ComboBox';
 import mdx from './Modal.mdx';
 import {
   StructuredListWrapper,
@@ -23,6 +24,18 @@ import {
   StructuredListRow,
   StructuredListCell,
 } from '../StructuredList';
+import TextArea from '../TextArea';
+import { AILabel, AILabelContent, AILabelActions } from '../AILabel';
+import { IconButton } from '../IconButton';
+import { View, FolderOpen, Folders } from '@carbon/icons-react';
+import Checkbox from '../Checkbox';
+import CheckboxGroup from '../CheckboxGroup';
+
+const buttons = {
+  'One (1)': '1',
+  'Two (2)': '2',
+  'Three (3)': '3',
+};
 
 export default {
   title: 'Components/Modal',
@@ -32,154 +45,44 @@ export default {
       page: mdx,
     },
   },
+  argTypes: {
+    'aria-label': {
+      control: 'text',
+    },
+    modalHeading: {
+      control: 'text',
+    },
+    modalLabel: {
+      control: 'text',
+    },
+    dangerDescription: {
+      control: 'text',
+    },
+    numberOfButtons: {
+      description: 'Count of Footer Buttons',
+      options: Object.keys(buttons),
+      mapping: buttons,
+      control: {
+        type: 'inline-radio',
+        labels: Object.keys(buttons),
+      },
+    },
+    onKeyDown: {
+      action: 'onKeyDown',
+    },
+    onRequestSubmit: {
+      action: 'onRequestSubmit',
+    },
+
+    preventCloseOnClickOutside: {
+      control: 'boolean',
+    },
+    primaryButtonText: {
+      control: 'text',
+    },
+  },
 };
 
-export const Default = () => {
-  const [open, setOpen] = useState(true);
-  return (
-    <>
-      <Button onClick={() => setOpen(true)}>Launch modal</Button>
-      <Modal
-        open={open}
-        onRequestClose={() => setOpen(false)}
-        modalHeading="Add a custom domain"
-        modalLabel="Account resources"
-        primaryButtonText="Add"
-        secondaryButtonText="Cancel">
-        <p style={{ marginBottom: '1rem' }}>
-          Custom domains direct requests for your apps in this Cloud Foundry
-          organization to a URL that you own. A custom domain can be a shared
-          domain, a shared subdomain, or a shared domain and host.
-        </p>
-        <TextInput
-          data-modal-primary-focus
-          id="text-input-1"
-          labelText="Domain name"
-          placeholder="e.g. github.com"
-          style={{ marginBottom: '1rem' }}
-        />
-        <Select id="select-1" defaultValue="us-south" labelText="Region">
-          <SelectItem value="us-south" text="US South" />
-          <SelectItem value="us-east" text="US East" />
-        </Select>
-        <Dropdown
-          id="drop"
-          label="Dropdown"
-          titleText="Dropdown"
-          items={[
-            { id: 'one', label: 'one', name: 'one' },
-            { id: 'two', label: 'two', name: 'two' },
-          ]}
-        />
-        <MultiSelect
-          id="test"
-          label="Multiselect"
-          titleText="Multiselect"
-          items={[
-            {
-              id: 'downshift-1-item-0',
-              text: 'Option 1',
-            },
-            {
-              id: 'downshift-1-item-1',
-              text: 'Option 2',
-            },
-          ]}
-          itemToString={(item) => (item ? item.text : '')}
-        />
-      </Modal>
-    </>
-  );
-};
-
-export const FullWidth = () => {
-  const [open, setOpen] = useState(true);
-  return (
-    <>
-      <Button onClick={() => setOpen(true)}>Launch modal</Button>
-      <Modal
-        open={open}
-        onRequestClose={() => setOpen(false)}
-        isFullWidth
-        modalHeading="Full Width Modal"
-        modalLabel="An example of a modal with no padding"
-        primaryButtonText="Add"
-        secondaryButtonText="Cancel">
-        <StructuredListWrapper>
-          <StructuredListHead>
-            <StructuredListRow head>
-              <StructuredListCell head noWrap>
-                Column A
-              </StructuredListCell>
-              <StructuredListCell head noWrap>
-                Column B
-              </StructuredListCell>
-              <StructuredListCell head noWrap>
-                Column C
-              </StructuredListCell>
-            </StructuredListRow>
-          </StructuredListHead>
-          <StructuredListBody>
-            <StructuredListRow>
-              <StructuredListCell noWrap>Row 1</StructuredListCell>
-              <StructuredListCell>Row 1</StructuredListCell>
-              <StructuredListCell>
-                Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nunc
-                dui magna, finibus id tortor sed, aliquet bibendum augue. Aenean
-                posuere sem vel euismod dignissim. Nulla ut cursus dolor.
-                Pellentesque vulputate nisl a porttitor interdum.
-              </StructuredListCell>
-            </StructuredListRow>
-            <StructuredListRow>
-              <StructuredListCell noWrap>Row 2</StructuredListCell>
-              <StructuredListCell>Row 2</StructuredListCell>
-              <StructuredListCell>
-                Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nunc
-                dui magna, finibus id tortor sed, aliquet bibendum augue. Aenean
-                posuere sem vel euismod dignissim. Nulla ut cursus dolor.
-                Pellentesque vulputate nisl a porttitor interdum.
-              </StructuredListCell>
-            </StructuredListRow>
-            <StructuredListRow>
-              <StructuredListCell noWrap>Row 3</StructuredListCell>
-              <StructuredListCell>Row 3</StructuredListCell>
-              <StructuredListCell>
-                Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nunc
-                dui magna, finibus id tortor sed, aliquet bibendum augue. Aenean
-                posuere sem vel euismod dignissim. Nulla ut cursus dolor.
-                Pellentesque vulputate nisl a porttitor interdum.
-              </StructuredListCell>
-            </StructuredListRow>
-          </StructuredListBody>
-        </StructuredListWrapper>
-      </Modal>
-    </>
-  );
-};
-
-export const DangerModal = () => {
-  const [open, setOpen] = useState(true);
-  return (
-    <>
-      <Button onClick={() => setOpen(true)}>Launch modal</Button>
-      <Modal
-        open={open}
-        onRequestClose={() => setOpen(false)}
-        danger
-        modalHeading="Are you sure you want to delete this custom domain?"
-        modalLabel="Account resources"
-        primaryButtonText="Delete"
-        secondaryButtonText="Cancel"
-      />
-    </>
-  );
-};
-
-const buttons = {
-  'One (1)': '1',
-  'Two (2)': '2',
-  'Three (3)': '3',
-};
 const modalFooter = (numberOfButtons) => {
   const secondaryButtons = () => {
     switch (numberOfButtons) {
@@ -213,83 +116,20 @@ const modalFooter = (numberOfButtons) => {
   };
 };
 
-export const WithScrollingContent = () => {
-  const [open, setOpen] = useState(true);
-  return (
-    <>
-      <Button onClick={() => setOpen(true)}>Launch modal</Button>
-      <Modal
-        open={open}
-        onRequestClose={() => setOpen(false)}
-        hasScrollingContent
-        modalHeading="Add a custom domain"
-        modalLabel="Account resources"
-        primaryButtonText="Add"
-        secondaryButtonText="Cancel">
-        <p style={{ marginBottom: '1rem' }}>
-          Custom domains direct requests for your apps in this Cloud Foundry
-          organization to a URL that you own. A custom domain can be a shared
-          domain, a shared subdomain, or a shared domain and host.
-        </p>
-        <p style={{ marginBottom: '1rem' }}>
-          Lorem ipsum dolor sit amet, consectetur adipiscing elit. Phasellus eu
-          nibh odio. Nunc a consequat est, id porttitor sapien. Proin vitae leo
-          vitae orci tincidunt auctor eget eget libero. Ut tincidunt ultricies
-          fringilla. Aliquam erat volutpat. Aenean arcu odio, elementum vel
-          vehicula vitae, porttitor ac lorem. Sed viverra elit ac risus
-          tincidunt fermentum. Ut sollicitudin nibh id risus ornare ornare.
-          Etiam gravida orci ut lectus dictum, quis ultricies felis mollis.
-          Mauris nec commodo est, nec faucibus nibh. Nunc commodo ante quis
-          pretium consectetur. Ut ac nisl vitae mi mattis vulputate a at elit.
-          Nullam porttitor ex eget mi feugiat mattis. Nunc non sodales magna.
-          Proin ornare tellus quis hendrerit egestas. Donec pharetra leo nec
-          molestie sollicitudin.{' '}
-        </p>
-        <TextInput
-          data-modal-primary-focus
-          id="text-input-1"
-          labelText="Domain name"
-          placeholder="e.g. github.com"
-          style={{ marginBottom: '1rem' }}
-        />
-        <div style={{ marginBottom: '1rem' }}>
-          <Select id="select-1" defaultValue="us-south" labelText="Region">
-            <SelectItem value="us-south" text="US South" />
-            <SelectItem value="us-east" text="US East" />
-          </Select>
-        </div>
-        <Dropdown
-          id="drop"
-          label="Dropdown"
-          titleText="Dropdown"
-          items={[
-            { id: 'one', label: 'one', name: 'one' },
-            { id: 'two', label: 'two', name: 'two' },
-          ]}
-          style={{ marginBottom: '1rem' }}
-        />
-        <MultiSelect
-          id="test"
-          label="Multiselect"
-          titleText="Multiselect"
-          items={[
-            {
-              id: 'downshift-1-item-0',
-              text: 'Option 1',
-            },
-            {
-              id: 'downshift-1-item-1',
-              text: 'Option 2',
-            },
-          ]}
-          itemToString={(item) => (item ? item.text : '')}
-        />
-      </Modal>
-    </>
-  );
+const sharedParameters = {
+  controls: {
+    exclude: [
+      'id',
+      'launcherButtonRef',
+      'secondaryButtons',
+      'secondaryButtonText',
+      'selectorPrimaryFocus',
+      'selectorsFloatingMenus',
+    ],
+  },
 };
 
-export const Playground = ({ numberOfButtons, ...args }) => {
+export const Default = (args) => {
   const [open, setOpen] = useState(true);
   return (
     <>
@@ -305,8 +145,8 @@ export const Playground = ({ numberOfButtons, ...args }) => {
         aria-label="Modal content"
         open={open}
         {...args}
-        {...modalFooter(numberOfButtons)}>
-        <p style={{ marginBottom: '1rem' }}>
+        {...modalFooter(args.numberOfButtons)}>
+        <p style={{ marginBottom: '2rem' }}>
           Custom domains direct requests for your apps in this Cloud Foundry
           organization to a URL that you own. A custom domain can be a shared
           domain, a shared subdomain, or a shared domain and host.
@@ -315,146 +155,252 @@ export const Playground = ({ numberOfButtons, ...args }) => {
           data-modal-primary-focus
           id="text-input-1"
           labelText="Domain name"
-          placeholder="e.g. github.com"
-          style={{ marginBottom: '1rem' }}
+          placeholder="For example, GitHub.com"
+          style={{ marginBottom: '24px' }}
         />
-        <Select id="select-1" defaultValue="us-south" labelText="Region">
-          <SelectItem value="us-south" text="US South" />
-          <SelectItem value="us-east" text="US East" />
-        </Select>
-        {args.hasScrollingContent && (
-          <>
-            <p>
-              Lorem ipsum dolor sit amet, consectetur adipiscing elit. Aenean id
-              accumsan augue. Phasellus consequat augue vitae tellus tincidunt
-              posuere. Curabitur justo urna, consectetur vel elit iaculis,
-              ultrices condimentum risus. Nulla facilisi. Etiam venenatis
-              molestie tellus. Quisque consectetur non risus eu rutrum.{' '}
-            </p>
-            <p>
-              Lorem ipsum dolor sit amet, consectetur adipiscing elit. Aenean id
-              accumsan augue. Phasellus consequat augue vitae tellus tincidunt
-              posuere. Curabitur justo urna, consectetur vel elit iaculis,
-              ultrices condimentum risus. Nulla facilisi. Etiam venenatis
-              molestie tellus. Quisque consectetur non risus eu rutrum.{' '}
-            </p>
-            <p>
-              Lorem ipsum dolor sit amet, consectetur adipiscing elit. Aenean id
-              accumsan augue. Phasellus consequat augue vitae tellus tincidunt
-              posuere. Curabitur justo urna, consectetur vel elit iaculis,
-              ultrices condimentum risus. Nulla facilisi. Etiam venenatis
-              molestie tellus. Quisque consectetur non risus eu rutrum.{' '}
-            </p>
-            <h3>Lorem ipsum</h3>
-            <p>
-              Lorem ipsum dolor sit amet, consectetur adipiscing elit. Aenean id
-              accumsan augue. Phasellus consequat augue vitae tellus tincidunt
-              posuere. Curabitur justo urna, consectetur vel elit iaculis,
-              ultrices condimentum risus. Nulla facilisi. Etiam venenatis
-              molestie tellus. Quisque consectetur non risus eu rutrum.{' '}
-            </p>
-            <p>
-              Lorem ipsum dolor sit amet, consectetur adipiscing elit. Aenean id
-              accumsan augue. Phasellus consequat augue vitae tellus tincidunt
-              posuere. Curabitur justo urna, consectetur vel elit iaculis,
-              ultrices condimentum risus. Nulla facilisi. Etiam venenatis
-              molestie tellus. Quisque consectetur non risus eu rutrum.{' '}
-            </p>
-            <p>
-              Lorem ipsum dolor sit amet, consectetur adipiscing elit. Aenean id
-              accumsan augue. Phasellus consequat augue vitae tellus tincidunt
-              posuere. Curabitur justo urna, consectetur vel elit iaculis,
-              ultrices condimentum risus. Nulla facilisi. Etiam venenatis
-              molestie tellus. Quisque consectetur non risus eu rutrum.{' '}
-            </p>
-            <p>
-              Lorem ipsum dolor sit amet, consectetur adipiscing elit. Aenean id
-              accumsan augue. Phasellus consequat augue vitae tellus tincidunt
-              posuere. Curabitur justo urna, consectetur vel elit iaculis,
-              ultrices condimentum risus. Nulla facilisi. Etiam venenatis
-              molestie tellus. Quisque consectetur non risus eu rutrum.{' '}
-            </p>
-          </>
-        )}
+        <div style={{ marginBottom: '24px' }}>
+          <Select id="select-1" defaultValue="us-south" labelText="Region">
+            <SelectItem value="us-south" text="US South" />
+            <SelectItem value="us-east" text="US East" />
+          </Select>
+        </div>
+        <div style={{ marginBottom: '24px' }}>
+          <ComboBox
+            allowCustomValue
+            autoAlign={true}
+            id="carbon-combobox"
+            items={['Viewer', 'Editor', 'Manager']}
+            titleText="Permissions (Example of Floating UI)"
+          />
+        </div>
+        <div style={{ marginBottom: '24px' }}>
+          <Dropdown
+            autoAlign={true}
+            id="default"
+            titleText="TLS (Example of Floating UI)"
+            label="Option 1"
+            items={[
+              {
+                id: 'option-0',
+                text: '1.0',
+              },
+              {
+                id: 'option-1',
+                text: '1.1',
+              },
+              {
+                id: 'option-2',
+                text: '1.2',
+              },
+            ]}
+            itemToString={(item) => (item ? item.text : '')}
+          />
+        </div>
+        <div style={{ marginBottom: '24px' }}>
+          <MultiSelect
+            id="test"
+            label="Choose options"
+            titleText="Mapping domain"
+            autoAlign
+            items={[
+              {
+                id: 'downshift-1-item-0',
+                text: 'Cloud Foundry',
+              },
+              {
+                id: 'downshift-1-item-1',
+                text: 'Kubernetes Ingress',
+              },
+              {
+                id: 'downshift-1-item-2',
+                text: 'VPC Load Balancer',
+              },
+            ]}
+            itemToString={(item) => (item ? item.text : '')}
+          />
+        </div>
+        <CheckboxGroup legendText="Terms of Agreement">
+          <Checkbox
+            id="checkbox-label-1"
+            labelText="I confirm domain ownership and accept IBM service terms and applicable charges."
+          />
+        </CheckboxGroup>
       </Modal>
     </>
   );
 };
 
-Playground.args = {
-  numberOfButtons: 'Two (2)',
-};
-
-Playground.argTypes = {
-  children: {
-    table: {
-      disable: true,
-    },
-  },
-  className: {
-    table: {
-      disable: true,
-    },
-  },
-  id: {
-    table: {
-      disable: true,
-    },
-  },
-  modalHeading: {
-    control: 'text',
-  },
-  modalLabel: {
-    control: 'text',
-  },
-  numberOfButtons: {
-    description: 'Count of Footer Buttons',
-    options: Object.keys(buttons),
-    mapping: buttons,
-    control: {
-      type: 'inline-radio',
-      labels: Object.keys(buttons),
-    },
-  },
-  onKeyDown: {
-    action: 'onKeyDown',
-  },
-  onRequestSubmit: {
-    action: 'onRequestSubmit',
-  },
+Default.argTypes = {
   onSecondarySubmit: {
     action: 'onSecondarySubmit',
-    table: {
-      disable: true,
-    },
-  },
-  primaryButtonText: {
-    control: 'text',
-  },
-  secondaryButtons: {
-    table: {
-      disable: true,
-    },
-  },
-  secondaryButtonText: {
-    control: 'text',
-    table: {
-      disable: true,
-    },
-  },
-  selectorPrimaryFocus: {
-    table: {
-      disable: true,
-    },
-  },
-  selectorsFloatingMenus: {
-    table: {
-      disable: true,
-    },
   },
 };
 
-export const WithStateManager = () => {
+Default.parameters = { ...sharedParameters };
+
+export const FullWidth = (args) => {
+  const [open, setOpen] = useState(true);
+  return (
+    <>
+      <Button onClick={() => setOpen(true)}>Launch modal</Button>
+      <Modal
+        open={open}
+        onRequestClose={() => setOpen(false)}
+        isFullWidth
+        modalHeading="Full width modal"
+        modalLabel="An example of a modal with no padding"
+        primaryButtonText="Add"
+        secondaryButtonText="Cancel"
+        {...args}
+        {...modalFooter(args.numberOfButtons)}>
+        <StructuredListWrapper style={{ marginBottom: '48px' }}>
+          <StructuredListHead>
+            <StructuredListRow head>
+              <StructuredListCell head noWrap>
+                Default size
+              </StructuredListCell>
+              <StructuredListCell head noWrap>
+                Features
+              </StructuredListCell>
+              <StructuredListCell head noWrap>
+                Pricing
+              </StructuredListCell>
+            </StructuredListRow>
+          </StructuredListHead>
+          <StructuredListBody>
+            <StructuredListRow>
+              <StructuredListCell noWrap>Lite</StructuredListCell>
+              <StructuredListCell>2 vCPUs | 4GB RAM</StructuredListCell>
+              <StructuredListCell>$0.12 USD / hourly</StructuredListCell>
+            </StructuredListRow>
+            <StructuredListRow>
+              <StructuredListCell noWrap>Graduated tier</StructuredListCell>
+              <StructuredListCell>2 vCPUs | 8GB RAM</StructuredListCell>
+              <StructuredListCell>$0.13 USD / hourly</StructuredListCell>
+            </StructuredListRow>
+            <StructuredListRow>
+              <StructuredListCell noWrap>Premium</StructuredListCell>
+              <StructuredListCell>4 vCPUs | 10GB RAM</StructuredListCell>
+              <StructuredListCell>$0.20 USD / hourly</StructuredListCell>
+            </StructuredListRow>
+          </StructuredListBody>
+        </StructuredListWrapper>
+      </Modal>
+    </>
+  );
+};
+
+FullWidth.parameters = { ...sharedParameters };
+
+export const DangerModal = (args) => {
+  const [open, setOpen] = useState(true);
+  return (
+    <>
+      <Button onClick={() => setOpen(true)}>Launch modal</Button>
+      <Modal
+        open={open}
+        onRequestClose={() => setOpen(false)}
+        danger
+        modalHeading="Are you sure you want to delete this custom domain?"
+        modalLabel="Account resources"
+        primaryButtonText="Delete"
+        secondaryButtonText="Cancel"
+        {...args}
+        {...modalFooter(args.numberOfButtons)}>
+        <p>
+          Check for dependencies on the domain before deletion. For instance, if
+          the domain is used as a primary domain for users or if it's associated
+          with critical applications or services, those connections will need to
+          be removed or reconfigured first.
+        </p>
+      </Modal>
+    </>
+  );
+};
+
+DangerModal.parameters = { ...sharedParameters };
+
+export const WithScrollingContent = (args) => {
+  const [open, setOpen] = useState(true);
+  return (
+    <>
+      <Button onClick={() => setOpen(true)}>Launch modal</Button>
+      <Modal
+        open={open}
+        onRequestClose={() => setOpen(false)}
+        hasScrollingContent
+        modalHeading="Add a custom domain"
+        modalLabel="Account resources"
+        primaryButtonText="Add"
+        secondaryButtonText="Cancel"
+        {...args}
+        {...modalFooter(args.numberOfButtons)}>
+        <p style={{ marginBottom: '1rem' }}>
+          Custom domains direct requests for your apps in this Cloud Foundry
+          organization to a URL that you own. A custom domain can be a shared
+          domain, a shared subdomain, or a shared domain and host.
+        </p>
+        <p style={{ marginBottom: '2rem' }}>
+          Domain mappings provide the URL route to your Code Engine application
+          or function within a project. With Code Engine, these mappings are
+          automatically created, by default, whenever you deploy an application
+          or create a function. However, you can map your own custom domain to a
+          Code Engine application or function. This option routes requests from
+          your custom URL to your application or function. You can use the Code
+          Engine CLI.
+        </p>
+        <div style={{ marginBottom: '24px' }}>
+          <TextInput
+            data-modal-primary-focus
+            id="text-input-1"
+            labelText="Domain name"
+            placeholder="For example, GitHub.com"
+          />
+        </div>
+        <div style={{ marginBottom: '24px' }}>
+          <Select id="select-1" defaultValue="us-south" labelText="Region">
+            <SelectItem value="us-south" text="US South" />
+            <SelectItem value="us-east" text="US East" />
+          </Select>
+        </div>
+        <div style={{ marginBottom: '24px' }}>
+          <ComboBox
+            allowCustomValue
+            autoAlign={true}
+            id="carbon-combobox"
+            items={['Viewer', 'Editor', 'Manager']}
+            titleText="Permissions (Example of Floating UI)"
+          />
+        </div>
+        <MultiSelect
+          id="test"
+          label="Choose options"
+          titleText="Mapping domain"
+          autoAlign
+          items={[
+            {
+              id: 'downshift-1-item-0',
+              text: 'Cloud Foundry',
+            },
+            {
+              id: 'downshift-1-item-1',
+              text: 'Kubernetes Ingress',
+            },
+            {
+              id: 'downshift-1-item-2',
+              text: 'VPC Load Balancer',
+            },
+          ]}
+          itemToString={(item) => (item ? item.text : '')}
+        />
+      </Modal>
+    </>
+  );
+};
+
+WithScrollingContent.parameters = { ...sharedParameters };
+
+export const WithStateManager = (args) => {
   /**
    * Simple state manager for modals.
    */
@@ -462,7 +408,7 @@ export const WithStateManager = () => {
     renderLauncher: LauncherContent,
     children: ModalContent,
   }) => {
-    const [open, setOpen] = useState(false);
+    const [open, setOpen] = React.useState(false);
     return (
       <>
         {!ModalContent || typeof document === 'undefined'
@@ -476,7 +422,7 @@ export const WithStateManager = () => {
     );
   };
 
-  const button = useRef();
+  const button = React.useRef();
 
   return (
     <ModalStateManager
@@ -493,7 +439,9 @@ export const WithStateManager = () => {
           primaryButtonText="Add"
           secondaryButtonText="Cancel"
           open={open}
-          onRequestClose={() => setOpen(false)}>
+          onRequestClose={() => setOpen(false)}
+          {...args}
+          {...modalFooter(args.numberOfButtons)}>
           <p style={{ marginBottom: '1rem' }}>
             Custom domains direct requests for your apps in this Cloud Foundry
             organization to a URL that you own. A custom domain can be a shared
@@ -516,7 +464,9 @@ export const WithStateManager = () => {
   );
 };
 
-export const PassiveModal = () => {
+WithStateManager.parameters = { ...sharedParameters };
+
+export const PassiveModal = (args) => {
   const [open, setOpen] = useState(true);
   return (
     <>
@@ -525,13 +475,32 @@ export const PassiveModal = () => {
         open={open}
         onRequestClose={() => setOpen(false)}
         passiveModal
-        modalHeading="You have been successfully signed out"
+        modalHeading="You are now signed out."
+        {...args}
+        {...modalFooter(args.numberOfButtons)}
       />
     </>
   );
 };
 
-export const WithInlineLoading = () => {
+PassiveModal.parameters = {
+  controls: {
+    include: [
+      'aria-label',
+      'closeButtonLabel',
+      'hasScrollingContent',
+      'isFullWidth',
+      'modalAriaLabel',
+      'modalHeading',
+      'modalLabel',
+      'open',
+      'preventCloseOnClickOutside',
+      'size',
+    ],
+  },
+};
+
+export const WithInlineLoading = (args) => {
   const [status, setStatus] = useState('inactive');
   const [description, setDescription] = useState('Deleting...');
 
@@ -563,17 +532,110 @@ export const WithInlineLoading = () => {
       <Button onClick={() => setOpen(true)}>Launch modal</Button>
       <Modal
         open={open}
-        onRequestClose={() => setOpen(false)}
         danger
         modalHeading="Are you sure you want to delete this custom domain?"
         modalLabel="Account resources"
         primaryButtonText="Delete"
         secondaryButtonText="Cancel"
-        onRequestSubmit={submit}
         loadingStatus={status}
         loadingDescription={description}
+        {...args}
+        onRequestClose={() => setOpen(false)}
+        onRequestSubmit={submit}
         onLoadingSuccess={resetStatus}
       />
     </>
   );
 };
+
+WithInlineLoading.parameters = {
+  controls: {
+    exclude: [
+      'loadingStatus',
+      'loadingDescription',
+      'numberOfButtons',
+      'id',
+      'launcherButtonRef',
+      'secondaryButtons',
+      'secondaryButtonText',
+      'selectorPrimaryFocus',
+      'selectorsFloatingMenus',
+    ],
+  },
+};
+
+const aiLabel = (
+  <AILabel className="ai-label-container">
+    <AILabelContent>
+      <div>
+        <p className="secondary">AI Explained</p>
+        <h2 className="ai-label-heading">84%</h2>
+        <p className="secondary bold">Confidence score</p>
+        <p className="secondary">
+          Lorem ipsum dolor sit amet, di os consectetur adipiscing elit, sed do
+          eiusmod tempor incididunt ut fsil labore et dolore magna aliqua.
+        </p>
+        <hr />
+        <p className="secondary">Model type</p>
+        <p className="bold">Foundation model</p>
+      </div>
+      <AILabelActions>
+        <IconButton kind="ghost" label="View">
+          <View />
+        </IconButton>
+        <IconButton kind="ghost" label="Open Folder">
+          <FolderOpen />
+        </IconButton>
+        <IconButton kind="ghost" label="Folders">
+          <Folders />
+        </IconButton>
+        <Button>View details</Button>
+      </AILabelActions>
+    </AILabelContent>
+  </AILabel>
+);
+
+export const withAILabel = {
+  render: ({ numberOfButtons, ...args }) => {
+    const [open, setOpen] = useState(true); // eslint-disable-line
+    return (
+      <div className="ai-label-modal">
+        <Button onClick={() => setOpen(true)}>Launch modal</Button>
+        <Button onClick={() => setOpen2(true)}>
+          Launch modal decorator tooltip
+        </Button>
+        <Modal
+          open={open}
+          onRequestClose={() => setOpen(false)}
+          modalHeading="Add a custom domain"
+          modalLabel="Account resources"
+          primaryButtonText="Add"
+          secondaryButtonText="Cancel"
+          decorator={aiLabel}
+          {...args}
+          {...modalFooter(numberOfButtons)}>
+          <p style={{ marginBottom: '2rem' }}>
+            Custom domains direct requests for your apps in this Cloud Foundry
+            organization to a URL that you own. A custom domain can be a shared
+            domain, a shared subdomain, or a shared domain and host.
+          </p>
+          <TextInput
+            data-modal-primary-focus
+            id="text-input-1"
+            labelText="Domain name"
+            placeholder="For example, GitHub.com"
+            style={{ marginBottom: '24px' }}
+          />
+          <div style={{ marginBottom: '24px' }}>
+            <Select id="select-1" defaultValue="us-south" labelText="Region">
+              <SelectItem value="us-south" text="US South" />
+              <SelectItem value="us-east" text="US East" />
+            </Select>
+          </div>
+          <TextArea labelText="Comments" style={{ height: '80px' }} />
+        </Modal>
+      </div>
+    );
+  },
+};
+withAILabel.parameters = { ...sharedParameters };

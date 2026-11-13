@@ -1,5 +1,5 @@
 /**
- * Copyright IBM Corp. 2016, 2023
+ * Copyright IBM Corp. 2016, 2026
  *
  * This source code is licensed under the Apache-2.0 license found in the
  * LICENSE file in the root directory of this source tree.
@@ -12,14 +12,17 @@ import {
 } from '@carbon/icons-react';
 import cx from 'classnames';
 import PropTypes from 'prop-types';
-import React from 'react';
+import React, { cloneElement, useRef } from 'react';
 import { keys, matches } from '../../internal/keyboard';
 import { useFallbackId } from '../../internal/useId';
 import { usePrefix } from '../../internal/usePrefix';
-import deprecate from '../../prop-types/deprecate';
+import { deprecate } from '../../prop-types/deprecate';
 import { noopFn } from '../../internal/noopFn';
 import { Text } from '../Text';
 import { useFeatureFlag } from '../FeatureFlags';
+import { AILabel } from '../AILabel';
+import { isComponentElement } from '../../internal';
+import { useNoInteractiveChildrenForLabel } from '../FeatureFlags/useNoInteractiveChildrenForLabel';
 
 export interface RadioTileProps {
   /**
@@ -36,6 +39,11 @@ export interface RadioTileProps {
    * Provide an optional `className` to be applied to the underlying `<label>`.
    */
   className?: string;
+
+  /**
+   * **Experimental**: Provide a `decorator` component to be rendered inside the `RadioTile` component
+   */
+  decorator?: React.ReactNode;
 
   /**
    * Specify whether the `RadioTile` should be disabled.
@@ -79,7 +87,8 @@ export interface RadioTileProps {
   ) => void;
 
   /**
-   * **Experimental**: Provide a `Slug` component to be rendered inside the `SelectableTile` component
+   * @deprecated please use `decorator` instead.
+   * **Experimental**: Provide a `Slug` component to be rendered inside the `RadioTile` component
    */
   slug?: React.ReactNode;
 
@@ -98,101 +107,132 @@ export interface RadioTileProps {
    */
   required?: boolean;
 }
+type AriaSupportedProps = React.AriaAttributes;
 
-const RadioTile = React.forwardRef(function RadioTile(
-  {
-    children,
-    className: customClassName,
-    disabled,
-    light,
-    checked,
-    name,
-    value,
-    id,
-    onChange = noopFn,
-    tabIndex = 0,
-    hasRoundedCorners,
-    slug,
-    required,
-    ...rest
-  }: RadioTileProps,
-  ref: React.Ref<HTMLInputElement>
-) {
-  const prefix = usePrefix();
-  const inputId = useFallbackId(id);
-  const className = cx(
-    customClassName,
-    `${prefix}--tile`,
-    `${prefix}--tile--selectable`,
-    `${prefix}--tile--radio`,
+const RadioTile = React.forwardRef(
+  (
     {
-      [`${prefix}--tile--is-selected`]: checked,
-      [`${prefix}--tile--light`]: light,
-      [`${prefix}--tile--disabled`]: disabled,
-      [`${prefix}--tile--slug`]: slug,
-      [`${prefix}--tile--slug-rounded`]: slug && hasRoundedCorners,
-    }
-  );
-  const v12TileRadioIcons = useFeatureFlag('enable-v12-tile-radio-icons');
-  function icon() {
-    if (v12TileRadioIcons) {
-      if (checked) {
-        return <RadioButtonChecked />;
-      } else {
-        return <RadioButton />;
+      children,
+      className: customClassName,
+      decorator,
+      disabled,
+      light,
+      checked,
+      name,
+      value,
+      id,
+      onChange = noopFn,
+      tabIndex = 0,
+      hasRoundedCorners,
+      slug,
+      required,
+      ...rest
+    }: RadioTileProps & AriaSupportedProps,
+    ref: React.Ref<HTMLInputElement>
+  ) => {
+    const prefix = usePrefix();
+    const inputId = useFallbackId(id);
+    const labelRef = useRef<HTMLLabelElement>(null);
+    const wrapperClassName = cx(`${prefix}--radio-tile__wrapper`, {
+      [`${prefix}--radio-tile__wrapper--slug`]: slug,
+      [`${prefix}--radio-tile__wrapper--decorator`]: decorator,
+    });
+    const className = cx(
+      customClassName,
+      `${prefix}--tile`,
+      `${prefix}--tile--selectable`,
+      `${prefix}--tile--radio`,
+      {
+        [`${prefix}--tile--is-selected`]: checked,
+        [`${prefix}--tile--light`]: light,
+        [`${prefix}--tile--disabled`]: disabled,
+        [`${prefix}--tile--slug`]: slug,
+        [`${prefix}--tile--slug-rounded`]: slug && hasRoundedCorners,
+        [`${prefix}--tile--decorator`]: decorator,
+        [`${prefix}--tile--decorator-rounded`]: decorator && hasRoundedCorners,
       }
-    } else {
-      return <CheckmarkFilled />;
+    );
+    const {
+      'aria-describedby': ariaDescribedBy,
+      'aria-labelledby': ariaLabelledBy,
+      ...labelProps
+    } = rest;
+    const v12TileRadioIcons = useFeatureFlag('enable-v12-tile-radio-icons');
+    function icon() {
+      if (v12TileRadioIcons) {
+        if (checked) {
+          return <RadioButtonChecked />;
+        } else {
+          return <RadioButton />;
+        }
+      } else {
+        return <CheckmarkFilled />;
+      }
     }
-  }
 
-  function handleOnChange(
-    evt:
-      | React.ChangeEvent<HTMLInputElement>
-      | React.KeyboardEvent<HTMLInputElement>
-  ) {
-    onChange(value, name, evt);
-  }
-
-  function handleOnKeyDown(evt: React.KeyboardEvent<HTMLInputElement>) {
-    if (matches(evt, [keys.Enter, keys.Space])) {
-      evt.preventDefault();
+    function handleOnChange(
+      evt:
+        | React.ChangeEvent<HTMLInputElement>
+        | React.KeyboardEvent<HTMLInputElement>
+    ) {
       onChange(value, name, evt);
     }
-  }
 
-  // Slug is always size `xs`
-  let normalizedSlug;
-  if (slug && slug['type']?.displayName === 'Slug') {
-    normalizedSlug = React.cloneElement(slug as React.ReactElement<any>, {
-      size: 'xs',
-    });
-  }
+    function handleOnKeyDown(evt: React.KeyboardEvent<HTMLInputElement>) {
+      if (matches(evt, [keys.Enter, keys.Space])) {
+        evt.preventDefault();
+        onChange(value, name, evt);
+      }
+    }
 
-  return (
-    <div>
-      <input
-        checked={checked}
-        className={`${prefix}--tile-input`}
-        disabled={disabled}
-        id={inputId}
-        name={name}
-        onChange={!disabled ? handleOnChange : undefined}
-        onKeyDown={!disabled ? handleOnKeyDown : undefined}
-        tabIndex={!disabled ? tabIndex : undefined}
-        type="radio"
-        value={value}
-        ref={ref}
-        required={required}
-      />
-      <label {...rest} htmlFor={inputId} className={className}>
-        <span className={`${prefix}--tile__checkmark`}>{icon()}</span>
-        <Text className={`${prefix}--tile-content`}>{children}</Text>
-        {normalizedSlug}
-      </label>
-    </div>
-  );
-});
+    // AILabel is always size `xs`
+    const candidate = slug ?? decorator;
+    const candidateIsAILabel = isComponentElement(candidate, AILabel);
+    const normalizedDecorator = candidateIsAILabel
+      ? cloneElement(candidate, { size: 'xs' })
+      : candidate;
+    useNoInteractiveChildrenForLabel(
+      labelRef,
+      'The RadioTile component `children` prop must have no interactive content'
+    );
+
+    return (
+      <div className={wrapperClassName}>
+        <input
+          checked={checked}
+          className={`${prefix}--tile-input`}
+          disabled={disabled}
+          id={inputId}
+          name={name}
+          onChange={!disabled ? handleOnChange : undefined}
+          onKeyDown={!disabled ? handleOnKeyDown : undefined}
+          tabIndex={!disabled ? tabIndex : undefined}
+          type="radio"
+          value={value}
+          {...(ariaDescribedBy && { 'aria-describedby': ariaDescribedBy })}
+          {...(ariaLabelledBy && { 'aria-labelledby': ariaLabelledBy })}
+          ref={ref}
+          required={required}
+        />
+        <label
+          {...labelProps}
+          htmlFor={inputId}
+          className={className}
+          ref={labelRef}>
+          <span className={`${prefix}--tile__checkmark`}>{icon()}</span>
+          <Text className={`${prefix}--tile-content`}>{children}</Text>
+        </label>
+        {slug ? (
+          normalizedDecorator
+        ) : decorator ? (
+          <div className={`${prefix}--tile--inner-decorator`}>
+            {normalizedDecorator}
+          </div>
+        ) : null}
+      </div>
+    );
+  }
+);
 
 RadioTile.displayName = 'RadioTile';
 
@@ -211,6 +251,11 @@ RadioTile.propTypes = {
    * Provide an optional `className` to be applied to the underlying `<label>`.
    */
   className: PropTypes.string,
+
+  /**
+   * **Experimental**: Provide a `decorator` component to be rendered inside the `RadioTile` component
+   */
+  decorator: PropTypes.node,
 
   /**
    * Specify whether the `RadioTile` should be disabled.
@@ -255,9 +300,13 @@ RadioTile.propTypes = {
   required: PropTypes.bool,
 
   /**
-   * **Experimental**: Provide a `Slug` component to be rendered inside the `SelectableTile` component
+   * **Experimental**: Provide a `Slug` component to be rendered inside the `RadioTile` component
    */
-  slug: PropTypes.node,
+  slug: deprecate(
+    PropTypes.node,
+    'The `slug` prop for `RadioTile` has ' +
+      'been deprecated in favor of the new `decorator` prop. It will be removed in the next major release.'
+  ),
 
   /**
    * Specify the tab index of the underlying `<input>`.

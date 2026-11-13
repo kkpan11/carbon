@@ -1,12 +1,12 @@
 /**
- * Copyright IBM Corp. 2016, 2023
+ * Copyright IBM Corp. 2016, 2026
  *
  * This source code is licensed under the Apache-2.0 license found in the
  * LICENSE file in the root directory of this source tree.
  */
 
 import React, { useState } from 'react';
-import { action } from '@storybook/addon-actions';
+import { action } from 'storybook/actions';
 import cx from 'classnames';
 import {
   Content,
@@ -56,13 +56,13 @@ const StoryContent = ({ useResponsiveOffset = true }) => {
         <div className={classNameFirstColumn}>
           <h2 style={{ margin: '0 0 30px' }}>Purpose and function</h2>
           <p>
-            The shell is perhaps the most crucial piece of any UI built with
-            <a href="www.carbondesignsystem.com"> Carbon</a>. It contains the
-            shared navigation framework for the entire design system and ties
-            the products in IBM’s portfolio together in a cohesive and elegant
-            way. The shell is the home of the topmost navigation, where users
-            can quickly and dependably gain their bearings and move between
-            pages.
+            The shell is perhaps the most crucial piece of any UI built with{' '}
+            <a href="https://www.carbondesignsystem.com/">Carbon</a>. It
+            contains the shared navigation framework for the entire design
+            system and ties the products in IBM’s portfolio together in a
+            cohesive and elegant way. The shell is the home of the topmost
+            navigation, where users can quickly and dependably gain their
+            bearings and move between pages.
             <br />
             <br />
             The shell was designed with maximum flexibility built in, to serve
@@ -73,12 +73,12 @@ const StoryContent = ({ useResponsiveOffset = true }) => {
             <br />
             <br />
             To better understand the purpose and function of the UI shell,
-            consider the “shell” of MacOS, which contains the Apple menu,
+            consider the “shell” of macOS, which contains the Apple menu,
             top-level navigation, and universal, OS-level controls at the top of
             the screen, as well as a universal dock along the bottom or side of
             the screen. The Carbon UI shell is roughly analogous in function to
             these parts of the Mac UI. For example, the app switcher portion of
-            the shell can be compared to the dock in MacOS.
+            the shell can be compared to the dock in macOS.
           </p>
           <h2 style={{ margin: '30px 0' }}>Header responsive behavior</h2>
           <p>
@@ -130,6 +130,60 @@ const StoryContent = ({ useResponsiveOffset = true }) => {
   );
 };
 
+const headerArgs = {
+  headerAriaLabel: 'IBM Platform Name',
+  platformName: '[Platform]',
+  platformPrefix: 'IBM',
+};
+
+const headerArgTypes = {
+  headerAriaLabel: {
+    control: 'text',
+    description: 'Provide an accessible label for the header.',
+    table: { category: 'Header' },
+  },
+  platformName: {
+    control: 'text',
+    description: 'Specify the product name displayed in the header.',
+    table: { category: 'HeaderName' },
+  },
+  platformPrefix: {
+    control: 'text',
+    description: 'Specify the prefix displayed before the product name.',
+    table: { category: 'HeaderName' },
+  },
+};
+
+const navigationArgs = {
+  navigationAriaLabel: 'IBM [Platform]',
+  navigationMenuLabel: 'Link 4',
+};
+
+const navigationArgTypes = {
+  navigationAriaLabel: {
+    control: 'text',
+    description: 'Provide an accessible label for the header navigation.',
+    table: { category: 'HeaderNavigation' },
+  },
+  navigationMenuLabel: {
+    control: 'text',
+    description: 'Specify the label for the header navigation menu.',
+    table: { category: 'HeaderMenu' },
+  },
+};
+
+const sideNavArgs = {
+  sideNavAriaLabel: 'Side navigation',
+};
+
+const sideNavArgTypes = {
+  sideNavAriaLabel: {
+    control: 'text',
+    description: 'Provide an accessible label for the side navigation.',
+    table: { category: 'SideNav' },
+  },
+};
+
 // eslint-disable-next-line storybook/csf-component
 export default {
   title: 'Components/UI Shell/Header',
@@ -165,19 +219,18 @@ export default {
     },
   },
   argTypes: {
-    className: {
-      table: {
-        disable: true,
-      },
-    },
+    'aria-label': { control: false },
+    'aria-labelledby': { control: false },
+    children: { control: false },
+    className: { control: false },
   },
 };
 
-export const HeaderWNavigation = () => (
+export const HeaderWNavigation = (args) => (
   <HeaderContainer
     render={({ isSideNavExpanded, onClickSideNavExpand }) => (
       <>
-        <Header aria-label="IBM Platform Name">
+        <Header aria-label={args.headerAriaLabel}>
           <SkipToContent />
           <HeaderMenuButton
             aria-label={isSideNavExpanded ? 'Close menu' : 'Open menu'}
@@ -185,14 +238,16 @@ export const HeaderWNavigation = () => (
             isActive={isSideNavExpanded}
             aria-expanded={isSideNavExpanded}
           />
-          <HeaderName href="#" prefix="IBM">
-            [Platform]
+          <HeaderName href="#" prefix={args.platformPrefix}>
+            {args.platformName}
           </HeaderName>
-          <HeaderNavigation aria-label="IBM [Platform]">
+          <HeaderNavigation aria-label={args.navigationAriaLabel}>
             <HeaderMenuItem href="#">Link 1</HeaderMenuItem>
             <HeaderMenuItem href="#">Link 2</HeaderMenuItem>
             <HeaderMenuItem href="#">Link 3</HeaderMenuItem>
-            <HeaderMenu aria-label="Link 4" menuLinkName="Link 4">
+            <HeaderMenu
+              aria-label={args.navigationMenuLabel}
+              menuLinkName={args.navigationMenuLabel}>
               <HeaderMenuItem href="#">Sub-link 1</HeaderMenuItem>
               <HeaderMenuItem isActive href="#">
                 Sub-link 2
@@ -201,7 +256,7 @@ export const HeaderWNavigation = () => (
             </HeaderMenu>
           </HeaderNavigation>
           <SideNav
-            aria-label="Side navigation"
+            aria-label={args.sideNavAriaLabel}
             expanded={isSideNavExpanded}
             isPersistent={false}
             onSideNavBlur={onClickSideNavExpand}>
@@ -210,7 +265,9 @@ export const HeaderWNavigation = () => (
                 <HeaderMenuItem href="#">Link 1</HeaderMenuItem>
                 <HeaderMenuItem href="#">Link 2</HeaderMenuItem>
                 <HeaderMenuItem href="#">Link 3</HeaderMenuItem>
-                <HeaderMenu aria-label="Link 4" menuLinkName="Link 4">
+                <HeaderMenu
+                  aria-label={args.navigationMenuLabel}
+                  menuLinkName={args.navigationMenuLabel}>
                   <HeaderMenuItem href="#">Sub-link 1</HeaderMenuItem>
                   <HeaderMenuItem isActive href="#">
                     Sub-link 2
@@ -227,13 +284,25 @@ export const HeaderWNavigation = () => (
   />
 );
 
-HeaderWNavigation.storyName = 'Header w/ Navigation';
+HeaderWNavigation.storyName = 'Header with Navigation';
 
-export const HeaderWNavigationAndActions = () => (
+HeaderWNavigation.args = {
+  ...headerArgs,
+  ...navigationArgs,
+  ...sideNavArgs,
+};
+
+HeaderWNavigation.argTypes = {
+  ...headerArgTypes,
+  ...navigationArgTypes,
+  ...sideNavArgTypes,
+};
+
+export const HeaderWNavigationAndActions = (args) => (
   <HeaderContainer
     render={({ isSideNavExpanded, onClickSideNavExpand }) => (
       <>
-        <Header aria-label="IBM Platform Name">
+        <Header aria-label={args.headerAriaLabel}>
           <SkipToContent />
           <HeaderMenuButton
             aria-label={isSideNavExpanded ? 'Close menu' : 'Open menu'}
@@ -241,14 +310,17 @@ export const HeaderWNavigationAndActions = () => (
             isActive={isSideNavExpanded}
             aria-expanded={isSideNavExpanded}
           />
-          <HeaderName href="#" prefix="IBM">
-            [Platform]
+          <HeaderName href="#" prefix={args.platformPrefix}>
+            {args.platformName}
           </HeaderName>
-          <HeaderNavigation aria-label="IBM [Platform]">
+          <HeaderNavigation aria-label={args.navigationAriaLabel}>
             <HeaderMenuItem href="#">Link 1</HeaderMenuItem>
             <HeaderMenuItem href="#">Link 2</HeaderMenuItem>
             <HeaderMenuItem href="#">Link 3</HeaderMenuItem>
-            <HeaderMenu isActive aria-label="Link 4" menuLinkName="Link 4">
+            <HeaderMenu
+              isActive
+              aria-label={args.navigationMenuLabel}
+              menuLinkName={args.navigationMenuLabel}>
               <HeaderMenuItem href="#">Sub-link 1</HeaderMenuItem>
               <HeaderMenuItem href="#">Sub-link 2</HeaderMenuItem>
               <HeaderMenuItem href="#">Sub-link 3</HeaderMenuItem>
@@ -273,7 +345,7 @@ export const HeaderWNavigationAndActions = () => (
             </HeaderGlobalAction>
           </HeaderGlobalBar>
           <SideNav
-            aria-label="Side navigation"
+            aria-label={args.sideNavAriaLabel}
             expanded={isSideNavExpanded}
             isPersistent={false}
             onSideNavBlur={onClickSideNavExpand}>
@@ -282,7 +354,9 @@ export const HeaderWNavigationAndActions = () => (
                 <HeaderMenuItem href="#">Link 1</HeaderMenuItem>
                 <HeaderMenuItem href="#">Link 2</HeaderMenuItem>
                 <HeaderMenuItem href="#">Link 3</HeaderMenuItem>
-                <HeaderMenu aria-label="Link 4" menuLinkName="Link 4">
+                <HeaderMenu
+                  aria-label={args.navigationMenuLabel}
+                  menuLinkName={args.navigationMenuLabel}>
                   <HeaderMenuItem href="#">Sub-link 1</HeaderMenuItem>
                   <HeaderMenuItem href="#">Sub-link 2</HeaderMenuItem>
                   <HeaderMenuItem href="#">Sub-link 3</HeaderMenuItem>
@@ -297,13 +371,25 @@ export const HeaderWNavigationAndActions = () => (
   />
 );
 
-HeaderWNavigationAndActions.storyName = 'Header w/ Navigation and Actions';
+HeaderWNavigationAndActions.storyName = 'Header with Navigation and Actions';
 
-export const HeaderWNavigationActionsAndSideNav = () => (
+HeaderWNavigationAndActions.args = {
+  ...headerArgs,
+  ...navigationArgs,
+  ...sideNavArgs,
+};
+
+HeaderWNavigationAndActions.argTypes = {
+  ...headerArgTypes,
+  ...navigationArgTypes,
+  ...sideNavArgTypes,
+};
+
+export const HeaderWNavigationActionsAndSideNav = (args) => (
   <HeaderContainer
     render={({ isSideNavExpanded, onClickSideNavExpand }) => (
       <>
-        <Header aria-label="IBM Platform Name">
+        <Header aria-label={args.headerAriaLabel}>
           <SkipToContent />
           <HeaderMenuButton
             aria-label={isSideNavExpanded ? 'Close menu' : 'Open menu'}
@@ -311,14 +397,16 @@ export const HeaderWNavigationActionsAndSideNav = () => (
             isActive={isSideNavExpanded}
             aria-expanded={isSideNavExpanded}
           />
-          <HeaderName href="#" prefix="IBM">
-            [Platform]
+          <HeaderName href="#" prefix={args.platformPrefix}>
+            {args.platformName}
           </HeaderName>
-          <HeaderNavigation aria-label="IBM [Platform]">
+          <HeaderNavigation aria-label={args.navigationAriaLabel}>
             <HeaderMenuItem href="#">Link 1</HeaderMenuItem>
             <HeaderMenuItem href="#">Link 2</HeaderMenuItem>
             <HeaderMenuItem href="#">Link 3</HeaderMenuItem>
-            <HeaderMenu aria-label="Link 4" menuLinkName="Link 4">
+            <HeaderMenu
+              aria-label={args.navigationMenuLabel}
+              menuLinkName={args.navigationMenuLabel}>
               <HeaderMenuItem href="#one">Sub-link 1</HeaderMenuItem>
               <HeaderMenuItem href="#two">Sub-link 2</HeaderMenuItem>
               <HeaderMenuItem href="#three">Sub-link 3</HeaderMenuItem>
@@ -327,7 +415,8 @@ export const HeaderWNavigationActionsAndSideNav = () => (
           <HeaderGlobalBar>
             <HeaderGlobalAction
               aria-label="Search"
-              onClick={action('search click')}>
+              onClick={action('search click')}
+              tooltipAlignment="start">
               <Search size={20} />
             </HeaderGlobalAction>
             <HeaderGlobalAction
@@ -343,7 +432,7 @@ export const HeaderWNavigationActionsAndSideNav = () => (
             </HeaderGlobalAction>
           </HeaderGlobalBar>
           <SideNav
-            aria-label="Side navigation"
+            aria-label={args.sideNavAriaLabel}
             expanded={isSideNavExpanded}
             onSideNavBlur={onClickSideNavExpand}
             href="#main-content">
@@ -352,13 +441,18 @@ export const HeaderWNavigationActionsAndSideNav = () => (
                 <HeaderMenuItem href="#">Link 1</HeaderMenuItem>
                 <HeaderMenuItem href="#">Link 2</HeaderMenuItem>
                 <HeaderMenuItem href="#">Link 3</HeaderMenuItem>
-                <HeaderMenu aria-label="Link 4" menuLinkName="Link 4">
+                <HeaderMenu
+                  aria-label={args.navigationMenuLabel}
+                  menuLinkName={args.navigationMenuLabel}>
                   <HeaderMenuItem href="#">Sub-link 1</HeaderMenuItem>
                   <HeaderMenuItem href="#">Sub-link 2</HeaderMenuItem>
                   <HeaderMenuItem href="#">Sub-link 3</HeaderMenuItem>
                 </HeaderMenu>
               </HeaderSideNavItems>
-              <SideNavMenu renderIcon={Fade} title="Category title">
+              <SideNavMenu
+                renderIcon={Fade}
+                title="Category title"
+                tabIndex={0}>
                 <SideNavMenuItem href="https://www.carbondesignsystem.com/">
                   Link 5
                 </SideNavMenuItem>
@@ -369,7 +463,10 @@ export const HeaderWNavigationActionsAndSideNav = () => (
                   Link 7
                 </SideNavMenuItem>
               </SideNavMenu>
-              <SideNavMenu renderIcon={Fade} title="Category title">
+              <SideNavMenu
+                renderIcon={Fade}
+                title="Category title"
+                tabIndex={0}>
                 <SideNavMenuItem href="https://www.carbondesignsystem.com/">
                   Link 8
                 </SideNavMenuItem>
@@ -383,7 +480,8 @@ export const HeaderWNavigationActionsAndSideNav = () => (
               <SideNavMenu
                 renderIcon={Fade}
                 title="Category title"
-                isActive={true}>
+                isActive={true}
+                tabIndex={0}>
                 <SideNavMenuItem href="https://www.carbondesignsystem.com/">
                   Link 11
                 </SideNavMenuItem>
@@ -416,13 +514,25 @@ export const HeaderWNavigationActionsAndSideNav = () => (
 );
 
 HeaderWNavigationActionsAndSideNav.storyName =
-  'Header w/ Navigation, Actions and SideNav';
+  'Header with Navigation, Actions and Side Nav';
 
-export const HeaderWSideNav = () => (
+HeaderWNavigationActionsAndSideNav.args = {
+  ...headerArgs,
+  ...navigationArgs,
+  ...sideNavArgs,
+};
+
+HeaderWNavigationActionsAndSideNav.argTypes = {
+  ...headerArgTypes,
+  ...navigationArgTypes,
+  ...sideNavArgTypes,
+};
+
+export const HeaderWSideNav = (args) => (
   <HeaderContainer
     render={({ isSideNavExpanded, onClickSideNavExpand }) => (
       <>
-        <Header aria-label="IBM Platform Name">
+        <Header aria-label={args.headerAriaLabel}>
           <SkipToContent />
           <HeaderMenuButton
             aria-label={isSideNavExpanded ? 'Close menu' : 'Open menu'}
@@ -430,11 +540,11 @@ export const HeaderWSideNav = () => (
             isActive={isSideNavExpanded}
             aria-expanded={isSideNavExpanded}
           />
-          <HeaderName href="#" prefix="IBM">
-            [Platform]
+          <HeaderName href="#" prefix={args.platformPrefix}>
+            {args.platformName}
           </HeaderName>
           <SideNav
-            aria-label="Side navigation"
+            aria-label={args.sideNavAriaLabel}
             expanded={isSideNavExpanded}
             onSideNavBlur={onClickSideNavExpand}
             href="#main-content">
@@ -496,49 +606,103 @@ export const HeaderWSideNav = () => (
   />
 );
 
-HeaderWSideNav.storyName = 'Header w/ SideNav';
+HeaderWSideNav.storyName = 'Header with Side Nav';
 
-export const HeaderWActionsAndRightPanel = () => (
-  <>
-    <Header aria-label="IBM Platform Name">
-      <HeaderName href="#" prefix="IBM">
-        [Platform]
-      </HeaderName>
-      <HeaderGlobalBar>
-        <HeaderGlobalAction
-          aria-label="Search"
-          onClick={action('search click')}>
-          <Search size={20} />
-        </HeaderGlobalAction>
-        <HeaderGlobalAction
-          aria-label="Notifications"
-          isActive
-          onClick={action('notification click')}>
-          <Notification size={20} />
-        </HeaderGlobalAction>
-        <HeaderGlobalAction
-          aria-label="App Switcher"
-          onClick={action('app-switcher click')}
-          tooltipAlignment="end">
-          <SwitcherIcon size={20} />
-        </HeaderGlobalAction>
-      </HeaderGlobalBar>
-      <HeaderPanel expanded />
-    </Header>
-    <StoryContent />
-  </>
-);
+HeaderWSideNav.args = {
+  ...headerArgs,
+  ...sideNavArgs,
+};
 
-HeaderWActionsAndRightPanel.storyName = 'Header w/ Actions and Right Panel';
+HeaderWSideNav.argTypes = {
+  ...headerArgTypes,
+  ...sideNavArgTypes,
+};
+
+export const HeaderWActionsAndRightPanel = (args) => {
+  // Add state to control panel expansion
+  const [isPanelExpanded, setIsPanelExpanded] = useState(false);
+
+  // Toggle the notification panel when the icon is clicked
+  const togglePanel = () => {
+    setIsPanelExpanded((prev) => !prev);
+  };
+
+  // Function to close panel specifically
+  const closePanel = () => {
+    setIsPanelExpanded(false);
+  };
+
+  // Close the panel when Escape key is pressed
+  const handleKeyDown = (event) => {
+    if (event.key === 'Escape') {
+      closePanel();
+    }
+  };
+
+  return (
+    <>
+      <Header aria-label={args.headerAriaLabel}>
+        <HeaderName href="#" prefix={args.platformPrefix}>
+          {args.platformName}
+        </HeaderName>
+        <HeaderGlobalBar>
+          <HeaderGlobalAction
+            aria-label="Search"
+            onClick={action('search click')}>
+            <Search size={20} />
+          </HeaderGlobalAction>
+          <HeaderGlobalAction
+            aria-label="Notifications"
+            badgeCount={args.badgeCount}
+            isActive={isPanelExpanded}
+            onClick={togglePanel}
+            onBlur={closePanel}
+            onKeyDown={handleKeyDown}
+            tooltipAlignment="center"
+            id="notification-button">
+            <Notification size={20} />
+          </HeaderGlobalAction>
+          <HeaderGlobalAction
+            aria-label="App Switcher"
+            onClick={action('app-switcher click')}
+            tooltipAlignment="end">
+            <SwitcherIcon size={20} />
+          </HeaderGlobalAction>
+        </HeaderGlobalBar>
+        <HeaderPanel expanded={isPanelExpanded} href="#notification-button">
+          {/* Notification panel content here */}
+        </HeaderPanel>
+      </Header>
+      <StoryContent />
+    </>
+  );
+};
+
+HeaderWActionsAndRightPanel.storyName = 'Header with Actions and Right Panel';
+
+HeaderWActionsAndRightPanel.argTypes = {
+  ...headerArgTypes,
+  badgeCount: {
+    description:
+      ' **Experimental**: Display a badge on the button. An empty/dot badge if 0, a numbered badge if > 0. Must be used with size="lg" and kind="ghost"',
+    control: {
+      type: 'number',
+    },
+  },
+};
+
+HeaderWActionsAndRightPanel.args = {
+  ...headerArgs,
+  badgeCount: 4,
+};
 
 export const HeaderWActionsAndSwitcher = (args) => (
   <HeaderContainer
-    {...args}
     render={({ isSideNavExpanded, onClickSideNavExpand }) => (
       <>
-        <Header aria-label="IBM Platform Name">
-          <HeaderName href="#" prefix="IBM">
-            [Platform]
+        <Header aria-label={args.headerAriaLabel}>
+          <HeaderName href="#" prefix={args.platformPrefix}>
+            {args.platformName}
           </HeaderName>
           <HeaderGlobalBar>
             <HeaderGlobalAction
@@ -599,11 +763,12 @@ export const HeaderWActionsAndSwitcher = (args) => (
   />
 );
 
-HeaderWActionsAndSwitcher.storyName = 'Header w/ Actions and Switcher';
+HeaderWActionsAndSwitcher.storyName = 'Header with Actions and Switcher';
+
+HeaderWActionsAndSwitcher.args = {
+  ...headerArgs,
+};
 
 HeaderWActionsAndSwitcher.argTypes = {
-  isSideNavExpanded: {
-    defaultValue: true,
-    description: 'Optional prop to display the HeaderPanel.',
-  },
+  ...headerArgTypes,
 };

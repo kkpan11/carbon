@@ -1,5 +1,5 @@
 /**
- * Copyright IBM Corp. 2016, 2023
+ * Copyright IBM Corp. 2016, 2026
  *
  * This source code is licensed under the Apache-2.0 license found in the
  * LICENSE file in the root directory of this source tree.
@@ -7,10 +7,10 @@
 
 import cx from 'classnames';
 import PropTypes from 'prop-types';
-import React, { PropsWithChildren, ReactHTML } from 'react';
+import React, { PropsWithChildren, HTMLElementType } from 'react';
 import { usePrefix } from '../../internal/usePrefix';
 
-interface AspectRatioProps {
+export interface AspectRatioProps {
   /**
    * Provide a custom component or string to be rendered as
    * the outermost node of the component. This is useful if you want
@@ -21,7 +21,7 @@ interface AspectRatioProps {
    * <AspectRatio as="article">My content</AspectRatio>
    * ```
    */
-  as?: keyof ReactHTML;
+  as?: HTMLElementType;
 
   /**
    * Specify a class name for the outermost node

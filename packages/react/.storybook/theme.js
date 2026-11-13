@@ -5,15 +5,13 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-import { create } from '@storybook/theming';
+import { create } from 'storybook/theming';
 import PackageInfo from './../package.json';
 
 /**
  * @see https://storybook.js.org/docs/react/configure/theming
  */
 export default create({
-  base: 'light',
-
   // Typography
   fontBase: "'IBM Plex Sans', 'Helvetica Neue', Arial, sans-serif",
   fontCode:

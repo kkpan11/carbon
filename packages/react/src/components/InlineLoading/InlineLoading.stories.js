@@ -1,5 +1,5 @@
 /**
- * Copyright IBM Corp. 2016, 2023
+ * Copyright IBM Corp. 2016, 2026
  *
  * This source code is licensed under the Apache-2.0 license found in the
  * LICENSE file in the root directory of this source tree.
@@ -7,8 +7,10 @@
 
 import React, { useState } from 'react';
 import Button from '../Button';
+import ButtonSet from '../ButtonSet';
 import InlineLoading from '.';
 import mdx from './InlineLoading.mdx';
+import { action } from 'storybook/actions';
 
 export default {
   title: 'Components/InlineLoading',
@@ -20,20 +22,44 @@ export default {
   },
 };
 
-export const Default = () => (
-  <InlineLoading
-    status="active"
-    iconDescription="Loading"
-    description="Loading data..."
-  />
-);
+const sharedArgTypes = {
+  description: {
+    control: {
+      type: 'text',
+    },
+  },
+  iconDescription: {
+    control: {
+      type: 'text',
+    },
+  },
+  successDelay: {
+    control: {
+      type: 'number',
+    },
+  },
+  status: {
+    options: ['inactive', 'active', 'error', 'finished'],
+    control: {
+      type: 'select',
+    },
+  },
+  onSuccess: {
+    action: 'onSuccess',
+  },
+  'aria-live': {
+    control: {
+      type: 'text',
+    },
+  },
+};
 
 export const UxExample = () => {
   function MockSubmission({ children }) {
-    const [isSubmitting, setIsSubmitting] = useState(false);
-    const [success, setSuccess] = useState(false);
-    const [description, setDescription] = useState('Submitting...');
-    const [ariaLive, setAriaLive] = useState('off');
+    const [isSubmitting, setIsSubmitting] = React.useState(false);
+    const [success, setSuccess] = React.useState(false);
+    const [description, setDescription] = React.useState('Submitting...');
+    const [ariaLive, setAriaLive] = React.useState('off');
     const handleSubmit = () => {
       setIsSubmitting(true);
       setAriaLive('assertive');
@@ -65,7 +91,7 @@ export const UxExample = () => {
   return (
     <MockSubmission>
       {({ handleSubmit, isSubmitting, success, description, ariaLive }) => (
-        <div style={{ display: 'flex', width: '300px' }}>
+        <ButtonSet style={{ width: '300px' }}>
           <Button kind="secondary" disabled={isSubmitting || success}>
             Cancel
           </Button>
@@ -79,43 +105,25 @@ export const UxExample = () => {
           ) : (
             <Button onClick={handleSubmit}>Submit</Button>
           )}
-        </div>
+        </ButtonSet>
       )}
     </MockSubmission>
   );
 };
 
-export const Playground = (args) => <InlineLoading {...args} />;
+export const Default = (args) => <InlineLoading {...args} />;
 
-Playground.args = {
+Default.args = {
   description: 'Loading',
-  iconDescription: 'Loading data...',
+  status: 'active',
+  onSuccess: action('onSuccess'),
+  'aria-live': 'assertive',
 };
 
-Playground.argTypes = {
-  className: {
-    table: {
-      disable: true,
-    },
-  },
-  description: {
-    control: {
-      type: 'text',
-    },
-  },
-  iconDescription: {
-    control: {
-      type: 'text',
-    },
-  },
-  onSuccess: {
-    table: {
-      disable: true,
-    },
-  },
-  successDelay: {
-    table: {
-      disable: true,
-    },
+Default.parameters = {
+  controls: {
+    exclude: ['successDelay'],
   },
 };
+
+Default.argTypes = { ...sharedArgTypes };

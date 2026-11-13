@@ -6,11 +6,9 @@
  */
 
 import React, { useState } from 'react';
-import { action } from '@storybook/addon-actions';
+import { action } from 'storybook/actions';
 import { Document, Folder } from '@carbon/icons-react';
 import { Button, VStack } from '../../';
-
-import mdx from './TreeView.featureflag.mdx';
 
 import { TreeView, TreeNode } from './';
 
@@ -184,18 +182,40 @@ function renderTree(nodes) {
 }
 
 export default {
-  title: 'Experimental/Feature Flags/TreeView',
+  title: 'components/TreeView/Feature Flag',
   component: TreeView,
   subcomponents: {
     TreeNode,
   },
-  parameters: {
-    docs: {
-      page: mdx,
-    },
-  },
+  tags: ['!autodocs'],
   args: {
+    hideLabel: false,
+    label: 'Tree View',
+    multiselect: false,
+    onActivate: action('onActivate'),
     onSelect: action('onSelect'),
+    size: 'sm',
+  },
+  argTypes: {
+    hideLabel: {
+      control: { type: 'boolean' },
+    },
+    label: {
+      control: { type: 'text' },
+    },
+    multiselect: {
+      control: { type: 'boolean' },
+    },
+    onActivate: {
+      action: 'onActivate',
+    },
+    onSelect: {
+      action: 'onSelect',
+    },
+    size: {
+      options: ['xs', 'sm'],
+      control: { type: 'select' },
+    },
   },
   decorators: [
     (Story) => (
@@ -206,9 +226,10 @@ export default {
   ],
 };
 
-export const Playground = (args) => {
+export const Default = (args) => {
   const [selected, setSelected] = useState([]);
   const [active, setActive] = useState(null);
+  const { onActivate, onSelect, ...treeViewArgs } = args;
 
   return (
     <VStack gap={6}>
@@ -233,12 +254,17 @@ export const Playground = (args) => {
 
       <div>
         <TreeView
-          label="Tree View"
-          {...args}
+          {...treeViewArgs}
           active={active}
-          onActivate={setActive}
+          onActivate={(nextActive) => {
+            setActive(nextActive);
+            onActivate(nextActive);
+          }}
           selected={selected}
-          onSelect={setSelected}>
+          onSelect={(nextSelected) => {
+            setSelected(nextSelected);
+            onSelect(nextSelected);
+          }}>
           {renderTree(nodes)}
         </TreeView>
       </div>
@@ -246,16 +272,8 @@ export const Playground = (args) => {
   );
 };
 
-Playground.args = {
-  hideLabel: false,
-  multiselect: false,
-};
-
-Playground.argTypes = {
-  active: { control: { disable: true } },
-  selected: { control: { disable: true } },
-  size: {
-    options: ['xs', 'sm'],
-    control: { type: 'select' },
+Default.parameters = {
+  controls: {
+    exclude: ['active', 'children', 'selected'],
   },
 };

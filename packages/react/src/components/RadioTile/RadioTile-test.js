@@ -1,5 +1,5 @@
 /**
- * Copyright IBM Corp. 2022
+ * Copyright IBM Corp. 2022, 2026
  *
  * This source code is licensed under the Apache-2.0 license found in the
  * LICENSE file in the root directory of this source tree.
@@ -7,11 +7,43 @@
 
 import React from 'react';
 import RadioTile from './RadioTile';
+import { AILabel } from '../AILabel';
 import userEvent from '@testing-library/user-event';
 import { render, screen } from '@testing-library/react';
+import { FeatureFlags } from '../FeatureFlags';
 
 describe('RadioTile', () => {
   describe('renders as expected - Component API', () => {
+    it('should warn without throwing for interactive content in children', () => {
+      const spy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+
+      expect(() => {
+        render(
+          <RadioTile value="standard">
+            Option 1 <button type="button">Help</button>
+          </RadioTile>
+        );
+      }).not.toThrow();
+
+      expect(spy).toHaveBeenCalledWith(
+        expect.stringContaining(
+          'Warning: The RadioTile component `children` prop must have no interactive content'
+        )
+      );
+
+      spy.mockRestore();
+    });
+
+    it('should allow non-interactive content in children', () => {
+      expect(() => {
+        render(
+          <RadioTile value="standard">
+            Option 1 <span>additional label content</span>
+          </RadioTile>
+        );
+      }).not.toThrow();
+    });
+
     it('should spread extra props onto outermost element', () => {
       render(
         <RadioTile value="standard" data-testid="test-id">
@@ -92,8 +124,9 @@ describe('RadioTile', () => {
       );
 
       await userEvent.click(screen.getByRole('radio'));
+      await userEvent.keyboard('{Enter}');
 
-      expect(onChange).toHaveBeenCalledTimes(1);
+      expect(onChange).toHaveBeenCalledTimes(2);
     });
 
     it('should respect tabIndex prop', () => {
@@ -131,5 +164,122 @@ describe('RadioTile', () => {
       );
       expect(screen.getByRole('radio')).toHaveAttribute('required');
     });
+
+    it('should apply "aria-describedby" to the input element', () => {
+      render(
+        <RadioTile value="standard" aria-describedby="description-id">
+          Option 1
+        </RadioTile>
+      );
+
+      expect(screen.getByRole('radio')).toHaveAttribute(
+        'aria-describedby',
+        'description-id'
+      );
+    });
+
+    it('should apply "aria-labelledby" to the input element', () => {
+      render(
+        <RadioTile value="standard" aria-labelledby="label-id">
+          Option 1
+        </RadioTile>
+      );
+
+      expect(screen.getByRole('radio')).toHaveAttribute(
+        'aria-labelledby',
+        'label-id'
+      );
+    });
+
+    it('should apply both "aria-describedby" and "aria-labelledby" to the input element', () => {
+      render(
+        <RadioTile
+          value="standard"
+          aria-describedby="description-id"
+          aria-labelledby="label-id">
+          Option 1
+        </RadioTile>
+      );
+
+      const input = screen.getByRole('radio');
+      expect(input).toHaveAttribute('aria-describedby', 'description-id');
+      expect(input).toHaveAttribute('aria-labelledby', 'label-id');
+    });
+
+    it('should not apply "aria-describedby" to the label element', () => {
+      render(
+        <RadioTile
+          value="standard"
+          aria-describedby="description-id"
+          data-testid="test-id">
+          Option 1
+        </RadioTile>
+      );
+
+      expect(screen.getByTestId('test-id')).not.toHaveAttribute(
+        'aria-describedby'
+      );
+    });
+
+    it('should not apply "aria-labelledby" to the label element', () => {
+      render(
+        <RadioTile
+          value="standard"
+          aria-labelledby="label-id"
+          data-testid="test-id">
+          Option 1
+        </RadioTile>
+      );
+
+      expect(screen.getByTestId('test-id')).not.toHaveAttribute(
+        'aria-labelledby'
+      );
+    });
+  });
+
+  it('should check decorator prop and if AILabel exists on radio tile and is xs', async () => {
+    const { container } = render(
+      <RadioTile value="standard" decorator={<AILabel />}>
+        {' '}
+        Option 1{' '}
+      </RadioTile>
+    );
+    expect(screen.getByRole('button')).toHaveClass(`cds--ai-label__button--xs`);
+    expect(container.querySelector('label')).not.toContainElement(
+      screen.getByRole('button')
+    );
+  });
+
+  it('should check deprecated slug prop and if AILabel exists on radio tile and is xs', async () => {
+    const spy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    const { container } = render(
+      <RadioTile value="standard" slug={<AILabel />}>
+        {' '}
+        Option 1{' '}
+      </RadioTile>
+    );
+    expect(screen.getByRole('button')).toHaveClass(`cds--ai-label__button--xs`);
+    expect(container.querySelector('label')).not.toContainElement(
+      screen.getByRole('button')
+    );
+    spy.mockRestore();
+  });
+
+  //Feature flag : enable-v12-tile-radio-icons
+  it('should have a checked attribute if the prop checked is provided', () => {
+    render(
+      <FeatureFlags enableV12TileRadioIcons>
+        <RadioTile id="test-1" value="test-1" checked>
+          Option 1
+        </RadioTile>
+      </FeatureFlags>
+    );
+
+    expect(screen.getByDisplayValue('test-1')).toEqual(
+      screen.getByRole('radio', {
+        checked: true,
+        name: 'Option 1',
+      })
+    );
   });
 });

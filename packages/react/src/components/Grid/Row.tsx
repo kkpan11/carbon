@@ -1,5 +1,5 @@
 /**
- * Copyright IBM Corp. 2016, 2023
+ * Copyright IBM Corp. 2016, 2026
  *
  * This source code is licensed under the Apache-2.0 license found in the
  * LICENSE file in the root directory of this source tree.
@@ -7,7 +7,7 @@
 
 import cx from 'classnames';
 import PropTypes from 'prop-types';
-import React from 'react';
+import React, { type ReactElement } from 'react';
 import { usePrefix } from '../../internal/usePrefix';
 import { PolymorphicProps } from '../../types/common';
 
@@ -43,8 +43,9 @@ export type RowProps<T extends React.ElementType> = PolymorphicProps<
 export interface RowComponent {
   <T extends React.ElementType>(
     props: RowProps<T>,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- https://github.com/carbon-design-system/carbon/issues/20452
     context?: any
-  ): React.ReactElement<any, any> | null;
+  ): ReactElement | null;
 }
 
 function Row<T extends React.ElementType>({
@@ -62,6 +63,7 @@ function Row<T extends React.ElementType>({
     [`${prefix}--row--narrow`]: narrow,
   });
   // TypeScript type validation reports conflicts on different instances of keyof JSX.IntrinsicElements
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- https://github.com/carbon-design-system/carbon/issues/20452
   const BaseComponentAsAny: any = BaseComponent;
   return (
     <BaseComponentAsAny className={className} {...rest}>

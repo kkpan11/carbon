@@ -1,13 +1,24 @@
+/**
+ * Copyright IBM Corp. 2019, 2026
+ *
+ * This source code is licensed under the Apache-2.0 license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
+
 import React, {
+  Children,
+  cloneElement,
+  forwardRef,
+  useCallback,
   useEffect,
   useRef,
   useState,
-  type ReactNode,
-  type MouseEvent,
-  type KeyboardEvent,
+  type ButtonHTMLAttributes,
   type HTMLAttributes,
-  type ChangeEvent,
-  type ComponentType,
+  type KeyboardEvent,
+  type MouseEvent,
+  type ReactNode,
+  type Ref,
 } from 'react';
 import PropTypes from 'prop-types';
 import cx from 'classnames';
@@ -17,10 +28,11 @@ import {
   ChevronDown,
   Error,
   ArrowRight,
+  AiLabel,
 } from '@carbon/icons-react';
 import Link from '../Link';
 import { keys, matches } from '../../internal/keyboard';
-import deprecate from '../../prop-types/deprecate';
+import { deprecate } from '../../prop-types/deprecate';
 import { composeEventHandlers } from '../../tools/events';
 import { usePrefix } from '../../internal/usePrefix';
 import useIsomorphicEffect from '../../internal/useIsomorphicEffect';
@@ -28,58 +40,74 @@ import {
   getInteractiveContent,
   getRoleContent,
 } from '../../internal/useNoInteractiveChildren';
+import { useNoInteractiveChildrenForLabel } from '../FeatureFlags/useNoInteractiveChildrenForLabel';
 import { useMergedRefs } from '../../internal/useMergedRefs';
 import { useFeatureFlag } from '../FeatureFlags';
 import { useId } from '../../internal/useId';
 import { Text } from '../Text';
+import { AILabel } from '../AILabel';
+import { isComponentElement } from '../../internal';
 
 export interface TileProps extends HTMLAttributes<HTMLDivElement> {
   children?: ReactNode;
   className?: string;
+  /**
+   * **Experimental**: Provide a `decorator` component to be rendered inside the `Tile` component
+   */
+  decorator?: ReactNode;
   /** @deprecated */
   light?: boolean;
 
   /**
    * **Experimental**: Specify if the `Tile` component should be rendered with rounded corners. Only valid
-   * when `slug` prop is present
+   * when an AILabel is present
    */
   hasRoundedCorners?: boolean;
 
   /**
-   * **Experimental**: Provide a `Slug` component to be rendered inside the `SelectableTile` component
+   * @deprecated please use `decorator` instead.
+   * **Experimental**: Provide a `Slug` component to be rendered inside the `Tile` component
    */
   slug?: ReactNode;
 }
 
-export const Tile = React.forwardRef<HTMLDivElement, TileProps>(function Tile(
-  {
-    children,
-    className,
-    light = false,
-    slug,
-    hasRoundedCorners = false,
-    ...rest
-  },
-  ref
-) {
-  const prefix = usePrefix();
-
-  const tileClasses = cx(
-    `${prefix}--tile`,
+export const Tile = React.forwardRef<HTMLDivElement, TileProps>(
+  (
     {
-      [`${prefix}--tile--light`]: light,
-      [`${prefix}--tile--slug`]: slug,
-      [`${prefix}--tile--slug-rounded`]: slug && hasRoundedCorners,
+      children,
+      className,
+      decorator,
+      light = false,
+      slug,
+      hasRoundedCorners = false,
+      ...rest
     },
-    className
-  );
-  return (
-    <div className={tileClasses} ref={ref} {...rest}>
-      {children}
-      {slug}
-    </div>
-  );
-});
+    ref
+  ) => {
+    const prefix = usePrefix();
+
+    const tileClasses = cx(
+      `${prefix}--tile`,
+      {
+        [`${prefix}--tile--light`]: light,
+        [`${prefix}--tile--slug`]: slug,
+        [`${prefix}--tile--slug-rounded`]: slug && hasRoundedCorners,
+        [`${prefix}--tile--decorator`]: decorator,
+        [`${prefix}--tile--decorator-rounded`]: decorator && hasRoundedCorners,
+      },
+      className
+    );
+    return (
+      <div className={tileClasses} ref={ref} {...rest}>
+        {children}
+        {slug}
+        {decorator && (
+          <div className={`${prefix}--tile--inner-decorator`}>{decorator}</div>
+        )}
+      </div>
+    );
+  }
+);
 
 Tile.displayName = 'Tile';
 Tile.propTypes = {
@@ -94,8 +122,13 @@ Tile.propTypes = {
   className: PropTypes.string,
 
   /**
+   * **Experimental**: Provide a `decorator` component to be rendered inside the `Tile` component
+   */
+  decorator: PropTypes.node,
+
+  /**
    * **Experimental**: Specify if the `Tile` component should be rendered with rounded corners. Only valid
-   * when `slug` prop is present
+   * when an AILabel is present
    */
   hasRoundedCorners: PropTypes.bool,
 
@@ -113,12 +146,21 @@ Tile.propTypes = {
   /**
    * **Experimental**: Provide a `Slug` component to be rendered inside the `Tile` component
    */
-  slug: PropTypes.node,
+  slug: deprecate(
+    PropTypes.node,
+    'The `slug` prop for `Tile` has ' +
+      'been deprecated in favor of the new `decorator` prop. It will be removed in the next major release.'
+  ),
 };
 
 export interface ClickableTileProps extends HTMLAttributes<HTMLAnchorElement> {
   children?: ReactNode;
   className?: string;
+
+  /**
+   * **Experimental**: Provide a `decorator` component or set the boolean to True for an AILabel icon to be rendered inside the `ClickableTile` component
+   */
+  decorator?: boolean | ReactNode;
 
   /** @deprecated */
   light?: boolean;
@@ -145,19 +187,21 @@ export interface ClickableTileProps extends HTMLAttributes<HTMLAnchorElement> {
   href?: string;
 
   /**
-   * Optional prop to allow overriding the icon rendering.
+   * A component used to render an icon.
    */
-  renderIcon?: ComponentType<{ className?: string }>;
+  renderIcon?: React.ElementType;
 
   /**
    * Specify the function to run when the ClickableTile is clicked
    */
-  onClick?(event: MouseEvent): void;
+  onClick?(
+    event: MouseEvent<HTMLAnchorElement> | KeyboardEvent<HTMLAnchorElement>
+  ): void;
 
   /**
    * Specify the function to run when the ClickableTile is interacted with via a keyboard
    */
-  onKeyDown?(event: KeyboardEvent): void;
+  onKeyDown?(event: KeyboardEvent<HTMLAnchorElement>): void;
 
   /**
    * The rel property for the link.
@@ -165,6 +209,7 @@ export interface ClickableTileProps extends HTMLAttributes<HTMLAnchorElement> {
   rel?: string;
 
   /**
+   * @deprecated please use `decorator` instead.
    * **Experimental**: Specify if a `Slug` icon should be rendered inside the `ClickableTile`
    */
   slug?: boolean;
@@ -173,107 +218,106 @@ export interface ClickableTileProps extends HTMLAttributes<HTMLAnchorElement> {
 export const ClickableTile = React.forwardRef<
   HTMLAnchorElement,
   ClickableTileProps
->(function ClickableTile(
-  {
-    children,
-    className,
-    clicked = false,
-    disabled,
-    href,
-    light,
-    onClick = () => {},
-    onKeyDown = () => {},
-    renderIcon: Icon,
-    hasRoundedCorners,
-    slug,
-    ...rest
-  },
-  ref
-) {
-  const prefix = usePrefix();
-  const classes = cx(
-    `${prefix}--tile`,
-    `${prefix}--tile--clickable`,
+>(
+  (
     {
-      [`${prefix}--tile--is-clicked`]: clicked,
-      [`${prefix}--tile--light`]: light,
-      [`${prefix}--tile--slug`]: slug,
-      [`${prefix}--tile--slug-rounded`]: slug && hasRoundedCorners,
+      children,
+      className,
+      clicked = false,
+      decorator,
+      disabled,
+      href,
+      light,
+      onClick = () => {},
+      onKeyDown = () => {},
+      renderIcon: Icon,
+      hasRoundedCorners,
+      slug,
+      ...rest
     },
-    className
-  );
+    ref
+  ) => {
+    const prefix = usePrefix();
+    const classes = cx(
+      `${prefix}--tile`,
+      `${prefix}--tile--clickable`,
+      {
+        [`${prefix}--tile--is-clicked`]: clicked,
+        [`${prefix}--tile--light`]: light,
+        [`${prefix}--tile--slug`]: slug,
+        [`${prefix}--tile--slug-rounded`]: slug && hasRoundedCorners,
+        [`${prefix}--tile--decorator`]: decorator,
+        [`${prefix}--tile--decorator-rounded`]: decorator && hasRoundedCorners,
+      },
+      className
+    );
 
-  const [isSelected, setIsSelected] = useState(clicked);
-
-  function handleOnClick(evt: MouseEvent) {
-    evt?.persist?.();
-    setIsSelected(!isSelected);
-    onClick(evt);
-  }
-
-  function handleOnKeyDown(evt: KeyboardEvent) {
-    evt?.persist?.();
-    if (matches(evt, [keys.Enter, keys.Space])) {
-      setIsSelected(!isSelected);
-    }
-    onKeyDown(evt);
-  }
-
-  // To Do: Replace with an an icon from `@carbon/react`
-  // since the hollow slug in `ClickableTile` is not interactive
-  const hollowSlugIcon = (
-    <svg
-      className={`${prefix}--tile--slug-icon`}
-      width="24"
-      height="24"
-      viewBox="0 0 24 24"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg">
-      <rect x="0.5" y="0.5" width="23" height="23" />
-      <path
-        d="M13.2436 16H11.5996L10.9276 13.864H7.95164L7.29164 16H5.68364L8.49164 7.624H10.4596L13.2436 16ZM10.5436 12.508L9.46364 9.064H9.40364L8.33564 12.508H10.5436ZM17.9341 16H14.1301V14.728H15.2341V8.896H14.1301V7.624H17.9341V8.896H16.8181V14.728H17.9341V16Z"
-        fill="#161616"
-      />
-    </svg>
-  );
-
-  const v12DefaultIcons = useFeatureFlag('enable-v12-tile-default-icons');
-  if (v12DefaultIcons) {
-    if (!Icon) {
-      Icon = ArrowRight;
+    function handleOnClick(evt: MouseEvent<HTMLAnchorElement>) {
+      evt?.persist?.();
+      onClick(evt);
     }
 
-    if (disabled) {
-      Icon = Error;
+    function handleOnKeyDown(evt: KeyboardEvent<HTMLAnchorElement>) {
+      evt?.persist?.();
+      if (!href && matches(evt, [keys.Enter, keys.Space])) {
+        evt.preventDefault();
+        onClick(evt);
+      }
+      onKeyDown(evt);
     }
+
+    const v12DefaultIcons = useFeatureFlag('enable-v12-tile-default-icons');
+    if (v12DefaultIcons) {
+      if (!Icon) {
+        Icon = ArrowRight;
+      }
+
+      if (disabled) {
+        Icon = Error;
+      }
+    }
+
+    const iconClasses = cx({
+      [`${prefix}--tile--icon`]:
+        !v12DefaultIcons || (v12DefaultIcons && !disabled),
+      [`${prefix}--tile--disabled-icon`]: v12DefaultIcons && disabled,
+    });
+
+    const hasElementDecorator = React.isValidElement(decorator);
+    const clickableTile = (
+      <Link
+        className={classes}
+        href={href}
+        tabIndex={!href && !disabled ? 0 : undefined}
+        onClick={!disabled ? handleOnClick : undefined}
+        onKeyDown={handleOnKeyDown}
+        ref={ref}
+        disabled={disabled}
+        {...rest}>
+        {slug || decorator ? (
+          <div className={`${prefix}--tile-content`}>{children}</div>
+        ) : (
+          children
+        )}
+        {(slug === true || decorator === true) && (
+          <AiLabel size="24" className={`${prefix}--tile--ai-label-icon`} />
+        )}
+        {Icon && <Icon className={iconClasses} aria-hidden="true" />}
+      </Link>
+    );
+
+    if (hasElementDecorator) {
+      return (
+        <div className={`${prefix}--clickable-tile__wrapper`}>
+          {clickableTile}
+          <div className={`${prefix}--tile--inner-decorator`}>{decorator}</div>
+        </div>
+      );
+    }
+
+    return clickableTile;
   }
-
-  const iconClasses = cx({
-    [`${prefix}--tile--icon`]:
-      !v12DefaultIcons || (v12DefaultIcons && !disabled),
-    [`${prefix}--tile--disabled-icon`]: v12DefaultIcons && disabled,
-  });
-
-  return (
-    <Link
-      className={classes}
-      href={href}
-      tabIndex={!href && !disabled ? 0 : undefined}
-      onClick={!disabled ? handleOnClick : undefined}
-      onKeyDown={handleOnKeyDown}
-      ref={ref}
-      disabled={disabled}
-      {...rest}>
-      {slug ? (
-        <div className={`${prefix}--tile-content`}>{children}</div>
-      ) : (
-        children
-      )}
-      {slug && hollowSlugIcon}
-      {Icon && <Icon className={iconClasses} aria-hidden="true" />}
-    </Link>
-  );
-});
+);
 
 ClickableTile.displayName = 'ClickableTile';
 ClickableTile.propTypes = {
@@ -291,6 +335,11 @@ ClickableTile.propTypes = {
    * Boolean for whether a tile has been clicked.
    */
   clicked: PropTypes.bool,
+
+  /**
+   * **Experimental**: Provide a `decorator` component or set the boolean to True for an AILabel icon to be rendered inside the `ClickableTile` component
+   */
+  decorator: PropTypes.oneOfType([PropTypes.bool, PropTypes.node]),
 
   /**
    * Specify whether the ClickableTile should be disabled
@@ -333,16 +382,18 @@ ClickableTile.propTypes = {
   rel: PropTypes.string,
 
   /**
-   * Optional prop to allow overriding the icon rendering.
-   * Can be a React component class
+   * A component used to render an icon.
    */
-  // @ts-expect-error: Invalid derived prop type, seemingly no real solution.
   renderIcon: PropTypes.oneOfType([PropTypes.func, PropTypes.object]),
 };
 
 export interface SelectableTileProps extends HTMLAttributes<HTMLDivElement> {
   children?: ReactNode;
   className?: string;
+  /**
+   * **Experimental**: Provide a `decorator` component to be rendered inside the `SelectableTile` component
+   */
+  decorator?: ReactNode;
 
   /** @deprecated */
   light?: boolean;
@@ -373,7 +424,7 @@ export interface SelectableTileProps extends HTMLAttributes<HTMLDivElement> {
    * The empty handler of the `<input>`.
    */
   onChange?(
-    event: ChangeEvent<HTMLDivElement>,
+    event: MouseEvent<HTMLDivElement> | KeyboardEvent<HTMLDivElement>,
     selected?: boolean,
     id?: string
   ): void;
@@ -394,6 +445,7 @@ export interface SelectableTileProps extends HTMLAttributes<HTMLDivElement> {
   selected?: boolean;
 
   /**
+   * @deprecated please use `decorator` instead.
    * **Experimental**: Provide a `Slug` component to be rendered inside the `SelectableTile` component
    */
   slug?: ReactNode;
@@ -412,125 +464,161 @@ export interface SelectableTileProps extends HTMLAttributes<HTMLDivElement> {
    * The value of the `<input>`.
    * @deprecated
    */
-  value: string | number;
+  value?: string | number;
 }
 
 export const SelectableTile = React.forwardRef<
   HTMLDivElement,
   SelectableTileProps
->(function SelectableTile(
-  {
-    children,
-    className,
-    disabled,
-    id,
-    light,
-    onClick = () => {},
-    onChange = () => {},
-    onKeyDown = () => {},
-    selected = false,
-    tabIndex = 0,
-    title = 'title',
-    slug,
-    hasRoundedCorners,
-    ...rest
-  },
-  ref
-) {
-  const prefix = usePrefix();
-
-  const clickHandler = onClick;
-  const keyDownHandler = onKeyDown;
-
-  const [isSelected, setIsSelected] = useState<boolean>(selected);
-  const [prevSelected, setPrevSelected] = useState<boolean>(selected);
-
-  const classes = cx(
-    `${prefix}--tile`,
-    `${prefix}--tile--selectable`,
+>(
+  (
     {
-      [`${prefix}--tile--is-selected`]: isSelected,
-      [`${prefix}--tile--light`]: light,
-      [`${prefix}--tile--disabled`]: disabled,
-      [`${prefix}--tile--slug`]: slug,
-      [`${prefix}--tile--slug-rounded`]: slug && hasRoundedCorners,
+      children,
+      className,
+      decorator,
+      disabled,
+      id,
+      light,
+      onClick = () => {},
+      onChange = () => {},
+      onKeyDown = () => {},
+      selected = false,
+      tabIndex = 0,
+      title,
+      slug,
+      hasRoundedCorners,
+      ...rest
     },
-    className
-  );
+    ref
+  ) => {
+    const prefix = usePrefix();
 
-  // TODO: rename to handleClick when handleClick prop is deprecated
-  function handleOnClick(evt) {
-    evt.preventDefault();
-    evt?.persist?.();
-    if (slug && slugRef.current && slugRef.current.contains(evt.target)) {
-      return;
-    }
-    setIsSelected(!isSelected);
-    clickHandler(evt);
-    onChange(evt, isSelected, id);
-  }
+    const clickHandler = onClick;
+    const keyDownHandler = onKeyDown;
 
-  // TODO: rename to handleKeyDown when handleKeyDown prop is deprecated
-  function handleOnKeyDown(evt) {
-    evt?.persist?.();
-    if (matches(evt, [keys.Enter, keys.Space])) {
+    const [isSelected, setIsSelected] = useState<boolean>(selected);
+
+    // Use useEffect to sync with prop changes instead of render-time logic
+    useEffect(() => {
+      setIsSelected(selected);
+    }, [selected]);
+
+    const classes = cx(
+      `${prefix}--tile`,
+      `${prefix}--tile--selectable`,
+      {
+        [`${prefix}--tile--is-selected`]: isSelected,
+        [`${prefix}--tile--light`]: light,
+        [`${prefix}--tile--disabled`]: disabled,
+        [`${prefix}--tile--slug`]: slug,
+        [`${prefix}--tile--slug-rounded`]: slug && hasRoundedCorners,
+        [`${prefix}--tile--decorator`]: decorator,
+        [`${prefix}--tile--decorator-rounded`]: decorator && hasRoundedCorners,
+      },
+      className
+    );
+
+    // Single function to handle selection changes
+    const handleSelectionChange = useCallback(
+      (
+        evt: MouseEvent<HTMLDivElement> | KeyboardEvent<HTMLDivElement>,
+        newSelected: boolean
+      ) => {
+        setIsSelected(newSelected);
+        onChange(evt, newSelected, id);
+      },
+      [onChange, id]
+    );
+
+    function handleClick(evt: MouseEvent<HTMLDivElement>) {
       evt.preventDefault();
-      setIsSelected(!isSelected);
-      onChange(evt, isSelected, id);
+      evt?.persist?.();
+
+      const newSelected = !isSelected;
+      handleSelectionChange(evt, newSelected);
+      clickHandler(evt);
     }
-    keyDownHandler(evt);
-  }
 
-  function handleChange(event) {
-    setIsSelected(event.target.checked);
-    onChange(event, isSelected, id);
-  }
+    function handleKeyDown(evt: KeyboardEvent<HTMLDivElement>) {
+      evt?.persist?.();
+      if (matches(evt, [keys.Enter, keys.Space])) {
+        evt.preventDefault();
+        const newSelected = !isSelected;
+        handleSelectionChange(evt, newSelected);
+      }
+      keyDownHandler(evt);
+    }
 
-  if (selected !== prevSelected) {
-    setIsSelected(selected);
-    setPrevSelected(selected);
-  }
-
-  // Slug is always size `xs`
-  const slugRef = useRef<HTMLInputElement>(null);
-  let normalizedSlug;
-  if (slug && slug['type']?.displayName === 'Slug') {
-    normalizedSlug = React.cloneElement(slug as React.ReactElement<any>, {
-      size: 'xs',
-      ref: slugRef,
+    // AILabel is always size `xs`
+    const labelRef = useRef<HTMLLabelElement>(null);
+    const candidate = slug ?? decorator;
+    const candidateIsAILabel = isComponentElement(candidate, AILabel);
+    const normalizedDecorator = candidateIsAILabel
+      ? cloneElement(candidate, { size: 'xs' })
+      : candidate;
+    const wrapperClassName = cx(`${prefix}--selectable-tile__wrapper`, {
+      [`${prefix}--selectable-tile__wrapper--slug`]: slug,
+      [`${prefix}--selectable-tile__wrapper--decorator`]: decorator,
     });
-  }
+    const decoratorNode = slug ? (
+      normalizedDecorator
+    ) : decorator ? (
+      <div className={`${prefix}--tile--inner-decorator`}>
+        {normalizedDecorator}
+      </div>
+    ) : null;
+    useNoInteractiveChildrenForLabel(
+      labelRef,
+      'The SelectableTile component `children` prop must have no interactive content'
+    );
 
-  return (
-    // eslint-disable-next-line jsx-a11y/interactive-supports-focus
-    <div
-      className={classes}
-      onClick={!disabled ? handleOnClick : undefined}
-      role="checkbox"
-      aria-checked={isSelected}
-      onKeyDown={!disabled ? handleOnKeyDown : undefined}
-      // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex
-      tabIndex={!disabled ? tabIndex : undefined}
-      ref={ref}
-      id={id}
-      onChange={!disabled ? handleChange : undefined}
-      title={title}
-      {...rest}>
-      <span
-        className={`${prefix}--tile__checkmark ${prefix}--tile__checkmark--persistent`}>
-        {isSelected ? <CheckboxCheckedFilled /> : <Checkbox />}
-      </span>
-      <Text as="label" htmlFor={id} className={`${prefix}--tile-content`}>
-        {children}
-      </Text>
-      {normalizedSlug}
-    </div>
-  );
-});
+    const selectableTile = (
+      // eslint-disable-next-line jsx-a11y/interactive-supports-focus
+      <div
+        className={classes}
+        onClick={!disabled ? handleClick : undefined}
+        role="checkbox"
+        aria-checked={isSelected}
+        onKeyDown={!disabled ? handleKeyDown : undefined}
+        tabIndex={!disabled ? tabIndex : undefined}
+        ref={ref}
+        id={id}
+        title={title}
+        {...rest}>
+        <span
+          className={`${prefix}--tile__checkmark ${prefix}--tile__checkmark--persistent`}>
+          {isSelected ? <CheckboxCheckedFilled /> : <Checkbox />}
+        </span>
+        <Text
+          as="label"
+          htmlFor={id}
+          className={`${prefix}--tile-content`}
+          ref={labelRef}>
+          {children}
+        </Text>
+      </div>
+    );
+
+    return decoratorNode ? (
+      <div className={wrapperClassName}>
+        {selectableTile}
+        {decoratorNode}
+      </div>
+    ) : (
+      selectableTile
+    );
+  }
+);
+
+SelectableTile.displayName = 'SelectableTile';
 
 SelectableTile.propTypes = {
   children: PropTypes.node,
   className: PropTypes.string,
+  /**
+   * **Experimental**: Provide a `decorator` component to be rendered inside the `SelectableTile` component
+   */
+  decorator: PropTypes.node,
 
   /**
    * Specify whether the SelectableTile should be disabled
@@ -561,7 +649,10 @@ SelectableTile.propTypes = {
    * The `name` of the `<input>`.
    * @deprecated
    */
-  name: PropTypes.string,
+  name: deprecate(
+    PropTypes.string,
+    'The `name` property is no longer used.  It will be removed in the next major release.'
+  ),
 
   /**
    * The empty handler of the `<input>`.
@@ -586,7 +677,11 @@ SelectableTile.propTypes = {
   /**
    * **Experimental**: Provide a `Slug` component to be rendered inside the `SelectableTile` component
    */
-  slug: PropTypes.node,
+  slug: deprecate(
+    PropTypes.node,
+    'The `slug` prop for `SelectableTile` has ' +
+      'been deprecated in favor of the new `decorator` prop. It will be removed in the next major release.'
+  ),
 
   /**
    * Specify the tab index of the wrapper element
@@ -602,12 +697,19 @@ SelectableTile.propTypes = {
    * The value of the `<input>`.
    * @deprecated
    */
-  value: PropTypes.oneOfType([PropTypes.string, PropTypes.number]).isRequired,
+  value: deprecate(
+    PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+    'The `value` property is no longer used.  It will be removed in the next major release.`'
+  ),
 };
 
 export interface ExpandableTileProps extends HTMLAttributes<HTMLDivElement> {
   children?: ReactNode;
   className?: string;
+  /**
+   * **Experimental**: Provide a `decorator` component to be rendered inside the `ExpandableTile` component
+   */
+  decorator?: ReactNode;
 
   /** @deprecated */
   light?: boolean;
@@ -639,6 +741,7 @@ export interface ExpandableTileProps extends HTMLAttributes<HTMLDivElement> {
   onKeyUp?(event: KeyboardEvent): void;
 
   /**
+   * @deprecated please use `decorator` instead.
    * **Experimental**: Provide a `Slug` component to be rendered inside the `ExpandableTile` component
    */
   slug?: ReactNode;
@@ -673,251 +776,247 @@ export interface ExpandableTileProps extends HTMLAttributes<HTMLDivElement> {
   tilePadding?: number;
 }
 
-export const ExpandableTile = React.forwardRef<
-  HTMLElement,
-  ExpandableTileProps
->(function ExpandableTile(
-  {
-    tabIndex = 0,
-    className,
-    children,
-    expanded = false,
-    tileMaxHeight = 0, // eslint-disable-line
-    tilePadding = 0, // eslint-disable-line
-    onClick,
-    onKeyUp,
-    tileCollapsedIconText = 'Interact to expand Tile',
-    tileExpandedIconText = 'Interact to collapse Tile',
-    tileCollapsedLabel,
-    tileExpandedLabel,
-    light,
-    slug,
-    hasRoundedCorners,
-    ...rest
-  },
-  forwardRef
-) {
-  const [isTileMaxHeight, setIsTileMaxHeight] = useState<number>(tileMaxHeight);
-  const [isTilePadding, setIsTilePadding] = useState<number>(tilePadding);
-  const [prevExpanded, setPrevExpanded] = useState<boolean>(expanded);
-  const [prevTileMaxHeight, setPrevTileMaxHeight] =
-    useState<number>(tileMaxHeight);
-  const [prevTilePadding, setPrevTilePadding] = useState<number>(tilePadding);
-  const [isExpanded, setIsExpanded] = useState<boolean>(expanded);
-  const [interactive, setInteractive] = useState<boolean>(true);
-  const aboveTheFold = useRef<HTMLDivElement>(null);
-  const belowTheFold = useRef<HTMLDivElement>(null);
-  const tileContent = useRef<HTMLDivElement>(null);
-  const tile = useRef<HTMLElement>(null);
-  const ref = useMergedRefs([forwardRef, tile]);
-  const prefix = usePrefix();
+export const ExpandableTile = forwardRef<HTMLElement, ExpandableTileProps>(
+  (
+    {
+      tabIndex = 0,
+      className,
+      children,
+      decorator,
+      expanded = false,
+      tileMaxHeight = 0,
+      tilePadding = 0,
+      onClick,
+      onKeyUp,
+      tileCollapsedIconText = 'Interact to expand Tile',
+      tileExpandedIconText = 'Interact to collapse Tile',
+      tileCollapsedLabel,
+      tileExpandedLabel,
+      light,
+      slug,
+      hasRoundedCorners,
+      ...rest
+    },
+    forwardRef
+  ) => {
+    const [measuredAboveHeight, setMeasuredAboveHeight] = useState(0);
+    const [measuredPadding, setMeasuredPadding] = useState(0);
+    const [isExpanded, setIsExpanded] = useState(expanded);
+    const [interactive, setInteractive] = useState(true);
+    const aboveTheFold = useRef<HTMLDivElement>(null);
+    const belowTheFold = useRef<HTMLDivElement>(null);
+    const chevronInteractiveRef = useRef<HTMLButtonElement>(null);
+    const tileContent = useRef<HTMLDivElement>(null);
+    const tile = useRef<HTMLElement>(null);
+    const ref = useMergedRefs([forwardRef, tile]);
+    const prefix = usePrefix();
 
-  if (expanded !== prevExpanded) {
-    setIsExpanded(expanded);
-    setPrevExpanded(expanded);
-    setMaxHeight();
-  }
+    useEffect(() => {
+      setIsExpanded(expanded);
+    }, [expanded]);
 
-  if (tileMaxHeight !== prevTileMaxHeight) {
-    setIsTileMaxHeight(tileMaxHeight);
-    setPrevTileMaxHeight(tileMaxHeight);
-  }
+    const handleClick = () => {
+      setIsExpanded((prev) => !prev);
+    };
 
-  if (tilePadding !== prevTilePadding) {
-    setIsTilePadding(tilePadding);
-    setPrevTilePadding(tilePadding);
-  }
-
-  function setMaxHeight() {
-    if (isExpanded && tileContent.current) {
-      setIsTileMaxHeight(tileContent.current.getBoundingClientRect()?.height);
-    }
-
-    if (aboveTheFold.current) {
-      setIsTileMaxHeight(aboveTheFold.current.getBoundingClientRect().height);
-    }
-  }
-
-  function handleClick(evt: MouseEvent) {
-    evt?.persist?.();
-    setIsExpanded(!isExpanded);
-    setMaxHeight();
-  }
-
-  function handleKeyUp(evt: KeyboardEvent) {
-    if (evt.target !== tile.current) {
-      if (matches(evt, [keys.Enter, keys.Space])) {
-        evt.preventDefault();
+    const handleKeyUp = (evt: KeyboardEvent) => {
+      if (
+        evt.target !== tile.current &&
+        evt.target !== chevronInteractiveRef.current
+      ) {
+        if (matches(evt, [keys.Enter, keys.Space])) {
+          evt.preventDefault();
+        }
       }
-    }
-  }
+    };
 
-  function getChildren() {
-    return React.Children.toArray(children);
-  }
-
-  const classNames = cx(
-    `${prefix}--tile`,
-    `${prefix}--tile--expandable`,
-    {
-      [`${prefix}--tile--is-expanded`]: isExpanded,
-      [`${prefix}--tile--light`]: light,
-    },
-    className
-  );
-
-  const interactiveClassNames = cx(
-    `${prefix}--tile`,
-    `${prefix}--tile--expandable`,
-    `${prefix}--tile--expandable--interactive`,
-    {
-      [`${prefix}--tile--is-expanded`]: isExpanded,
-      [`${prefix}--tile--light`]: light,
-      [`${prefix}--tile--slug`]: slug,
-      [`${prefix}--tile--slug-rounded`]: slug && hasRoundedCorners,
-    },
-    className
-  );
-
-  const chevronInteractiveClassNames = cx(
-    `${prefix}--tile__chevron`,
-    `${prefix}--tile__chevron--interactive`
-  );
-
-  const childrenAsArray = getChildren();
-
-  useIsomorphicEffect(() => {
-    if (!tile.current || !aboveTheFold.current) {
-      return;
-    }
-
-    const getStyle = window.getComputedStyle(tile.current, null);
-    const { current: node } = aboveTheFold;
-    const { height } = node.getBoundingClientRect();
-    const paddingTop = parseInt(getStyle.getPropertyValue('padding-top'), 10);
-    const paddingBottom = parseInt(
-      getStyle.getPropertyValue('padding-bottom'),
-      10
+    const classNames = cx(
+      `${prefix}--tile`,
+      `${prefix}--tile--expandable`,
+      {
+        [`${prefix}--tile--is-expanded`]: isExpanded,
+        [`${prefix}--tile--light`]: light,
+      },
+      className
     );
 
-    setIsTileMaxHeight(height);
-    setIsTilePadding(paddingTop + paddingBottom);
-  }, [isTileMaxHeight]);
+    const interactiveClassNames = cx(
+      classNames,
+      `${prefix}--tile--expandable--interactive`,
+      {
+        [`${prefix}--tile--slug`]: slug,
+        [`${prefix}--tile--slug-rounded`]: slug && hasRoundedCorners,
+        [`${prefix}--tile--decorator`]: decorator,
+        [`${prefix}--tile--decorator-rounded`]: decorator && hasRoundedCorners,
+      }
+    );
 
-  useIsomorphicEffect(() => {
-    if (!aboveTheFold.current || !belowTheFold.current) {
-      return;
-    }
+    const chevronInteractiveClassNames = cx(
+      `${prefix}--tile__chevron`,
+      `${prefix}--tile__chevron--interactive`
+    );
 
-    // Interactive elements or elements that are given a role should be treated
-    // the same because elements with a role can not be rendered inside a `button`
-    if (
-      !getInteractiveContent(belowTheFold.current) &&
-      !getRoleContent(belowTheFold.current) &&
-      !getInteractiveContent(aboveTheFold.current) &&
-      !getRoleContent(aboveTheFold.current) &&
-      !slug
-    ) {
-      setInteractive(false);
-    }
-  }, [slug]);
+    const childrenAsArray = Children.toArray(children);
 
-  useIsomorphicEffect(() => {
-    if (!tile.current) {
-      return;
-    }
+    useIsomorphicEffect(() => {
+      if (!tile.current || !aboveTheFold.current) {
+        return;
+      }
 
-    if (isExpanded) {
-      tile.current.style.maxHeight = '';
-    } else {
-      tile.current.style.maxHeight = isTileMaxHeight + isTilePadding + 'px';
-    }
-  }, [isExpanded, isTileMaxHeight, isTilePadding]);
+      const style = window.getComputedStyle(tile.current);
+      const paddingTop =
+        parseInt(style.getPropertyValue('padding-top'), 10) || 0;
+      const paddingBottom =
+        parseInt(style.getPropertyValue('padding-bottom'), 10) || 0;
 
-  useEffect(() => {
-    if (!aboveTheFold.current) {
-      return;
-    }
+      setMeasuredPadding(paddingTop + paddingBottom);
+      setMeasuredAboveHeight(aboveTheFold.current.scrollHeight);
+    }, []);
 
-    const resizeObserver = new ResizeObserver((entries) => {
-      const [aboveTheFold] = entries;
-      setIsTileMaxHeight(aboveTheFold.contentRect.height);
-    });
-    resizeObserver.observe(aboveTheFold.current);
+    useIsomorphicEffect(() => {
+      if (!aboveTheFold.current || !belowTheFold.current) {
+        return;
+      }
 
-    return () => resizeObserver.disconnect();
-  }, []);
+      const hasInteractive =
+        Boolean(getInteractiveContent(aboveTheFold.current)) ||
+        Boolean(getRoleContent(aboveTheFold.current)) ||
+        Boolean(getInteractiveContent(belowTheFold.current)) ||
+        Boolean(getRoleContent(belowTheFold.current)) ||
+        Boolean(slug || decorator);
 
-  const belowTheFoldId = useId('expandable-tile-interactive');
+      setInteractive(hasInteractive);
+    }, [slug, decorator, children]);
 
-  // Slug is always size `xs`
-  let normalizedSlug;
-  if (slug && slug['type']?.displayName === 'Slug') {
-    normalizedSlug = React.cloneElement(slug as React.ReactElement<any>, {
-      size: 'xs',
-    });
+    useIsomorphicEffect(() => {
+      if (!tile.current) {
+        return;
+      }
+
+      if (isExpanded) {
+        tile.current.style.maxHeight = '';
+        return;
+      }
+
+      const measured =
+        measuredAboveHeight || aboveTheFold.current?.scrollHeight || 0;
+      const baseHeight = tileMaxHeight > 0 ? tileMaxHeight : measured;
+      const pad = tilePadding > 0 ? tilePadding : measuredPadding;
+
+      tile.current.style.maxHeight = `${baseHeight + pad}px`;
+    }, [
+      isExpanded,
+      tileMaxHeight,
+      tilePadding,
+      measuredAboveHeight,
+      measuredPadding,
+    ]);
+
+    useEffect(() => {
+      if (!aboveTheFold.current) {
+        return;
+      }
+
+      const resizeObserver = new ResizeObserver(() => {
+        if (aboveTheFold.current) {
+          setMeasuredAboveHeight(aboveTheFold.current.scrollHeight);
+        }
+      });
+
+      resizeObserver.observe(aboveTheFold.current);
+
+      return () => resizeObserver.disconnect();
+    }, []);
+
+    const belowTheFoldId = useId(
+      interactive ? 'expandable-tile-interactive' : 'expandable-tile'
+    );
+
+    // AILabel is always size `xs`
+    const candidate = slug ?? decorator;
+    const candidateIsAILabel = isComponentElement(candidate, AILabel);
+    const normalizedDecorator = candidateIsAILabel
+      ? cloneElement(candidate, { size: 'xs' })
+      : candidate;
+
+    return interactive ? (
+      <div
+        ref={ref as Ref<HTMLDivElement>}
+        className={interactiveClassNames}
+        {...rest}>
+        <div ref={tileContent}>
+          {slug ? (
+            normalizedDecorator
+          ) : decorator ? (
+            <div className={`${prefix}--tile--inner-decorator`}>
+              {normalizedDecorator}
+            </div>
+          ) : (
+            ''
+          )}
+          <div ref={aboveTheFold} className={`${prefix}--tile-content`}>
+            {childrenAsArray[0]}
+          </div>
+          <button
+            type="button"
+            aria-expanded={isExpanded}
+            aria-controls={belowTheFoldId}
+            onKeyUp={composeEventHandlers([onKeyUp, handleKeyUp])}
+            onClick={composeEventHandlers([onClick, handleClick])}
+            aria-label={
+              isExpanded ? tileExpandedIconText : tileCollapsedIconText
+            }
+            ref={chevronInteractiveRef}
+            className={chevronInteractiveClassNames}>
+            <ChevronDown />
+          </button>
+          <div
+            ref={belowTheFold}
+            className={`${prefix}--tile-content`}
+            id={belowTheFoldId}>
+            {childrenAsArray[1]}
+          </div>
+        </div>
+      </div>
+    ) : (
+      <button
+        type="button"
+        ref={ref as Ref<HTMLButtonElement>}
+        className={classNames}
+        aria-controls={belowTheFoldId}
+        aria-expanded={isExpanded}
+        title={isExpanded ? tileExpandedIconText : tileCollapsedIconText}
+        {...(rest as ButtonHTMLAttributes<HTMLButtonElement>)}
+        onKeyUp={composeEventHandlers([onKeyUp, handleKeyUp])}
+        onClick={composeEventHandlers([onClick, handleClick])}
+        tabIndex={tabIndex}>
+        <div ref={tileContent}>
+          <div ref={aboveTheFold} className={`${prefix}--tile-content`}>
+            {childrenAsArray[0]}
+          </div>
+          <div className={`${prefix}--tile__chevron`}>
+            <span>{isExpanded ? tileExpandedLabel : tileCollapsedLabel}</span>
+            <ChevronDown />
+          </div>
+          <div
+            ref={belowTheFold}
+            id={belowTheFoldId}
+            className={`${prefix}--tile-content`}>
+            {childrenAsArray[1]}
+          </div>
+        </div>
+      </button>
+    );
   }
-
-  return interactive ? (
-    <div
-      // @ts-expect-error: Needlesly strict & deep typing for the element type
-      ref={ref}
-      className={interactiveClassNames}
-      {...rest}>
-      <div ref={tileContent}>
-        {normalizedSlug}
-        <div ref={aboveTheFold} className={`${prefix}--tile-content`}>
-          {childrenAsArray[0]}
-        </div>
-        <button
-          type="button"
-          aria-expanded={isExpanded}
-          aria-controls={belowTheFoldId}
-          onKeyUp={composeEventHandlers([onKeyUp, handleKeyUp])}
-          onClick={composeEventHandlers([onClick, handleClick])}
-          aria-label={isExpanded ? tileExpandedIconText : tileCollapsedIconText}
-          className={chevronInteractiveClassNames}>
-          <ChevronDown />
-        </button>
-        <div
-          ref={belowTheFold}
-          className={`${prefix}--tile-content`}
-          id={belowTheFoldId}>
-          {childrenAsArray[1]}
-        </div>
-      </div>
-    </div>
-  ) : (
-    <button
-      type="button"
-      // @ts-expect-error: Needlesly strict & deep typing for the element type
-      ref={ref}
-      className={classNames}
-      aria-expanded={isExpanded}
-      title={isExpanded ? tileExpandedIconText : tileCollapsedIconText}
-      {...rest}
-      onKeyUp={composeEventHandlers([onKeyUp, handleKeyUp])}
-      onClick={composeEventHandlers([onClick, handleClick])}
-      tabIndex={tabIndex}>
-      <div ref={tileContent}>
-        <div ref={aboveTheFold} className={`${prefix}--tile-content`}>
-          {childrenAsArray[0]}
-        </div>
-        <div className={`${prefix}--tile__chevron`}>
-          <span>{isExpanded ? tileExpandedLabel : tileCollapsedLabel}</span>
-          <ChevronDown />
-        </div>
-        <div ref={belowTheFold} className={`${prefix}--tile-content`}>
-          {childrenAsArray[1]}
-        </div>
-      </div>
-    </button>
-  );
-});
+);
 
 ExpandableTile.propTypes = {
   children: PropTypes.node,
   className: PropTypes.string,
+  /**
+   * **Experimental**: Provide a `decorator` component to be rendered inside the `ExpandableTile` component
+   */
+  decorator: PropTypes.node,
 
   /**
    * `true` if the tile is expanded.
@@ -957,7 +1056,11 @@ ExpandableTile.propTypes = {
   /**
    * **Experimental**: Provide a `Slug` component to be rendered inside the `ExpandableTile` component
    */
-  slug: PropTypes.node,
+  slug: deprecate(
+    PropTypes.node,
+    'The `slug` prop for `ExpandableTile` has ' +
+      'been deprecated in favor of the new `decorator` prop. It will be removed in the next major release.'
+  ),
 
   /**
    * The `tabindex` attribute.
@@ -996,7 +1099,7 @@ export interface TileAboveTheFoldContentProps {
 export const TileAboveTheFoldContent = React.forwardRef<
   HTMLDivElement,
   TileAboveTheFoldContentProps
->(function TilAboveTheFoldContent({ children }, ref) {
+>(({ children }, ref) => {
   const prefix = usePrefix();
 
   return (
@@ -1024,7 +1127,7 @@ export interface TileBelowTheFoldContentProps {
 export const TileBelowTheFoldContent = React.forwardRef<
   HTMLDivElement,
   TileBelowTheFoldContentProps
->(function TileBelowTheFoldContent({ children }, ref) {
+>(({ children }, ref) => {
   const prefix = usePrefix();
 
   return (

@@ -1,5 +1,5 @@
 /**
- * Copyright IBM Corp. 2016, 2023
+ * Copyright IBM Corp. 2016, 2026
  *
  * This source code is licensed under the Apache-2.0 license found in the
  * LICENSE file in the root directory of this source tree.
@@ -7,9 +7,15 @@
 
 import cx from 'classnames';
 import PropTypes from 'prop-types';
-import React from 'react';
+import React, { createContext, useContext } from 'react';
 import { usePrefix } from '../../internal/usePrefix';
-import deprecate from '../../prop-types/deprecate';
+import { deprecate } from '../../prop-types/deprecate';
+
+export const TableToolbarContext = createContext<{
+  size?: 'xs' | 'sm' | 'lg';
+}>({});
+
+export const useTableToolbar = () => useContext(TableToolbarContext);
 
 export interface TableToolbarProps
   extends React.HTMLAttributes<HTMLDivElement> {
@@ -33,28 +39,32 @@ export interface TableToolbarProps
   /**
    * `lg` Change the row height of table
    */
-  size?: 'sm' | 'lg';
+  size?: 'xs' | 'sm' | 'lg';
 }
 
-const TableToolbar: React.FC<TableToolbarProps> = ({
+const TableToolbar = ({
   ['aria-label']: ariaLabel = 'data table toolbar',
   ariaLabel: deprecatedAriaLabel,
   children,
   size,
   ...rest
-}) => {
+}: TableToolbarProps) => {
   const prefix = usePrefix();
   const className = cx({
     [`${prefix}--table-toolbar`]: true,
-    [`${prefix}--table-toolbar--${size}`]: size,
+    [`${prefix}--table-toolbar--${size}`]: size, // TODO: V12 - Remove this class
+    [`${prefix}--layout--size-${size}`]: size,
   });
   return (
-    <section
-      aria-label={deprecatedAriaLabel || ariaLabel}
-      {...rest}
-      className={className}>
-      {children}
-    </section>
+    <TableToolbarContext.Provider value={{ size }}>
+      <section
+        role="group"
+        aria-label={deprecatedAriaLabel || ariaLabel}
+        {...rest}
+        className={className}>
+        {children}
+      </section>
+    </TableToolbarContext.Provider>
   );
 };
 
@@ -83,7 +93,7 @@ TableToolbar.propTypes = {
   /**
    * `lg` Change the row height of table
    */
-  size: PropTypes.oneOf(['sm', 'lg']),
+  size: PropTypes.oneOf(['xs', 'sm', 'lg']),
 };
 
 export default TableToolbar;

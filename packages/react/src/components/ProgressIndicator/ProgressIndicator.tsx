@@ -1,5 +1,5 @@
 /**
- * Copyright IBM Corp. 2016, 2023
+ * Copyright IBM Corp. 2016, 2026
  *
  * This source code is licensed under the Apache-2.0 license found in the
  * LICENSE file in the root directory of this source tree.
@@ -7,8 +7,7 @@
 
 import cx from 'classnames';
 import PropTypes from 'prop-types';
-import React, { useState } from 'react';
-import { keys, matches } from '../../internal/keyboard';
+import React from 'react';
 import {
   CheckmarkOutline,
   Warning,
@@ -17,17 +16,27 @@ import {
 } from '@carbon/icons-react';
 import { usePrefix } from '../../internal/usePrefix';
 import { Text } from '../Text';
+import type { TFunc, TranslateWithId } from '../../types/common';
 
-const defaultTranslations = {
-  'carbon.progress-step.complete': 'Complete',
-  'carbon.progress-step.incomplete': 'Incomplete',
-  'carbon.progress-step.current': 'Current',
-  'carbon.progress-step.invalid': 'Invalid',
+const translationIds = {
+  'carbon.progress-step.complete': 'carbon.progress-step.complete',
+  'carbon.progress-step.incomplete': 'carbon.progress-step.incomplete',
+  'carbon.progress-step.current': 'carbon.progress-step.current',
+  'carbon.progress-step.invalid': 'carbon.progress-step.invalid',
+} as const;
+
+type TranslationKey = keyof typeof translationIds;
+
+const defaultTranslations: Record<TranslationKey, string> = {
+  [translationIds['carbon.progress-step.complete']]: 'Complete',
+  [translationIds['carbon.progress-step.incomplete']]: 'Incomplete',
+  [translationIds['carbon.progress-step.current']]: 'Current',
+  [translationIds['carbon.progress-step.invalid']]: 'Invalid',
 };
 
-function translateWithId(messageId) {
+const defaultTranslateWithId: TFunc<TranslationKey> = (messageId) => {
   return defaultTranslations[messageId];
-}
+};
 
 export interface ProgressIndicatorProps
   extends Omit<React.HTMLAttributes<HTMLUListElement>, 'onChange'> {
@@ -48,7 +57,7 @@ export interface ProgressIndicatorProps
   currentIndex?: number;
 
   /**
-   * Optional callback called if a ProgressStep is clicked on.  Returns the index of the step.
+   * Optional callback called if a ProgressStep is clicked on. Returns the index of the step.
    */
   onChange?: (data: number) => void;
 
@@ -72,20 +81,12 @@ function ProgressIndicator({
   ...rest
 }: ProgressIndicatorProps) {
   const prefix = usePrefix();
-  const [currentIndex, setCurrentIndex] = useState(controlledIndex);
-  const [prevControlledIndex, setPrevControlledIndex] =
-    useState(controlledIndex);
   const className = cx({
     [`${prefix}--progress`]: true,
     [`${prefix}--progress--vertical`]: vertical,
     [`${prefix}--progress--space-equal`]: spaceEqually && !vertical,
     [customClassName ?? '']: customClassName,
   });
-
-  if (controlledIndex !== prevControlledIndex) {
-    setCurrentIndex(controlledIndex);
-    setPrevControlledIndex(controlledIndex);
-  }
 
   return (
     <ul className={className} {...rest}>
@@ -96,22 +97,22 @@ function ProgressIndicator({
 
         // only setup click handlers if onChange event is passed
         const onClick = onChange ? () => onChange(index) : undefined;
-        if (index === currentIndex) {
+        if (index === controlledIndex) {
           return React.cloneElement(child, {
             complete: child.props.complete,
-            current: child.props.complete ? false : true,
+            current: !child.props.complete,
             index,
             onClick,
           });
         }
-        if (index < currentIndex) {
+        if (index < controlledIndex) {
           return React.cloneElement(child, {
             complete: true,
             index,
             onClick,
           });
         }
-        if (index > currentIndex) {
+        if (index > controlledIndex) {
           return React.cloneElement(child, {
             complete: child.props.complete || false,
             index,
@@ -142,7 +143,7 @@ ProgressIndicator.propTypes = {
   currentIndex: PropTypes.number,
 
   /**
-   * Optional callback called if a ProgressStep is clicked on.  Returns the index of the step.
+   * Optional callback called if a ProgressStep is clicked on. Returns the index of the step.
    */
   onChange: PropTypes.func,
 
@@ -156,7 +157,7 @@ ProgressIndicator.propTypes = {
   vertical: PropTypes.bool,
 };
 
-export interface ProgressStepProps {
+export interface ProgressStepProps extends TranslateWithId<TranslationKey> {
   /**
    * Provide an optional className to be applied to the containing `<li>` node
    */
@@ -220,137 +221,130 @@ export interface ProgressStepProps {
    * The ID of the tooltip content.
    */
   tooltipId?: string;
-
-  /**
-   * Optional method that takes in a message id and returns an
-   * internationalized string.
-   */
-  translateWithId?: (id: string) => string;
 }
 
-function ProgressStep({
-  label,
-  description,
-  className,
-  current,
-  complete,
-  invalid,
-  secondaryLabel,
-  disabled,
-  onClick,
-  translateWithId: t = translateWithId,
-  ...rest
-}: ProgressStepProps) {
-  const prefix = usePrefix();
-  const classes = cx({
-    [`${prefix}--progress-step`]: true,
-    [`${prefix}--progress-step--current`]: current,
-    [`${prefix}--progress-step--complete`]: complete,
-    [`${prefix}--progress-step--incomplete`]: !complete && !current,
-    [`${prefix}--progress-step--disabled`]: disabled,
-    [className ?? '']: className,
-  });
+const ProgressStep = React.forwardRef<HTMLLIElement, ProgressStepProps>(
+  function ProgressStep(
+    {
+      label,
+      description,
+      className,
+      current,
+      complete,
+      invalid,
+      secondaryLabel,
+      disabled,
+      onClick,
+      translateWithId: t = defaultTranslateWithId,
+      ...rest
+    },
+    ref
+  ) {
+    const prefix = usePrefix();
+    const classes = cx({
+      [`${prefix}--progress-step`]: true,
+      [`${prefix}--progress-step--current`]: current,
+      [`${prefix}--progress-step--complete`]: complete,
+      [`${prefix}--progress-step--incomplete`]: !complete && !current,
+      [`${prefix}--progress-step--disabled`]: disabled,
+      [className ?? '']: className,
+    });
 
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLButtonElement>) => {
-    if (matches(e, [keys.Enter, keys.Space]) && onClick) {
-      onClick(e);
+    interface SVGIconProps {
+      complete?: boolean;
+      current?: boolean;
+      description?: string;
+      invalid?: boolean;
+      prefix: string;
     }
-  };
 
-  interface SVGIconProps {
-    complete?: boolean;
-    current?: boolean;
-    description?: string;
-    invalid?: boolean;
-    prefix: string;
-  }
-
-  const SVGIcon = ({
-    complete,
-    current,
-    description,
-    invalid,
-    prefix,
-  }: SVGIconProps) => {
-    if (invalid) {
+    const SVGIcon = ({
+      complete,
+      current,
+      description,
+      invalid,
+      prefix,
+    }: SVGIconProps) => {
+      if (invalid) {
+        return (
+          <Warning className={`${prefix}--progress__warning`}>
+            <title>{description}</title>
+          </Warning>
+        );
+      }
+      if (current) {
+        return (
+          <Incomplete>
+            <title>{description}</title>
+          </Incomplete>
+        );
+      }
+      if (complete) {
+        return (
+          <CheckmarkOutline>
+            <title>{description}</title>
+          </CheckmarkOutline>
+        );
+      }
       return (
-        <Warning className={`${prefix}--progress__warning`}>
+        <CircleDash>
           <title>{description}</title>
-        </Warning>
+        </CircleDash>
       );
-    }
+    };
+
+    let message = t('carbon.progress-step.incomplete');
+
     if (current) {
-      return (
-        <Incomplete>
-          <title>{description}</title>
-        </Incomplete>
-      );
+      message = t('carbon.progress-step.current');
     }
+
     if (complete) {
-      return (
-        <CheckmarkOutline>
-          <title>{description}</title>
-        </CheckmarkOutline>
-      );
+      message = t('carbon.progress-step.complete');
     }
+
+    if (invalid) {
+      message = t('carbon.progress-step.invalid');
+    }
+
     return (
-      <CircleDash>
-        <title>{description}</title>
-      </CircleDash>
-    );
-  };
-
-  let message = t('carbon.progress-step.incomplete');
-
-  if (current) {
-    message = t('carbon.progress-step.current');
-  }
-
-  if (complete) {
-    message = t('carbon.progress-step.complete');
-  }
-
-  if (invalid) {
-    message = t('carbon.progress-step.invalid');
-  }
-
-  return (
-    <li className={classes}>
-      <button
-        type="button"
-        className={cx(`${prefix}--progress-step-button`, {
-          [`${prefix}--progress-step-button--unclickable`]: !onClick || current,
-        })}
-        disabled={disabled}
-        aria-disabled={disabled}
-        tabIndex={!current && onClick && !disabled ? 0 : -1}
-        onClick={!current ? onClick : undefined}
-        onKeyDown={handleKeyDown}
-        title={label}
-        {...rest}>
-        <SVGIcon
-          complete={complete}
-          current={current}
-          description={description}
-          invalid={invalid}
-          prefix={prefix}
-        />
-        <div className={`${prefix}--progress-text`}>
-          <Text as="p" className={`${prefix}--progress-label`}>
-            {label}
-          </Text>
-          {secondaryLabel !== null && secondaryLabel !== undefined ? (
-            <Text as="p" className={`${prefix}--progress-optional`}>
-              {secondaryLabel}
+      <li className={classes} ref={ref}>
+        <button
+          type="button"
+          className={cx(`${prefix}--progress-step-button`, {
+            [`${prefix}--progress-step-button--unclickable`]:
+              !onClick || current,
+          })}
+          disabled={disabled}
+          aria-disabled={disabled}
+          tabIndex={disabled ? -1 : 0}
+          onClick={!current ? onClick : undefined}
+          title={label}
+          {...rest}>
+          <SVGIcon
+            complete={complete}
+            current={current}
+            description={description}
+            invalid={invalid}
+            prefix={prefix}
+          />
+          <div className={`${prefix}--progress-text`}>
+            <Text as="span" className={`${prefix}--progress-label`}>
+              {label}
             </Text>
-          ) : null}
-        </div>
-        <span className={`${prefix}--assistive-text`}>{message}</span>
-        <span className={`${prefix}--progress-line`} />
-      </button>
-    </li>
-  );
-}
+            {secondaryLabel !== null && secondaryLabel !== undefined ? (
+              <Text as="span" className={`${prefix}--progress-optional`}>
+                {secondaryLabel}
+              </Text>
+            ) : null}
+          </div>
+          <span className={`${prefix}--assistive-text`}>{message}</span>
+          <span className={`${prefix}--progress-line`} />
+        </button>
+      </li>
+    );
+  }
+);
 
 ProgressStep.propTypes = {
   /**
@@ -414,8 +408,7 @@ ProgressStep.propTypes = {
   tooltipId: PropTypes.string,
 
   /**
-   * Optional method that takes in a message id and returns an
-   * internationalized string.
+   * Translates component strings using your i18n tool.
    */
   translateWithId: PropTypes.func,
 };

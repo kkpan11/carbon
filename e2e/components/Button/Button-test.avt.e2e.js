@@ -55,6 +55,17 @@ test.describe('@avt Button', () => {
     await expect(page).toHaveNoACViolations('Button-icon-button');
   });
 
+  test('@avt-advanced-states icon-button with badge', async ({ page }) => {
+    await visitStory(page, {
+      component: 'Button',
+      id: 'components-button--icon-button-with-badge',
+      globals: {
+        theme: 'white',
+      },
+    });
+    await expect(page).toHaveNoACViolations('Button-icon-button-with-badge');
+  });
+
   test('@avt-advanced-states secondary', async ({ page }) => {
     await visitStory(page, {
       component: 'Button',
@@ -66,15 +77,26 @@ test.describe('@avt Button', () => {
     await expect(page).toHaveNoACViolations('Button-secondary');
   });
 
-  test('@avt-advanced-states set-of-buttons', async ({ page }) => {
+  test('@avt-advanced-states set-of-buttons--default', async ({ page }) => {
     await visitStory(page, {
       component: 'Button',
-      id: 'components-button--set-of-buttons',
+      id: 'components-button-set-of-buttons--default',
       globals: {
         theme: 'white',
       },
     });
-    await expect(page).toHaveNoACViolations('Button-set-of-buttons');
+    await expect(page).toHaveNoACViolations('Button-set-of-buttons--default');
+  });
+
+  test('@avt-advanced-states fluid set-of-buttons--fluid', async ({ page }) => {
+    await visitStory(page, {
+      component: 'Button',
+      id: 'components-button-set-of-buttons--fluid',
+      globals: {
+        theme: 'white',
+      },
+    });
+    await expect(page).toHaveNoACViolations('Button-set-of-buttons--fluid');
   });
 
   test('@avt-advanced-states skeleton', async ({ page }) => {
@@ -111,7 +133,7 @@ test.describe('@avt Button', () => {
       },
     });
 
-    await expect(page.getByRole('button')).toBeDisabled();
+    await expect(page.getByRole('button').first()).toBeDisabled();
     await expect(page).toHaveNoACViolations('Button-disabled');
   });
 
@@ -123,9 +145,9 @@ test.describe('@avt Button', () => {
         theme: 'white',
       },
     });
-    await expect(page.getByRole('button')).toBeVisible();
+    await expect(page.getByRole('button').first()).toBeVisible();
     await page.keyboard.press('Tab');
-    await expect(page.getByRole('button')).toBeFocused();
+    await expect(page.getByRole('button').first()).toBeFocused();
   });
 
   test('@avt-advanced-states mouse interaction', async ({ page }) => {
@@ -136,9 +158,9 @@ test.describe('@avt Button', () => {
         theme: 'white',
       },
     });
-    await expect(page.getByRole('button')).toBeVisible();
-    await page.getByRole('button').click();
-    await expect(page.getByRole('button')).toBeFocused();
+    await expect(page.getByRole('button').first()).toBeVisible();
+    await page.getByRole('button').first().click();
+    await expect(page.getByRole('button').first()).toBeFocused();
   });
 
   test('@avt-advanced-states hover state', async ({ page }) => {
@@ -149,8 +171,8 @@ test.describe('@avt Button', () => {
         theme: 'white',
       },
     });
-    await expect(page.getByRole('button')).toBeVisible();
-    page.getByRole('button').hover();
+    await expect(page.getByRole('button').first()).toBeVisible();
+    await page.getByRole('button').first().hover();
 
     await expect(page).toHaveNoACViolations('Button-hover');
   });

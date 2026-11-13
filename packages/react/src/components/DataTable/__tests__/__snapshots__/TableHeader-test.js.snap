@@ -1,4 +1,4 @@
-// Jest Snapshot v1, https://goo.gl/fbAQLP
+// Jest Snapshot v1, https://jestjs.io/docs/snapshot-testing
 
 exports[`TableHeader renders as expected - Component API should render 1`] = `
 <div>
@@ -18,6 +18,9 @@ exports[`TableHeader renders as expected - Component API should render 1`] = `
               class="cds--table-header-label"
             >
               Header
+              <div
+                class="cds--table-header-label--decorator-inner"
+              />
             </div>
           </th>
         </tr>

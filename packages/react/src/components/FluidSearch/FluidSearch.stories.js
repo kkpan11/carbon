@@ -1,5 +1,5 @@
 /**
- * Copyright IBM Corp. 2016, 2023
+ * Copyright IBM Corp. 2016, 2026
  *
  * This source code is licensed under the Apache-2.0 license found in the
  * LICENSE file in the root directory of this source tree.
@@ -7,84 +7,100 @@
 
 import React from 'react';
 import { FluidSearch, FluidSearchSkeleton } from '.';
+import mdx from './FluidSearch.mdx';
 
 export default {
-  title: 'Experimental/Fluid Components/unstable__FluidSearch',
+  title: 'Components/Fluid Components/FluidSearch',
   component: FluidSearch,
+  args: {
+    autoComplete: 'off',
+    closeButtonLabelText: 'Clear search input',
+    defaultWidth: 400,
+    disabled: false,
+    labelText: 'Search',
+    placeholder: 'Prompt text',
+    role: 'searchbox',
+    type: 'search',
+  },
+  argTypes: {
+    autoComplete: {
+      control: { type: 'text' },
+    },
+    closeButtonLabelText: {
+      control: { type: 'text' },
+    },
+    defaultValue: {
+      control: { type: 'text' },
+    },
+    defaultWidth: {
+      control: { type: 'range', min: 300, max: 800, step: 50 },
+    },
+    disabled: {
+      control: { type: 'boolean' },
+    },
+    labelText: {
+      control: { type: 'text' },
+    },
+    onChange: {
+      action: 'onChange',
+    },
+    placeholder: {
+      control: { type: 'text' },
+    },
+    role: {
+      control: { type: 'text' },
+    },
+    type: {
+      control: { type: 'text' },
+    },
+    value: {
+      control: { type: 'text' },
+    },
+  },
+  parameters: {
+    docs: {
+      page: mdx,
+    },
+    controls: {
+      exclude: ['id'],
+    },
+  },
   subcomponents: {
     FluidSearchSkeleton,
   },
 };
 
-export const Default = () => (
-  <div style={{ width: '400px' }}>
-    <FluidSearch
-      size="lg"
-      labelText="Search"
-      closeButtonLabelText="Clear search input"
-      id="fluid-search-1"
-      placeholder="Prompt text"
-    />
-  </div>
-);
+export const Skeleton = (args) => {
+  const { defaultWidth } = args;
+  return (
+    <div style={{ width: defaultWidth }}>
+      <FluidSearchSkeleton />
+    </div>
+  );
+};
 
-export const Skeleton = () => (
-  <div style={{ width: '400px' }}>
-    <FluidSearchSkeleton />
-  </div>
-);
+Skeleton.parameters = {
+  controls: {
+    include: ['defaultWidth'],
+  },
+};
 
-export const Playground = (args) => (
-  <div style={{ width: args.playgroundWidth }}>
-    <FluidSearch {...args} />
-  </div>
-);
+export const Default = (args) => {
+  const { defaultWidth, ...searchArgs } = args;
+  return (
+    <div style={{ width: defaultWidth }}>
+      <FluidSearch {...searchArgs} />
+    </div>
+  );
+};
 
-Playground.args = {
-  playgroundWidth: 400,
+Default.args = {
+  autoComplete: 'off',
   closeButtonLabelText: 'Clear search input',
+  defaultWidth: 400,
   disabled: false,
   labelText: 'Search',
   placeholder: 'Prompt text',
-};
-
-Playground.argTypes = {
-  playgroundWidth: {
-    control: { type: 'range', min: 300, max: 800, step: 50 },
-  },
-  className: {
-    table: {
-      disable: true,
-    },
-  },
-  closeButtonLabelText: {
-    control: {
-      type: 'text',
-    },
-  },
-  disabled: {
-    control: {
-      type: 'boolean',
-    },
-  },
-  id: {
-    table: {
-      disable: true,
-    },
-  },
-  defaultValue: {
-    control: {
-      type: 'text',
-    },
-  },
-  labelText: {
-    control: {
-      type: 'text',
-    },
-  },
-  placeholder: {
-    control: {
-      type: 'text',
-    },
-  },
+  role: 'searchbox',
+  type: 'search',
 };

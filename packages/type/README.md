@@ -24,14 +24,14 @@ yarn add @carbon/type
 Design Language. You can use all of these features either in JavaScript or Sass.
 These features include:
 
-| Feature                       | Description                                                                                                  |
-| ----------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| Feature                       | Description                                                                                                   |
+| ----------------------------- | ------------------------------------------------------------------------------------------------------------- |
 | [Font face](#font-face)       | Include IBM Plex™ font faces in your application. Uses Akamai CDN                                            |
-| [Type classes](#type-classes) | Helpers to use type styles directly. Not included by default                                                 |
+| [Type classes](#type-classes) | Helpers to use type styles directly. Not included by default                                                  |
 | [Font family](#font-family)   | Defines the font stack for IBM Plex™ in your application, provides helpers for working with font definitions |
-| [Reset](#reset)               | Provides a high-level CSS Reset to use in your project                                                       |
-| [Scale](#type-scale)          | Provides the type scale. Can access the size at any given step (step 1, 2, 3, etc)                           |
-| [Styles](#type-styles)        | Provides type styles for your application (heading-01, body-long-01, etc)                                    |
+| [Reset](#reset)               | Provides a high-level CSS Reset to use in your project                                                        |
+| [Scale](#type-scale)          | Provides the type scale. Can access the size at any given step (step 1, 2, 3, etc)                            |
+| [Styles](#type-styles)        | Provides type styles for your application (heading-01, body-long-01, etc)                                     |
 
 The `@carbon/type` package enables you to use typography from the IBM Design
 Language, including the type scale and fonts, along with typography design
@@ -177,6 +177,15 @@ This reset sets some top-level properties on `html` and `body`, namely
 `font-size`, `font-family`, and some `text-rendering` options. We also map the
 `strong` tag to the semibold font weight.
 
+### Replacing the typeface
+
+`@carbon/type` can configure the font families used by its own Sass APIs, but it
+does not generate Carbon component styles or control IBM Plex `@font-face`
+output. Carbon's type foundation and component styles are closely integrated, so
+application-wide typeface replacement must be configured through the
+`@carbon/styles` Sass entrypoint. See
+[Replacing the typeface in `@carbon/styles`](../styles/README.md#replacing-the-typeface).
+
 ### Type scale
 
 A type scale is provided through the `$type-scale` variable and corresponding
@@ -231,9 +240,9 @@ Licensed under the [Apache 2.0 License](/LICENSE).
 
 ## <picture><source height="20" width="20" media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/ibm-telemetry/telemetry-js/main/docs/images/ibm-telemetry-dark.svg"><source height="20" width="20" media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/ibm-telemetry/telemetry-js/main/docs/images/ibm-telemetry-light.svg"><img height="20" width="20" alt="IBM Telemetry" src="https://raw.githubusercontent.com/ibm-telemetry/telemetry-js/main/docs/images/ibm-telemetry-light.svg"></picture> IBM Telemetry
 
-This package uses IBM Telemetry to collect metrics data. By installing this
-package as a dependency you are agreeing to telemetry collection. To opt out,
-see
+This package uses IBM Telemetry to collect de-identified and anonymized metrics
+data. By installing this package as a dependency you are agreeing to telemetry
+collection. To opt out, see
 [Opting out of IBM Telemetry data collection](https://github.com/ibm-telemetry/telemetry-js/tree/main#opting-out-of-ibm-telemetry-data-collection).
 For more information on the data being collected, please see the
 [IBM Telemetry documentation](https://github.com/ibm-telemetry/telemetry-js/tree/main#ibm-telemetry-collection-basics).

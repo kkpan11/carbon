@@ -1,5 +1,5 @@
 /**
- * Copyright IBM Corp. 2022
+ * Copyright IBM Corp. 2022, 2026
  *
  * This source code is licensed under the Apache-2.0 license found in the
  * LICENSE file in the root directory of this source tree.
@@ -30,7 +30,7 @@ import DataTable, {
 } from '../';
 import userEvent from '@testing-library/user-event';
 import { render, screen, within } from '@testing-library/react';
-
+import { act } from 'react';
 // Test helpers
 const getLastCallFor = (mocker) =>
   mocker.mock.calls[mocker.mock.calls.length - 1];
@@ -81,6 +81,8 @@ describe('DataTable', () => {
           getBatchActionProps,
           getTableProps,
           getTableContainerProps,
+          getCellProps,
+          getRowProps,
         }) => (
           <TableContainer
             title="DataTable with toolbar"
@@ -117,8 +119,8 @@ describe('DataTable', () => {
             <Table {...getTableProps()}>
               <TableHead>
                 <TableRow>
-                  {headers.map((header, i) => (
-                    <TableHeader key={i} {...getHeaderProps({ header })}>
+                  {headers.map((header) => (
+                    <TableHeader {...getHeaderProps({ header })}>
                       {header.header}
                     </TableHeader>
                   ))}
@@ -126,9 +128,11 @@ describe('DataTable', () => {
               </TableHead>
               <TableBody>
                 {rows.map((row) => (
-                  <TableRow key={row.id}>
+                  <TableRow {...getRowProps({ row })}>
                     {row.cells.map((cell) => (
-                      <TableCell key={cell.id}>{cell.value}</TableCell>
+                      <TableCell {...getCellProps({ cell })}>
+                        {cell.value}
+                      </TableCell>
                     ))}
                   </TableRow>
                 ))}
@@ -150,6 +154,75 @@ describe('DataTable', () => {
     it('should render and match snapshot', () => {
       const { container } = render(<DataTable {...mockProps} />);
       expect(container).toMatchSnapshot();
+    });
+
+    it('should associate data cells with their column headers', () => {
+      render(<DataTable {...mockProps} />);
+
+      const [firstHeader, secondHeader] = screen.getAllByRole('columnheader');
+      const cells = screen.getAllByRole('cell');
+
+      expect(firstHeader).toHaveAttribute(
+        'id',
+        expect.stringMatching(/^data-table-\d+__header-fieldA$/)
+      );
+      expect(secondHeader).toHaveAttribute(
+        'id',
+        expect.stringMatching(/^data-table-\d+__header-fieldB$/)
+      );
+      expect(cells[0]).toHaveAttribute('headers', firstHeader.id);
+      expect(cells[1]).toHaveAttribute('headers', secondHeader.id);
+      expect(cells[2]).toHaveAttribute('headers', firstHeader.id);
+      expect(cells[3]).toHaveAttribute('headers', secondHeader.id);
+    });
+
+    it('should preserve custom header and cell associations', () => {
+      const { render: _render, ...props } = mockProps;
+
+      render(
+        <DataTable {...props}>
+          {({ getCellProps, getHeaderProps, getTableProps, headers, rows }) => (
+            <Table {...getTableProps()}>
+              <TableHead>
+                <TableRow>
+                  {headers.map((header) => (
+                    <TableHeader
+                      {...getHeaderProps({
+                        header,
+                        id: `custom-header-${header.key}`,
+                      })}>
+                      {header.header}
+                    </TableHeader>
+                  ))}
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {rows.map((row) => (
+                  <TableRow key={row.id}>
+                    {row.cells.map((cell) => (
+                      <TableCell
+                        {...getCellProps({
+                          cell,
+                          headers: `custom-headers-${cell.info.header}`,
+                        })}>
+                        {cell.value}
+                      </TableCell>
+                    ))}
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </DataTable>
+      );
+
+      const [firstHeader, secondHeader] = screen.getAllByRole('columnheader');
+      const cells = screen.getAllByRole('cell');
+
+      expect(firstHeader).toHaveAttribute('id', 'custom-header-fieldA');
+      expect(secondHeader).toHaveAttribute('id', 'custom-header-fieldB');
+      expect(cells[0]).toHaveAttribute('headers', 'custom-headers-fieldA');
+      expect(cells[1]).toHaveAttribute('headers', 'custom-headers-fieldB');
     });
   });
 
@@ -207,6 +280,57 @@ describe('DataTable', () => {
           'Field 3:A',
           'Field 3:B',
         ]);
+      });
+
+      it('should resolve isSortable from header, override, and table defaults', () => {
+        const headersWithSort = [
+          { key: 'princess', header: 'Princess', isSortable: false },
+          { key: 'peach', header: 'Peach' },
+        ];
+        const { render: _render, ...baseProps } = mockProps;
+
+        render(
+          <DataTable {...baseProps} headers={headersWithSort} isSortable={true}>
+            {({ headers, getHeaderProps }) => {
+              const firstDefault = getHeaderProps({ header: headers[0] });
+              const secondDefault = getHeaderProps({ header: headers[1] });
+              const firstOverride = getHeaderProps({
+                header: headers[0],
+                isSortable: true,
+              });
+
+              return (
+                <div>
+                  <span
+                    data-testid="first-default"
+                    data-issortable={firstDefault.isSortable}
+                  />
+                  <span
+                    data-testid="second-default"
+                    data-issortable={secondDefault.isSortable}
+                  />
+                  <span
+                    data-testid="first-override"
+                    data-issortable={firstOverride.isSortable}
+                  />
+                </div>
+              );
+            }}
+          </DataTable>
+        );
+
+        expect(screen.getByTestId('first-default')).toHaveAttribute(
+          'data-issortable',
+          'false'
+        );
+        expect(screen.getByTestId('second-default')).toHaveAttribute(
+          'data-issortable',
+          'true'
+        );
+        expect(screen.getByTestId('first-override')).toHaveAttribute(
+          'data-issortable',
+          'true'
+        );
       });
 
       it('should re-sort new row props by the current sort state', async () => {
@@ -296,8 +420,11 @@ describe('DataTable', () => {
 
     describe('selection', () => {
       let mockProps;
+      let spy;
 
       beforeEach(() => {
+        // v12 TODO: Remove the mock of console.warn once we remove ariaLabel from DataTable
+        spy = jest.spyOn(console, 'warn').mockImplementation(() => {});
         mockProps = {
           rows: [
             {
@@ -335,6 +462,8 @@ describe('DataTable', () => {
               getSelectionProps,
               getBatchActionProps,
               onInputChange,
+              getCellProps,
+              getRowProps,
             }) => (
               <TableContainer title="DataTable with selection">
                 <TableToolbar>
@@ -378,8 +507,8 @@ describe('DataTable', () => {
                   <TableHead>
                     <TableRow>
                       <TableSelectAll {...getSelectionProps()} />
-                      {headers.map((header, i) => (
-                        <TableHeader key={i} {...getHeaderProps({ header })}>
+                      {headers.map((header) => (
+                        <TableHeader {...getHeaderProps({ header })}>
                           {header.header}
                         </TableHeader>
                       ))}
@@ -387,10 +516,12 @@ describe('DataTable', () => {
                   </TableHead>
                   <TableBody>
                     {rows.map((row) => (
-                      <TableRow key={row.id}>
+                      <TableRow {...getRowProps({ row })}>
                         <TableSelectRow {...getSelectionProps({ row })} />
                         {row.cells.map((cell) => (
-                          <TableCell key={cell.id}>{cell.value}</TableCell>
+                          <TableCell {...getCellProps({ cell })}>
+                            {cell.value}
+                          </TableCell>
                         ))}
                       </TableRow>
                     ))}
@@ -400,6 +531,10 @@ describe('DataTable', () => {
             )
           ),
         };
+      });
+
+      afterEach(() => {
+        spy.mockRestore();
       });
 
       it('should render and match snapshot', () => {
@@ -513,6 +648,8 @@ describe('DataTable', () => {
               getHeaderProps,
               getSelectionProps,
               onInputChange,
+              getCellProps,
+              getRowProps,
             }) => (
               <TableContainer title="DataTable with selection">
                 <TableToolbar>
@@ -542,8 +679,8 @@ describe('DataTable', () => {
                   <TableHead>
                     <TableRow>
                       <TableSelectAll {...getSelectionProps()} />
-                      {headers.map((header, i) => (
-                        <TableHeader key={i} {...getHeaderProps({ header })}>
+                      {headers.map((header) => (
+                        <TableHeader {...getHeaderProps({ header })}>
                           {header.header}
                         </TableHeader>
                       ))}
@@ -551,10 +688,12 @@ describe('DataTable', () => {
                   </TableHead>
                   <TableBody>
                     {rows.map((row) => (
-                      <TableRow key={row.id}>
+                      <TableRow {...getRowProps({ row })}>
                         <TableSelectRow {...getSelectionProps({ row })} />
                         {row.cells.map((cell) => (
-                          <TableCell key={cell.id}>{cell.value}</TableCell>
+                          <TableCell {...getCellProps({ cell })}>
+                            {cell.value}
+                          </TableCell>
                         ))}
                       </TableRow>
                     ))}
@@ -671,13 +810,20 @@ describe('DataTable', () => {
           locale: 'en',
           radio: true,
           render: jest.fn(
-            ({ rows, headers, getHeaderProps, getSelectionProps }) => (
+            ({
+              rows,
+              headers,
+              getHeaderProps,
+              getSelectionProps,
+              getCellProps,
+              getRowProps,
+            }) => (
               <TableContainer title="DataTable with selection">
                 <Table>
                   <TableHead>
                     <TableRow>
-                      {headers.map((header, i) => (
-                        <TableHeader key={i} {...getHeaderProps({ header })}>
+                      {headers.map((header) => (
+                        <TableHeader {...getHeaderProps({ header })}>
                           {header.header}
                         </TableHeader>
                       ))}
@@ -685,10 +831,12 @@ describe('DataTable', () => {
                   </TableHead>
                   <TableBody>
                     {rows.map((row) => (
-                      <TableRow key={row.id}>
+                      <TableRow {...getRowProps({ row })}>
                         <TableSelectRow {...getSelectionProps({ row })} />
                         {row.cells.map((cell) => (
-                          <TableCell key={cell.id}>{cell.value}</TableCell>
+                          <TableCell {...getCellProps({ cell })}>
+                            {cell.value}
+                          </TableCell>
                         ))}
                       </TableRow>
                     ))}
@@ -789,6 +937,7 @@ describe('DataTable', () => {
               getRowProps,
               getExpandedRowProps,
               onInputChange,
+              getCellProps,
             }) => (
               <TableContainer title="container">
                 <TableToolbar>
@@ -804,8 +953,8 @@ describe('DataTable', () => {
                     <TableRow>
                       <TableExpandHeader {...getExpandHeaderProps()} />
                       <TableSelectAll {...getSelectionProps()} />
-                      {headers.map((header, i) => (
-                        <TableHeader key={i} {...getHeaderProps({ header })}>
+                      {headers.map((header) => (
+                        <TableHeader {...getHeaderProps({ header })}>
                           {header.header}
                         </TableHeader>
                       ))}
@@ -817,7 +966,9 @@ describe('DataTable', () => {
                         <TableExpandRow {...getRowProps({ row })}>
                           <TableSelectRow {...getSelectionProps({ row })} />
                           {row.cells.map((cell) => (
-                            <TableCell key={cell.id}>{cell.value}</TableCell>
+                            <TableCell {...getCellProps({ cell })}>
+                              {cell.value}
+                            </TableCell>
                           ))}
                         </TableExpandRow>
                         {row.isExpanded && (
@@ -939,6 +1090,72 @@ describe('DataTable', () => {
         expect(selectedRows.length).toBe(3);
       });
 
+      it('should clear selection state when selected rows are removed', () => {
+        const renderSpy = jest.fn(() => null);
+        const { rerender } = render(
+          <DataTable
+            rows={mockProps.rows}
+            headers={mockProps.headers}
+            render={renderSpy}
+          />
+        );
+
+        act(() => {
+          getLastCallFor(renderSpy)[0].selectRow('b');
+        });
+
+        let { getBatchActionProps, selectedRows } =
+          getLastCallFor(renderSpy)[0];
+        expect(getBatchActionProps().shouldShowBatchActions).toBe(true);
+        expect(selectedRows).toHaveLength(1);
+
+        rerender(
+          <DataTable
+            rows={mockProps.rows.filter((row) => row.id !== 'b')}
+            headers={mockProps.headers}
+            render={renderSpy}
+          />
+        );
+
+        ({ getBatchActionProps, selectedRows } = getLastCallFor(renderSpy)[0]);
+        expect(getBatchActionProps().shouldShowBatchActions).toBe(false);
+        expect(selectedRows).toHaveLength(0);
+      });
+
+      it('should keep selection state when unselected rows are removed', () => {
+        const renderSpy = jest.fn(() => null);
+        const { rerender } = render(
+          <DataTable
+            rows={mockProps.rows}
+            headers={mockProps.headers}
+            render={renderSpy}
+          />
+        );
+
+        act(() => {
+          getLastCallFor(renderSpy)[0].selectRow('b');
+        });
+
+        let { getBatchActionProps, selectedRows } =
+          getLastCallFor(renderSpy)[0];
+        expect(getBatchActionProps().shouldShowBatchActions).toBe(true);
+        expect(selectedRows).toHaveLength(1);
+        expect(selectedRows[0].id).toBe('b');
+
+        rerender(
+          <DataTable
+            rows={mockProps.rows.filter((row) => row.id !== 'a')}
+            headers={mockProps.headers}
+            render={renderSpy}
+          />
+        );
+
+        ({ getBatchActionProps, selectedRows } = getLastCallFor(renderSpy)[0]);
+        expect(getBatchActionProps().shouldShowBatchActions).toBe(true);
+        expect(selectedRows).toHaveLength(1);
+        expect(selectedRows[0].id).toBe('b');
+      });
+
       it('should update rows when receiving new props', () => {
         const { rerender } = render(<DataTable {...mockProps} />);
         const args = mockProps.render.mock.calls[0][0];
@@ -951,6 +1168,20 @@ describe('DataTable', () => {
 
         const nextArgs = getLastCallFor(mockProps.render)[0];
         expect(nextArgs.rows.map((row) => row.id)).toEqual(['c', 'a', 'b']);
+      });
+
+      it('should not update rows when receiving equivalent props', () => {
+        const { rerender } = render(<DataTable {...mockProps} />);
+        mockProps.render.mockClear();
+
+        rerender(
+          <DataTable
+            {...mockProps}
+            rows={mockProps.rows.map((row) => ({ ...row }))}
+          />
+        );
+
+        expect(mockProps.render).toHaveBeenCalledTimes(1);
       });
 
       it('should update cells when receiving new props', () => {
@@ -974,6 +1205,345 @@ describe('DataTable', () => {
           'Field 1:A!',
           'Field 3:A!',
         ]);
+      });
+    });
+
+    describe('row click behavior', () => {
+      it('should call onClick handler passed via getRowProps when row is clicked', async () => {
+        const handleClick = jest.fn();
+
+        render(
+          <DataTable
+            {...mockProps}
+            render={({
+              rows,
+              headers,
+              getRowProps,
+              getHeaderProps,
+              getCellProps,
+            }) => (
+              <TableContainer title="Test table">
+                <Table>
+                  <TableHead>
+                    <TableRow>
+                      {headers.map((header) => (
+                        <TableHeader {...getHeaderProps({ header })}>
+                          {header.header}
+                        </TableHeader>
+                      ))}
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {rows.map((row) => (
+                      <TableRow
+                        {...getRowProps({ row, onClick: handleClick })}
+                        data-testid={`row-${row.id}`}>
+                        {row.cells.map((cell) => (
+                          <TableCell {...getCellProps({ cell })}>
+                            {cell.value}
+                          </TableCell>
+                        ))}
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+            )}
+          />
+        );
+
+        const firstRow = screen.getByTestId('row-b');
+        await userEvent.click(firstRow);
+
+        expect(handleClick).toHaveBeenCalledTimes(1);
+      });
+    });
+  });
+
+  describe('sortBy called during initial render', () => {
+    it('should not crash when sortBy is called immediately in render prop', () => {
+      const mockProps = {
+        rows: [
+          { id: 'b', fieldA: 'Field 2:A', fieldB: 'Field 2:B' },
+          { id: 'a', fieldA: 'Field 1:A', fieldB: 'Field 1:B' },
+          { id: 'c', fieldA: 'Field 3:A', fieldB: 'Field 3:B' },
+        ],
+        headers: [
+          { key: 'fieldA', header: 'Field A' },
+          { key: 'fieldB', header: 'Field B' },
+        ],
+        isSortable: true,
+        render: jest.fn(
+          ({
+            rows,
+            headers,
+            getHeaderProps,
+            sortBy,
+            getCellProps,
+            getRowProps,
+          }) => {
+            // This is the problematic pattern - calling sortBy immediately during render
+            // This should not crash with the fix
+            React.useEffect(() => {
+              sortBy('fieldA');
+            }, []);
+
+            return (
+              <Table>
+                <TableHead>
+                  <TableRow>
+                    {headers.map((header) => (
+                      <TableHeader {...getHeaderProps({ header })}>
+                        {header.header}
+                      </TableHeader>
+                    ))}
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {rows.map((row) => (
+                    <TableRow {...getRowProps({ row })}>
+                      {row.cells.map((cell) => (
+                        <TableCell {...getCellProps({ cell })}>
+                          {cell.value}
+                        </TableCell>
+                      ))}
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            );
+          }
+        ),
+      };
+
+      // This should not throw an error
+      expect(() => {
+        render(<DataTable {...mockProps} />);
+      }).not.toThrow();
+
+      // Verify the table rendered successfully
+      expect(screen.getAllByRole('row').length).toBe(4); // 3 data rows + 1 header row
+    });
+
+    it('should correctly sort rows when sortBy is called programmatically on mount', async () => {
+      let sortByRef = null;
+
+      const mockProps = {
+        rows: [
+          { id: 'b', fieldA: 'Field 2:A', fieldB: 'Field 2:B' },
+          { id: 'a', fieldA: 'Field 1:A', fieldB: 'Field 1:B' },
+          { id: 'c', fieldA: 'Field 3:A', fieldB: 'Field 3:B' },
+        ],
+        headers: [
+          { key: 'fieldA', header: 'Field A' },
+          { key: 'fieldB', header: 'Field B' },
+        ],
+        isSortable: true,
+        render: jest.fn(
+          ({
+            rows,
+            headers,
+            getHeaderProps,
+            sortBy,
+            getCellProps,
+            getRowProps,
+          }) => {
+            sortByRef = sortBy;
+
+            return (
+              <Table>
+                <TableHead>
+                  <TableRow>
+                    {headers.map((header) => (
+                      <TableHeader {...getHeaderProps({ header })}>
+                        {header.header}
+                      </TableHeader>
+                    ))}
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {rows.map((row) => (
+                    <TableRow {...getRowProps({ row })}>
+                      {row.cells.map((cell) => (
+                        <TableCell {...getCellProps({ cell })}>
+                          {cell.value}
+                        </TableCell>
+                      ))}
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            );
+          }
+        ),
+      };
+
+      const { rerender } = render(<DataTable {...mockProps} />);
+
+      // Get initial cell values
+      const getCells = () =>
+        screen.getAllByRole('cell').map((cell) => cell.textContent);
+
+      // Initial order
+      expect(getCells()).toEqual([
+        'Field 2:A',
+        'Field 2:B',
+        'Field 1:A',
+        'Field 1:B',
+        'Field 3:A',
+        'Field 3:B',
+      ]);
+
+      // Call sortBy programmatically (simulating immediate call during render)
+      await act(async () => {
+        sortByRef('fieldA');
+      });
+
+      // Should be sorted ascending by fieldA
+      expect(getCells()).toEqual([
+        'Field 1:A',
+        'Field 1:B',
+        'Field 2:A',
+        'Field 2:B',
+        'Field 3:A',
+        'Field 3:B',
+      ]);
+    });
+
+    it('should handle rapid sortBy calls without crashing', async () => {
+      let sortByRef = null;
+
+      const mockProps = {
+        rows: [
+          { id: 'b', fieldA: 'Field 2:A', fieldB: 'Field 2:B' },
+          { id: 'a', fieldA: 'Field 1:A', fieldB: 'Field 1:B' },
+        ],
+        headers: [
+          { key: 'fieldA', header: 'Field A' },
+          { key: 'fieldB', header: 'Field B' },
+        ],
+        isSortable: true,
+        render: jest.fn(
+          ({
+            rows,
+            headers,
+            getHeaderProps,
+            sortBy,
+            getCellProps,
+            getRowProps,
+          }) => {
+            sortByRef = sortBy;
+
+            return (
+              <Table>
+                <TableHead>
+                  <TableRow>
+                    {headers.map((header) => (
+                      <TableHeader {...getHeaderProps({ header })}>
+                        {header.header}
+                      </TableHeader>
+                    ))}
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {rows.map((row) => (
+                    <TableRow {...getRowProps({ row })}>
+                      {row.cells.map((cell) => (
+                        <TableCell {...getCellProps({ cell })}>
+                          {cell.value}
+                        </TableCell>
+                      ))}
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            );
+          }
+        ),
+      };
+
+      render(<DataTable {...mockProps} />);
+
+      // Rapid successive calls should not crash
+      expect(() => {
+        act(() => {
+          sortByRef('fieldA');
+          sortByRef('fieldB');
+          sortByRef('fieldA');
+        });
+      }).not.toThrow();
+
+      // Table should still be rendered
+      expect(screen.getAllByRole('row').length).toBe(3); // 2 data rows + 1 header
+    });
+
+    it('should maintain state integrity when sortBy is called before full initialization', () => {
+      const stateCapture = [];
+
+      const mockProps = {
+        rows: [{ id: 'a', fieldA: 'A', fieldB: 'B' }],
+        headers: [
+          { key: 'fieldA', header: 'Field A' },
+          { key: 'fieldB', header: 'Field B' },
+        ],
+        isSortable: true,
+        render: jest.fn(
+          ({
+            rows,
+            headers,
+            getHeaderProps,
+            sortBy,
+            getCellProps,
+            getRowProps,
+          }) => {
+            // Capture state through rendered rows
+            stateCapture.push({
+              hasRows: !!rows,
+              hasCells: rows.length > 0 && !!rows[0].cells,
+              cellCount: rows.length > 0 ? rows[0].cells.length : 0,
+            });
+
+            // Immediate sortBy call
+            if (stateCapture.length === 1) {
+              sortBy('fieldA');
+            }
+
+            return (
+              <Table>
+                <TableHead>
+                  <TableRow>
+                    {headers.map((header) => (
+                      <TableHeader {...getHeaderProps({ header })}>
+                        {header.header}
+                      </TableHeader>
+                    ))}
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {rows.map((row) => (
+                    <TableRow {...getRowProps({ row })}>
+                      {row.cells &&
+                        row.cells.map((cell) => (
+                          <TableCell {...getCellProps({ cell })}>
+                            {cell.value}
+                          </TableCell>
+                        ))}
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            );
+          }
+        ),
+      };
+
+      render(<DataTable {...mockProps} />);
+
+      // Verify state was always valid
+      stateCapture.forEach((state, index) => {
+        expect(state.hasRows).toBe(true);
+        expect(state.hasCells).toBe(true);
+        expect(state.cellCount).toBe(2); // Should always have 2 cells for 2 headers
       });
     });
   });

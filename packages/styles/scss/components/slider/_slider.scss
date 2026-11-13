@@ -1,5 +1,5 @@
 //
-// Copyright IBM Corp. 2016, 2023
+// Copyright IBM Corp. 2016, 2026
 //
 // This source code is licensed under the Apache-2.0 license found in the
 // LICENSE file in the root directory of this source tree.
@@ -22,6 +22,7 @@
 @use '../../utilities/high-contrast-mode' as *;
 @use '../../utilities/convert';
 @use '../../utilities/custom-property';
+@use '../../utilities/visually-hidden' as *;
 
 /// Slider styles
 /// @access public
@@ -187,21 +188,28 @@
     position: absolute;
     border-radius: 50%;
     background: $layer-selected-inverse;
-    box-shadow: inset 0 0 0 1px transparent, inset 0 0 0 2px transparent;
+    box-shadow:
+      inset 0 0 0 1px transparent,
+      inset 0 0 0 2px transparent;
     inset: 0;
     outline: none;
-    transition: transform $duration-fast-02 motion(standard, productive),
+    transition:
+      transform $duration-fast-02 motion(standard, productive),
       background $duration-fast-02 motion(standard, productive),
       box-shadow $duration-fast-02 motion(standard, productive);
 
-    &:hover {
-      // 20px / 14px = 1.4286
-      transform: scale(1.4286);
+    @media (any-hover: hover) {
+      &:hover {
+        // 20px / 14px = 1.4286
+        transform: scale(1.4286);
+      }
     }
 
     &:focus {
       background-color: $interactive;
-      box-shadow: inset 0 0 0 2px $interactive, inset 0 0 0 3px $layer;
+      box-shadow:
+        inset 0 0 0 2px $interactive,
+        inset 0 0 0 3px $layer;
       // 20px / 14px = 1.4286
       transform: scale(1.4286);
     }
@@ -224,7 +232,6 @@
   .#{$prefix}--slider__thumb--lower,
   .#{$prefix}--slider__thumb--upper {
     position: absolute;
-    /* stylelint-disable-next-line declaration-property-value-disallowed-list */
     border-radius: unset;
     background-color: transparent;
     box-shadow: none;
@@ -243,11 +250,13 @@
       inset-inline-end: 0;
     }
 
-    &:hover {
-      transform: none;
+    @media (any-hover: hover) {
+      &:hover {
+        transform: none;
 
-      .#{$prefix}--slider__thumb-icon {
-        fill: $text-secondary;
+        .#{$prefix}--slider__thumb-icon {
+          fill: $text-secondary;
+        }
       }
     }
 
@@ -281,14 +290,18 @@
     transform: none;
 
     &::before {
-      inset-inline-end: auto;
-      inset-inline-start: 0;
+      inset-inline: 0 auto;
     }
 
-    &:hover,
     &:active,
     &:focus {
       transform: none;
+    }
+
+    @media (any-hover: hover) {
+      &:hover {
+        transform: none;
+      }
     }
   }
 
@@ -372,21 +385,46 @@
   .#{$prefix}--slider--disabled .#{$prefix}--slider__thumb {
     background-color: $border-disabled;
 
-    &:hover {
-      cursor: not-allowed;
-      transform: translate(-50%, -50%);
+    @media (any-hover: hover) {
+      &:hover {
+        cursor: not-allowed;
+        transform: none;
+      }
     }
 
     &:focus {
       background-color: $border-disabled;
       box-shadow: none;
       outline: none;
-      transform: translate(-50%, -50%);
+      transform: none;
     }
 
     &:active {
       background: $border-disabled;
-      transform: translate(-50%, -50%);
+      box-shadow: none;
+      transform: none;
+    }
+  }
+
+  .#{$prefix}--slider--disabled .#{$prefix}--slider__thumb--lower,
+  .#{$prefix}--slider--disabled .#{$prefix}--slider__thumb--upper {
+    background-color: transparent;
+
+    &:active,
+    &:focus {
+      background-color: transparent;
+      transform: none;
+    }
+
+    @media (any-hover: hover) {
+      &:hover {
+        background-color: transparent;
+        transform: none;
+      }
+    }
+
+    .#{$prefix}--slider__thumb-icon {
+      fill: $border-disabled;
     }
   }
 
@@ -409,10 +447,16 @@
     transition: none;
 
     &:active,
-    &:focus,
-    &:hover {
+    &:focus {
       color: $text-disabled;
       outline: none;
+    }
+
+    @media (any-hover: hover) {
+      &:hover {
+        color: $text-disabled;
+        outline: none;
+      }
     }
   }
 
@@ -481,7 +525,7 @@
   }
 
   // Windows HCM fix
-  /* stylelint-disable */
+
   .#{$prefix}--slider__thumb {
     @include high-contrast-mode('outline');
   }
@@ -491,5 +535,4 @@
   .#{$prefix}--slider__track {
     @include high-contrast-mode('outline');
   }
-  /* stylelint-enable */
 }

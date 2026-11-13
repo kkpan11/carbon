@@ -14,29 +14,41 @@ import { ActionableNotification } from '../Notification';
 import { Toggletip, ToggletipButton, ToggletipContent } from '../Toggletip';
 import './form-label-stories.scss';
 
+import mdx from './FormLabel.mdx';
+
 export default {
   title: 'Components/FormLabel',
   component: FormLabel,
+  args: {
+    label: 'Form label',
+  },
+  argTypes: {
+    label: {
+      control: { type: 'text' },
+      table: {
+        category: 'story controls',
+      },
+    },
+    id: {
+      control: { type: 'text' },
+    },
+  },
+  parameters: {
+    docs: {
+      page: mdx,
+    },
+  },
 };
 
-export const Default = () => <FormLabel>Form label</FormLabel>;
+export const Default = ({ label, ...args }) => {
+  return <FormLabel {...args}>{label}</FormLabel>;
+};
 
-export const WithTooltip = (controls) => {
-  const { align } = controls;
+export const WithToggletip = ({ align, label, ...formLabelArgs }) => {
   return (
     <>
       <div className="form-wrapper">
-        <FormLabel>Form label with Tooltip</FormLabel>
-        <Tooltip
-          align="bottom"
-          label="This can be used to provide more information about a field.">
-          <button className="cds--tooltip__trigger" type="button">
-            <Information />
-          </button>
-        </Tooltip>
-      </div>
-      <div className="form-wrapper">
-        <FormLabel>Form label with Toggletip</FormLabel>
+        <FormLabel {...formLabelArgs}>{label}</FormLabel>
         <Toggletip align={align}>
           <ToggletipButton label="Show information">
             <Information />
@@ -73,4 +85,29 @@ export const WithTooltip = (controls) => {
       </ActionableNotification>
     </>
   );
+};
+
+WithToggletip.args = {
+  label: 'Form label with Toggletip',
+  align: 'bottom',
+};
+
+WithToggletip.argTypes = {
+  align: {
+    control: { type: 'select' },
+    options: [
+      'top',
+      'top-start',
+      'top-end',
+      'bottom',
+      'bottom-start',
+      'bottom-end',
+      'left',
+      'left-start',
+      'left-end',
+      'right',
+      'right-start',
+      'right-end',
+    ],
+  },
 };

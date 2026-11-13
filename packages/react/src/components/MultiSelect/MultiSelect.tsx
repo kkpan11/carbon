@@ -1,5 +1,5 @@
 /**
- * Copyright IBM Corp. 2016, 2023
+ * Copyright IBM Corp. 2016, 2026
  *
  * This source code is licensed under the Apache-2.0 license found in the
  * LICENSE file in the root directory of this source tree.
@@ -13,35 +13,64 @@ import {
   UseSelectProps,
   UseSelectStateChangeTypes,
 } from 'downshift';
-import isEqual from 'lodash.isequal';
+import isEqual from 'react-fast-compare';
 import PropTypes from 'prop-types';
 import React, {
-  ForwardedRef,
+  cloneElement,
+  useEffect,
+  isValidElement,
+  useCallback,
   useContext,
+  useMemo,
   useRef,
   useState,
-  useMemo,
-  ReactNode,
+  type ForwardedRef,
+  type ReactNode,
 } from 'react';
 import ListBox, {
-  ListBoxSize,
-  ListBoxType,
-  PropTypes as ListBoxPropTypes,
+  ListBoxSizePropType,
+  ListBoxTypePropType,
+  type ListBoxMenuIconTranslationKey,
+  type ListBoxSelectionTranslationKey,
+  type ListBoxSize,
+  type ListBoxType,
 } from '../ListBox';
-import { sortingPropTypes } from './MultiSelectPropTypes';
-import { defaultSortItems, defaultCompareItems } from './tools/sorting';
+import {
+  MultiSelectSortingProps,
+  sortingPropTypes,
+} from './MultiSelectPropTypes';
+import { defaultCompareItems, defaultSortItems } from './tools/sorting';
+import { isSelectAllItem } from './tools/isSelectAllItem';
 import { useSelection } from '../../internal/Selection';
-import setupGetInstanceId from '../../tools/setupGetInstanceId';
-import mergeRefs from '../../tools/mergeRefs';
-import deprecate from '../../prop-types/deprecate';
+import { useId } from '../../internal/useId';
+import { mergeRefs } from '../../tools/mergeRefs';
+import { deprecate } from '../../prop-types/deprecate';
 import { keys, match } from '../../internal/keyboard';
 import { usePrefix } from '../../internal/usePrefix';
 import { FormContext } from '../FluidForm';
 import { ListBoxProps } from '../ListBox/ListBox';
-import type { InternationalProps } from '../../types/common';
+import Checkbox from '../Checkbox';
+import type { TranslateWithId } from '../../types/common';
 import { noopFn } from '../../internal/noopFn';
+import {
+  useFloating,
+  flip,
+  hide,
+  size as floatingSize,
+  autoUpdate,
+} from '@floating-ui/react';
+import { useFeatureFlag } from '../FeatureFlags';
+import { AILabel } from '../AILabel';
+import {
+  defaultItemToString,
+  isComponentElement,
+  isItemDisabled,
+} from '../../internal';
+import { useNormalizedInputProps } from '../../internal/useNormalizedInputProps';
+import useIsomorphicEffect from '../../internal/useIsomorphicEffect';
+import { useNoInteractiveChildrenForLabel } from '../FeatureFlags/useNoInteractiveChildrenForLabel';
+import { useAutoAlign } from '../../internal/useAutoAlign';
 
-const getInstanceId = setupGetInstanceId();
 const {
   ItemClick,
   ToggleButtonBlur,
@@ -60,82 +89,8 @@ const {
   ToggleButtonClick: UseSelectStateChangeTypes.ToggleButtonClick;
 };
 
-const defaultItemToString = <ItemType,>(item?: ItemType): string => {
-  if (typeof item === 'string') {
-    return item;
-  }
-  if (typeof item === 'number') {
-    return `${item}`;
-  }
-  if (
-    item !== null &&
-    typeof item === 'object' &&
-    'label' in item &&
-    typeof item['label'] === 'string'
-  ) {
-    return item['label'];
-  }
-  return '';
-};
-
-interface SharedOptions {
-  locale: string;
-}
-
-interface DownshiftTypedProps<ItemType> {
-  itemToString?(item: ItemType): string;
-}
-
-interface SortItemsOptions<ItemType>
-  extends SharedOptions,
-    DownshiftTypedProps<ItemType> {
-  compareItems(
-    item1: ItemType,
-    item2: ItemType,
-    options: SharedOptions
-  ): number;
-  selectedItems: ItemType[];
-}
-
 interface selectedItemType {
   text: string;
-}
-
-interface MultiSelectSortingProps<ItemType> {
-  /**
-   * Provide a compare function that is used to determine the ordering of
-   * options. See 'sortItems' for more control.
-   */
-  compareItems?(
-    item1: ItemType,
-    item2: ItemType,
-    options: SharedOptions
-  ): number;
-
-  /**
-   * Provide a method that sorts all options in the control. Overriding this
-   * prop means that you also have to handle the sort logic for selected versus
-   * un-selected items. If you just want to control ordering, consider the
-   * `compareItems` prop instead.
-   *
-   * The return value should be a number whose sign indicates the relative order
-   * of the two elements: negative if a is less than b, positive if a is greater
-   * than b, and zero if they are equal.
-   *
-   * sortItems :
-   *   (items: Array<Item>, {
-   *     selectedItems: Array<Item>,
-   *     itemToString: Item => string,
-   *     compareItems: (itemA: string, itemB: string, {
-   *       locale: string
-   *     }) => number,
-   *     locale: string,
-   *   }) => Array<Item>
-   */
-  sortItems?(
-    items: ReadonlyArray<ItemType>,
-    options: SortItemsOptions<ItemType>
-  ): ItemType[];
 }
 
 interface OnChangeData<ItemType> {
@@ -144,9 +99,17 @@ interface OnChangeData<ItemType> {
 
 export interface MultiSelectProps<ItemType>
   extends MultiSelectSortingProps<ItemType>,
-    InternationalProps<
-      'close.menu' | 'open.menu' | 'clear.all' | 'clear.selection'
+    TranslateWithId<
+      ListBoxMenuIconTranslationKey | ListBoxSelectionTranslationKey
     > {
+  /**
+   * **Experimental**: Will attempt to automatically align the floating
+   * element to avoid collisions with the viewport and being clipped by
+   * ancestor elements. Requires React v17+
+   * @see https://github.com/carbon-design-system/carbon/issues/18714
+   */
+  autoAlign?: boolean;
+
   className?: string;
 
   /**
@@ -165,6 +128,11 @@ export interface MultiSelectProps<ItemType>
   clearSelectionText?: string;
 
   /**
+   * **Experimental**: Provide a `decorator` component to be rendered inside the `MultiSelect` component
+   */
+  decorator?: ReactNode;
+
+  /**
    * Specify the direction of the multiselect dropdown. Can be either top or bottom.
    */
   direction?: 'bottom' | 'top';
@@ -175,7 +143,12 @@ export interface MultiSelectProps<ItemType>
   disabled?: ListBoxProps['disabled'];
 
   /**
-   * Additional props passed to Downshift
+   * Additional props passed to Downshift.
+   *
+   * **Use with caution:** anything you define here overrides the components'
+   * internal handling of that prop. Downshift APIs and internals are subject to
+   * change, and in some cases they can not be shimmed by Carbon to shield you
+   * from potentially breaking changes.
    */
   downshiftProps?: Partial<UseSelectProps<ItemType>>;
 
@@ -212,10 +185,9 @@ export interface MultiSelectProps<ItemType>
   invalidText?: ReactNode;
 
   /**
-   * Function to render items as custom components instead of strings.
-   * Defaults to null and is overridden by a getter
+   * Renders an item as a custom React node instead of a string.
    */
-  itemToElement?: React.JSXElementConstructor<ItemType>;
+  itemToElement?: ((item: ItemType) => NonNullable<ReactNode>) | null;
 
   /**
    * Helper function passed to downshift that allows the library to render a
@@ -286,11 +258,12 @@ export interface MultiSelectProps<ItemType>
   selectionFeedback?: 'fixed' | 'top' | 'top-after-reopen';
 
   /**
-   * Specify the size of the ListBox. Currently supports either `sm`, `md` or `lg` as an option.
+   * Specify the size of the ListBox. Currently supports either `xs`, `sm`, `md` or `lg` as an option.
    */
   size?: ListBoxSize;
 
   /**
+   * @deprecated please use decorator instead.
    * **Experimental**: Provide a `Slug` component to be rendered inside the `MultiSelect` component
    */
   slug?: ReactNode;
@@ -322,10 +295,12 @@ export interface MultiSelectProps<ItemType>
   warnText?: ReactNode;
 }
 
-const MultiSelect = React.forwardRef(
+export const MultiSelect = React.forwardRef(
   <ItemType,>(
     {
+      autoAlign: autoAlignProp,
       className: containerClassName,
+      decorator,
       id,
       items,
       itemToElement,
@@ -338,15 +313,15 @@ const MultiSelect = React.forwardRef(
       size,
       disabled = false,
       initialSelectedItems = [],
-      sortItems = defaultSortItems as MultiSelectProps<ItemType>['sortItems'],
+      sortItems = defaultSortItems,
       compareItems = defaultCompareItems,
       clearSelectionText = 'To clear selection, press Delete or Backspace',
       clearAnnouncement = 'all items have been cleared',
       clearSelectionDescription = 'Total items selected: ',
       light,
-      invalid,
+      invalid = false,
       invalidText,
-      warn,
+      warn = false,
       warnText,
       useTitleInItem,
       translateWithId,
@@ -363,27 +338,7 @@ const MultiSelect = React.forwardRef(
     }: MultiSelectProps<ItemType>,
     ref: ForwardedRef<HTMLButtonElement>
   ) => {
-    const prefix = usePrefix();
-    const { isFluid } = useContext(FormContext);
-    const { current: multiSelectInstanceId } = useRef(getInstanceId());
-    const [isFocused, setIsFocused] = useState(false);
-    const [inputFocused, setInputFocused] = useState(false);
-    const [isOpen, setIsOpen] = useState(open || false);
-    const [prevOpenProp, setPrevOpenProp] = useState(open);
-    const [topItems, setTopItems] = useState([]);
-    const [itemsCleared, setItemsCleared] = useState(false);
-    const {
-      selectedItems: controlledSelectedItems,
-      onItemChange,
-      clearSelection,
-    } = useSelection({
-      disabled,
-      initialSelectedItems,
-      onChange,
-      selectedItems: selected,
-    });
-
-    // Filter out items with an object having undefined values
+    const autoAlign = useAutoAlign(autoAlignProp);
     const filteredItems = useMemo(() => {
       return items.filter((item) => {
         if (typeof item === 'object' && item !== null) {
@@ -397,26 +352,120 @@ const MultiSelect = React.forwardRef(
       });
     }, [items]);
 
+    const selectAll = filteredItems.some(isSelectAllItem);
+
+    const prefix = usePrefix();
+    const { isFluid } = useContext(FormContext);
+    const multiSelectInstanceId = useId();
+    const prevOpenPropRef = useRef(open);
+    const [inputFocused, setInputFocused] = useState(false);
+    const [isOpen, setIsOpen] = useState(open || false);
+    const [topItems, setTopItems] = useState<ItemType[]>([]);
+    const [itemsCleared, setItemsCleared] = useState(false);
+
+    const enableFloatingStyles =
+      useFeatureFlag('enable-v12-dynamic-floating-styles') || autoAlign;
+
+    const enableV12Release = useFeatureFlag('enable-v12-release');
+
+    const { refs, floatingStyles, middlewareData } = useFloating(
+      enableFloatingStyles
+        ? {
+            placement: direction,
+
+            // The floating element is positioned relative to its nearest
+            // containing block (usually the viewport). It will in many cases also
+            // “break” the floating element out of a clipping ancestor.
+            // https://floating-ui.com/docs/misc#clipping
+            strategy: 'fixed',
+
+            // Middleware order matters, arrow should be last
+            middleware: [
+              autoAlign && flip({ crossAxis: false }),
+              floatingSize({
+                apply({ availableHeight, rects, elements }) {
+                  Object.assign(elements.floating.style, {
+                    width: `${rects.reference.width}px`,
+                    maxHeight: `${availableHeight}px`,
+                  });
+                },
+              }),
+              autoAlign && hide(),
+            ],
+            whileElementsMounted: autoUpdate,
+          }
+        : {}
+    );
+
+    useIsomorphicEffect(() => {
+      if (enableFloatingStyles) {
+        const updatedFloatingStyles = {
+          ...floatingStyles,
+          visibility: middlewareData.hide?.referenceHidden
+            ? 'hidden'
+            : 'visible',
+        };
+        Object.keys(updatedFloatingStyles).forEach((style) => {
+          if (refs.floating.current) {
+            refs.floating.current.style[style] = updatedFloatingStyles[style];
+          }
+        });
+      }
+    }, [enableFloatingStyles, floatingStyles, middlewareData, refs.floating]);
+
+    const {
+      selectedItems: controlledSelectedItems,
+      onItemChange,
+      clearSelection,
+    } = useSelection({
+      disabled,
+      initialSelectedItems,
+      onChange,
+      selectedItems: selected,
+      selectAll,
+      filteredItems,
+    });
+
+    const sortedItems = useMemo(() => {
+      return sortItems(filteredItems, {
+        selectedItems: {
+          top: controlledSelectedItems,
+          fixed: [],
+          'top-after-reopen': topItems,
+        }[selectionFeedback],
+        itemToString,
+        compareItems,
+        locale,
+      });
+    }, [
+      filteredItems,
+      sortItems,
+      selectionFeedback,
+      controlledSelectedItems,
+      topItems,
+      itemToString,
+      compareItems,
+      locale,
+    ]);
+
     const selectProps: UseSelectProps<ItemType> = {
-      ...downshiftProps,
       stateReducer,
       isOpen,
       itemToString: (filteredItems) => {
         return (
           (Array.isArray(filteredItems) &&
             filteredItems
-              .map(function (item) {
+              .map((item) => {
                 return itemToString(item);
               })
               .join(', ')) ||
           ''
         );
       },
-      selectedItem: controlledSelectedItems,
-      items: filteredItems,
-      isItemDisabled(item, _index) {
-        return (item as any).disabled;
-      },
+      selectedItem: controlledSelectedItems as ItemType,
+      items: sortedItems,
+      isItemDisabled,
+      ...downshiftProps,
     };
 
     const {
@@ -429,7 +478,7 @@ const MultiSelect = React.forwardRef(
       setHighlightedIndex,
     } = useSelect<ItemType>(selectProps);
 
-    const toggleButtonProps = getToggleButtonProps({
+    const downshiftToggleButtonProps = getToggleButtonProps({
       onFocus: () => {
         setInputFocused(true);
       },
@@ -457,10 +506,36 @@ const MultiSelect = React.forwardRef(
             setItemsCleared(false);
             setIsOpenWrapper(true);
           }
+          if (match(e, keys.ArrowDown) && selectedItems.length === 0) {
+            setInputFocused(false);
+          }
+          if (match(e, keys.Escape) && isOpen) {
+            setInputFocused(true);
+          }
+          if (match(e, keys.Enter) && isOpen) {
+            setInputFocused(true);
+          }
+          if (match(e, keys.Tab) && isOpen) {
+            setIsOpenWrapper(false);
+          }
         }
       },
     });
-    const mergedRef = mergeRefs(toggleButtonProps.ref, ref);
+
+    const toggleButtonProps = {
+      ...downshiftToggleButtonProps,
+      'aria-activedescendant':
+        downshiftToggleButtonProps['aria-activedescendant'] || undefined,
+    };
+
+    const toggleButtonRef = useRef<HTMLButtonElement>(null);
+    const titleRef = useRef<HTMLLabelElement>(null);
+    const labelRef = useRef<HTMLSpanElement>(null);
+    const mergedRef = mergeRefs<HTMLButtonElement>(
+      toggleButtonProps.ref,
+      ref,
+      toggleButtonRef
+    );
 
     const selectedItems = selectedItem as ItemType[];
 
@@ -474,16 +549,26 @@ const MultiSelect = React.forwardRef(
       }
     };
 
-    /**
-     * programmatically control this `open` prop
-     */
-    if (prevOpenProp !== open) {
-      setIsOpenWrapper(open);
-      setPrevOpenProp(open);
-    }
+    useEffect(() => {
+      if (prevOpenPropRef.current !== open) {
+        setIsOpen(open);
+        onMenuChange?.(open);
+        prevOpenPropRef.current = open;
+      }
+    }, [open, onMenuChange]);
+
+    const normalizedProps = useNormalizedInputProps({
+      id,
+      disabled,
+      readOnly,
+      invalid,
+      warn,
+    });
 
     const inline = type === 'inline';
-    const showWarning = !invalid && warn;
+    const showWarning = normalizedProps.warn;
+    const showHelperText =
+      !normalizedProps.warn && !normalizedProps.invalid && helperText;
 
     const wrapperClasses = cx(
       `${prefix}--multi-select__wrapper`,
@@ -493,12 +578,13 @@ const MultiSelect = React.forwardRef(
         [`${prefix}--multi-select__wrapper--inline`]: inline,
         [`${prefix}--list-box__wrapper--inline`]: inline,
         [`${prefix}--multi-select__wrapper--inline--invalid`]:
-          inline && invalid,
-        [`${prefix}--list-box__wrapper--inline--invalid`]: inline && invalid,
-        [`${prefix}--list-box__wrapper--fluid--invalid`]: isFluid && invalid,
-        [`${prefix}--list-box__wrapper--fluid--focus`]:
-          !isOpen && isFluid && isFocused,
+          inline && normalizedProps.invalid,
+        [`${prefix}--list-box__wrapper--inline--invalid`]:
+          inline && normalizedProps.invalid,
+        [`${prefix}--list-box__wrapper--fluid--invalid`]:
+          isFluid && normalizedProps.invalid,
         [`${prefix}--list-box__wrapper--slug`]: slug,
+        [`${prefix}--list-box__wrapper--decorator`]: decorator,
       }
     );
     const titleClasses = cx(`${prefix}--label`, {
@@ -514,32 +600,18 @@ const MultiSelect = React.forwardRef(
     });
 
     const className = cx(`${prefix}--multi-select`, {
-      [`${prefix}--multi-select--invalid`]: invalid,
-      [`${prefix}--multi-select--invalid--focused`]: invalid && inputFocused,
+      [`${prefix}--multi-select--invalid`]: normalizedProps.invalid,
+      [`${prefix}--multi-select--invalid--focused`]:
+        inputFocused && normalizedProps.invalid,
       [`${prefix}--multi-select--warning`]: showWarning,
       [`${prefix}--multi-select--inline`]: inline,
       [`${prefix}--multi-select--selected`]:
         selectedItems && selectedItems.length > 0,
       [`${prefix}--list-box--up`]: direction === 'top',
       [`${prefix}--multi-select--readonly`]: readOnly,
+      [`${prefix}--autoalign`]: enableFloatingStyles,
+      [`${prefix}--multi-select--selectall`]: selectAll,
     });
-
-    // needs to be capitalized for react to render it correctly
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-    const ItemToElement = itemToElement!;
-
-    const sortOptions = {
-      selectedItems: controlledSelectedItems,
-      itemToString,
-      compareItems,
-      locale,
-    };
-
-    if (selectionFeedback === 'fixed') {
-      sortOptions.selectedItems = [];
-    } else if (selectionFeedback === 'top-after-reopen') {
-      sortOptions.selectedItems = topItems;
-    }
 
     function stateReducer(state, actionAndChanges) {
       const { changes, props, type } = actionAndChanges;
@@ -566,7 +638,11 @@ const MultiSelect = React.forwardRef(
           break;
         case ToggleButtonClick:
           setIsOpenWrapper(changes.isOpen || false);
-          return { ...changes, highlightedIndex: 0 };
+          return {
+            ...changes,
+            highlightedIndex:
+              controlledSelectedItems.length > 0 ? 0 : undefined,
+          };
         case ItemClick:
           setHighlightedIndex(changes.selectedItem);
           onItemChange(changes.selectedItem);
@@ -582,7 +658,7 @@ const MultiSelect = React.forwardRef(
           } else {
             return {
               ...changes,
-              highlightedIndex: props.items.indexOf(highlightedIndex),
+              highlightedIndex: sortedItems.indexOf(highlightedIndex),
             };
           }
         case ToggleButtonKeyDownArrowDown:
@@ -615,20 +691,14 @@ const MultiSelect = React.forwardRef(
       }
     );
 
-    const handleFocus = (evt: React.FocusEvent<HTMLDivElement>) => {
-      evt.target.classList.contains(`${prefix}--tag__close-icon`)
-        ? setIsFocused(false)
-        : setIsFocused(evt.type === 'focus' ? true : false);
-    };
-
     const readOnlyEventHandlers = readOnly
       ? {
           onClick: (evt: React.MouseEvent<HTMLButtonElement>) => {
             // NOTE: does not prevent click
             evt.preventDefault();
             // focus on the element as per readonly input behavior
-            if (mergedRef.current !== undefined) {
-              mergedRef.current.focus();
+            if (toggleButtonRef.current) {
+              toggleButtonRef.current.focus();
             }
           },
           onKeyDown: (evt: React.KeyboardEvent<HTMLButtonElement>) => {
@@ -641,21 +711,80 @@ const MultiSelect = React.forwardRef(
         }
       : {};
 
-    // Slug is always size `mini`
-    let normalizedSlug;
-    if (slug && slug['type']?.displayName === 'Slug') {
-      normalizedSlug = React.cloneElement(slug as React.ReactElement<any>, {
-        size: 'mini',
-      });
-    }
+    // AILabel always size `mini`
+    const candidate = slug ?? decorator;
+    const candidateIsAILabel = isComponentElement(candidate, AILabel);
+    const normalizedDecorator = candidateIsAILabel
+      ? cloneElement(candidate, { size: 'mini' })
+      : candidate;
 
     const itemsSelectedText =
       selectedItems.length > 0 &&
       selectedItems.map((item) => (item as selectedItemType)?.text);
 
+    const selectedItemsLength = selectAll
+      ? selectedItems.filter((item) => !isSelectAllItem(item)).length
+      : selectedItems.length;
+
+    // Memoize the value of getMenuProps to avoid an infinite loop
+    const menuProps = useMemo(
+      () =>
+        getMenuProps({
+          ref: enableFloatingStyles ? refs.setFloating : null,
+          hidden: !isOpen,
+        }),
+      [enableFloatingStyles, getMenuProps, isOpen, refs.setFloating]
+    );
+
+    const allLabelProps = getLabelProps();
+    const labelProps = isValidElement(titleText)
+      ? { id: allLabelProps.id }
+      : allLabelProps;
+    useNoInteractiveChildrenForLabel(
+      titleRef,
+      'The MultiSelect component `titleText` prop must have no interactive content'
+    );
+    useNoInteractiveChildrenForLabel(
+      labelRef,
+      'The MultiSelect component `label` prop must have no interactive content'
+    );
+
+    const getSelectionStats = useCallback(
+      (
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any -- https://github.com/carbon-design-system/carbon/issues/20452
+        selectedItems: any[],
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any -- https://github.com/carbon-design-system/carbon/issues/20452
+        filteredItems: any[]
+      ): {
+        hasIndividualSelections: boolean;
+        nonSelectAllSelectedCount: number;
+        totalSelectableCount: number;
+      } => {
+        const hasIndividualSelections = selectedItems.some(
+          (selected) => !isSelectAllItem(selected)
+        );
+
+        const nonSelectAllSelectedCount = selectedItems.filter(
+          (selected) => !isSelectAllItem(selected)
+        ).length;
+
+        const totalSelectableCount = filteredItems.filter(
+          (item) => !isSelectAllItem(item) && !isItemDisabled(item)
+        ).length;
+
+        return {
+          hasIndividualSelections,
+          nonSelectAllSelectedCount,
+          totalSelectableCount,
+        };
+      },
+      // eslint-disable-next-line  react-hooks/exhaustive-deps -- https://github.com/carbon-design-system/carbon/issues/20452
+      [selectedItems, filteredItems]
+    );
+
     return (
       <div className={wrapperClasses}>
-        <label className={titleClasses} {...getLabelProps()}>
+        <label className={titleClasses} {...labelProps} ref={titleRef}>
           {titleText && titleText}
           {selectedItems.length > 0 && (
             <span className={`${prefix}--visually-hidden`}>
@@ -665,20 +794,18 @@ const MultiSelect = React.forwardRef(
           )}
         </label>
         <ListBox
-          onFocus={isFluid ? handleFocus : undefined}
-          onBlur={isFluid ? handleFocus : undefined}
           type={type}
           size={size}
           className={className}
           disabled={disabled}
           light={light}
-          invalid={invalid}
+          invalid={normalizedProps.invalid}
           invalidText={invalidText}
-          warn={warn}
+          warn={normalizedProps.warn}
           warnText={warnText}
           isOpen={isOpen}
           id={id}>
-          {invalid && (
+          {normalizedProps.invalid && (
             <WarningFilled className={`${prefix}--list-box__invalid-icon`} />
           )}
           {showWarning && (
@@ -686,16 +813,17 @@ const MultiSelect = React.forwardRef(
               className={`${prefix}--list-box__invalid-icon ${prefix}--list-box__invalid-icon--warning`}
             />
           )}
-          <div className={multiSelectFieldWrapperClasses}>
+          <div
+            className={multiSelectFieldWrapperClasses}
+            ref={enableFloatingStyles ? refs.setReference : null}>
             {selectedItems.length > 0 && (
               <ListBox.Selection
                 readOnly={readOnly}
                 clearSelection={
                   !disabled && !readOnly ? clearSelection : noopFn
                 }
-                selectionCount={selectedItems.length}
-                // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-                translateWithId={translateWithId!}
+                selectionCount={selectedItemsLength}
+                translateWithId={translateWithId}
                 disabled={disabled}
               />
             )}
@@ -705,14 +833,15 @@ const MultiSelect = React.forwardRef(
               disabled={disabled}
               aria-disabled={disabled || readOnly}
               aria-describedby={
-                !inline && !invalid && !warn && helperText
-                  ? helperId
-                  : undefined
+                !inline && showHelperText ? helperId : undefined
               }
               {...toggleButtonProps}
               ref={mergedRef}
               {...readOnlyEventHandlers}>
-              <span id={fieldLabelId} className={`${prefix}--list-box__label`}>
+              <span
+                id={fieldLabelId}
+                className={`${prefix}--list-box__label`}
+                ref={labelRef}>
                 {label}
               </span>
               <ListBox.MenuIcon
@@ -720,18 +849,36 @@ const MultiSelect = React.forwardRef(
                 translateWithId={translateWithId}
               />
             </button>
-            {normalizedSlug}
+            {slug ? (
+              normalizedDecorator
+            ) : decorator ? (
+              <div className={`${prefix}--list-box__inner-wrapper--decorator`}>
+                {normalizedDecorator}
+              </div>
+            ) : (
+              ''
+            )}
           </div>
-          <ListBox.Menu {...getMenuProps()}>
+          <ListBox.Menu {...menuProps}>
             {isOpen &&
-              // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-              sortItems!(
-                filteredItems,
-                sortOptions as SortItemsOptions<ItemType>
-              ).map((item, index) => {
-                const isChecked =
-                  selectedItems.filter((selected) => isEqual(selected, item))
-                    .length > 0;
+              sortedItems.map((item, index) => {
+                const {
+                  hasIndividualSelections,
+                  nonSelectAllSelectedCount,
+                  totalSelectableCount,
+                } = getSelectionStats(selectedItems, filteredItems);
+
+                const isSelectAll = isSelectAllItem(item);
+
+                const isChecked = isSelectAll
+                  ? nonSelectAllSelectedCount === totalSelectableCount &&
+                    totalSelectableCount > 0
+                  : selectedItems.some((selected) => isEqual(selected, item));
+
+                const isIndeterminate =
+                  isSelectAll &&
+                  hasIndividualSelections &&
+                  nonSelectAllSelectedCount < totalSelectableCount;
 
                 const itemProps = getItemProps({
                   item,
@@ -741,37 +888,49 @@ const MultiSelect = React.forwardRef(
                 });
                 const itemText = itemToString(item);
 
-                return (
+                const menuItem = (
                   <ListBox.MenuItem
                     key={itemProps.id}
-                    isActive={isChecked}
+                    isActive={isChecked && !isSelectAll}
                     aria-label={itemText}
+                    aria-checked={isIndeterminate ? 'mixed' : isChecked}
                     isHighlighted={highlightedIndex === index}
                     title={itemText}
                     disabled={itemProps['aria-disabled']}
                     {...itemProps}>
                     <div className={`${prefix}--checkbox-wrapper`}>
-                      <span
+                      <Checkbox
+                        id={`${itemProps.id}__checkbox`}
+                        labelText={
+                          itemToElement ? itemToElement(item) : itemText
+                        }
+                        checked={isChecked}
                         title={useTitleInItem ? itemText : undefined}
-                        className={`${prefix}--checkbox-label`}
-                        data-contained-checkbox-state={isChecked}
-                        id={`${itemProps.id}__checkbox`}>
-                        {itemToElement ? (
-                          <ItemToElement key={itemProps.id} {...item} />
-                        ) : (
-                          itemText
-                        )}
-                      </span>
+                        indeterminate={isIndeterminate}
+                        disabled={disabled}
+                        tabIndex={-1}
+                      />
                     </div>
                   </ListBox.MenuItem>
                 );
+
+                return isSelectAll && enableV12Release
+                  ? [
+                      menuItem,
+                      <li
+                        key={`${itemProps.id}__divider`}
+                        className={`${prefix}--list-box__menu-divider`}
+                        aria-hidden="true"
+                      />,
+                    ]
+                  : menuItem;
               })}
           </ListBox.Menu>
           {itemsCleared && (
             <span aria-live="assertive" aria-label={clearAnnouncement} />
           )}
         </ListBox>
-        {!inline && !invalid && !warn && helperText && (
+        {!inline && showHelperText && (
           <div id={helperId} className={helperClasses}>
             {helperText}
           </div>
@@ -779,7 +938,7 @@ const MultiSelect = React.forwardRef(
       </div>
     );
   }
-);
+) as MultiSelectComponent;
 
 type MultiSelectComponentProps<ItemType> = React.PropsWithChildren<
   MultiSelectProps<ItemType>
@@ -787,6 +946,9 @@ type MultiSelectComponentProps<ItemType> = React.PropsWithChildren<
   React.RefAttributes<HTMLButtonElement>;
 
 interface MultiSelectComponent {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- https://github.com/carbon-design-system/carbon/issues/20452
+  propTypes: Record<string, any>;
+  displayName: string;
   <ItemType>(
     props: MultiSelectComponentProps<ItemType>
   ): React.ReactElement | null;
@@ -795,6 +957,14 @@ interface MultiSelectComponent {
 MultiSelect.displayName = 'MultiSelect';
 MultiSelect.propTypes = {
   ...sortingPropTypes,
+
+  /**
+   * **Experimental**: Will attempt to automatically align the floating
+   * element to avoid collisions with the viewport and being clipped by
+   * ancestor elements. Requires React v17+
+   * @see https://github.com/carbon-design-system/carbon/issues/18714
+   */
+  autoAlign: PropTypes.bool,
 
   /**
    * Provide a custom class name to be added to the outermost node in the
@@ -814,9 +984,15 @@ MultiSelect.propTypes = {
 
   /**
    * Provide a compare function that is used to determine the ordering of
-   * options. See 'sortItems' for more control.
+   * options. See 'sortItems' for more control. Consider
+   * declaring function with `useCallback` to prevent unnecessary re-renders.
    */
   compareItems: PropTypes.func,
+
+  /**
+   * **Experimental**: Provide a decorator component to be rendered inside the `MultiSelect` component
+   */
+  decorator: PropTypes.node,
 
   /**
    * Specify the direction of the multiselect dropdown. Can be either top or bottom.
@@ -829,9 +1005,16 @@ MultiSelect.propTypes = {
   disabled: PropTypes.bool,
 
   /**
-   * Additional props passed to Downshift
+   * Additional props passed to Downshift.
+   *
+   * **Use with caution:** anything you define here overrides the components'
+   * internal handling of that prop. Downshift APIs and internals are subject to
+   * change, and in some cases they can not be shimmed by Carbon to shield you
+   * from potentially breaking changes.
    */
-  downshiftProps: PropTypes.object as React.Validator<UseSelectProps<unknown>>,
+  downshiftProps: PropTypes.object as PropTypes.Validator<
+    UseSelectProps<unknown>
+  >,
 
   /**
    * Provide helper text that is used alongside the control label for
@@ -866,15 +1049,15 @@ MultiSelect.propTypes = {
   invalidText: PropTypes.node,
 
   /**
-   * Function to render items as custom components instead of strings.
-   * Defaults to null and is overridden by a getter
+   * Renders an item as a custom React node instead of a string.
    */
   itemToElement: PropTypes.func,
 
   /**
    * Helper function passed to downshift that allows the library to render a
    * given item to a string label. By default, it extracts the `label` field
-   * from a given item to serve as the item label in the list.
+   * from a given item to serve as the item label in the list. Consider
+   * declaring function with `useCallback` to prevent unnecessary re-renders.
    */
   itemToString: PropTypes.func,
 
@@ -941,14 +1124,14 @@ MultiSelect.propTypes = {
   selectionFeedback: PropTypes.oneOf(['top', 'fixed', 'top-after-reopen']),
 
   /**
-   * Specify the size of the ListBox. Currently supports either `sm`, `md` or `lg` as an option.
+   * Specify the size of the ListBox. Currently supports either `xs`, `sm`, `md` or `lg` as an option.
    */
-  size: ListBoxPropTypes.ListBoxSize,
+  size: ListBoxSizePropType,
 
-  /**
-   * **Experimental**: Provide a `Slug` component to be rendered inside the `MultiSelect` component
-   */
-  slug: PropTypes.node,
+  slug: deprecate(
+    PropTypes.node,
+    'The `slug` prop has been deprecated and will be removed in the next major version. Use the decorator prop instead.'
+  ),
 
   /**
    * Provide a method that sorts all options in the control. Overriding this
@@ -979,14 +1162,14 @@ MultiSelect.propTypes = {
   titleText: PropTypes.node,
 
   /**
-   * Callback function for translating ListBoxMenuIcon SVG title
+   * Translates component strings using your i18n tool.
    */
   translateWithId: PropTypes.func,
 
   /**
    * Specify 'inline' to create an inline multi-select.
    */
-  type: PropTypes.oneOf(['default', 'inline']),
+  type: ListBoxTypePropType,
 
   /**
    * Specify title to show title on hover
@@ -1003,5 +1186,3 @@ MultiSelect.propTypes = {
    */
   warnText: PropTypes.node,
 };
-
-export default MultiSelect as MultiSelectComponent;

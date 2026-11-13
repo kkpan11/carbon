@@ -1,12 +1,14 @@
 //
-// Copyright IBM Corp. 2016, 2023
+// Copyright IBM Corp. 2016, 2026
 //
 // This source code is licensed under the Apache-2.0 license found in the
 // LICENSE file in the root directory of this source tree.
 //
 
 @use '../button';
+@use '../../border-radius' as *;
 @use '../../config' as *;
+@use '../../feature-flags' as *;
 @use '../../breakpoint' as *;
 @use '../../motion' as *;
 @use '../../spacing' as *;
@@ -17,137 +19,60 @@
 @use '../../utilities/component-reset';
 @use '../../utilities/focus-outline' as *;
 @use '../../utilities/high-contrast-mode' as *;
+@use '../../utilities/update_fields_on_layer' as *;
 @use '../../utilities/z-index' as *;
 
 /// Modal styles
 /// @access public
 /// @group modal
-@mixin modal {
+@mixin modal(
+  $enable-experimental-focus-wrap-without-sentinels: false,
+  $enable-focus-wrap-without-sentinels: false,
+  $enable-dialog-element: false,
+  $enable-presence: false
+) {
   .#{$prefix}--modal {
-    position: fixed;
-    z-index: z('modal');
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background-color: $overlay;
-    block-size: 100vh;
-    content: '';
-    inline-size: 100vw;
-    inset-block-start: 0;
-    inset-inline-start: 0;
-    opacity: 0;
-    transition: opacity $duration-moderate-02 motion(exit, expressive),
-      visibility 0ms linear $duration-moderate-02;
-    visibility: hidden;
+    // For modals using the native dialog element, the modal visibility is handled
+    // by the Dialog styles.
+    @if not(enabled('enable-dialog-element') or $enable-dialog-element) {
+      position: fixed;
+      z-index: z('modal');
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background-color: $overlay;
+      block-size: 100vh;
+      content: '';
+      inline-size: 100vw;
+      inset-block-start: 0;
+      inset-inline-start: 0;
 
-    &.is-visible {
-      opacity: 1;
-      transition: opacity $duration-moderate-02 motion(entrance, expressive),
-        visibility 0ms linear;
-      visibility: inherit;
+      &.#{$prefix}--modal--enable-presence {
+        @include modal-animations($has-presence: true);
+      }
 
-      @media screen and (prefers-reduced-motion: reduce) {
-        transition: none;
+      &:not(.#{$prefix}--modal--enable-presence) {
+        @include modal-animations(
+          $has-presence: enabled('enable-presence') or $enable-presence
+        );
       }
     }
 
-    // V11: Question for design: do we have an updated tokens for fields that exist on `layer`?
-    .#{$prefix}--pagination,
-    .#{$prefix}--pagination__control-buttons,
-    .#{$prefix}--text-input,
-    .#{$prefix}--text-area,
-    .#{$prefix}--search-input,
-    .#{$prefix}--select-input,
-    .#{$prefix}--dropdown,
-    .#{$prefix}--dropdown-list,
-    .#{$prefix}--number input[type='number'],
-    .#{$prefix}--date-picker__input,
-    .#{$prefix}--multi-select,
-    .#{$prefix}--number__control-btn::before,
-    .#{$prefix}--number__control-btn::after,
-    .#{$prefix}--list-box input[role='combobox'] {
-      background-color: $field-02;
-    }
-
-    // Override to align layer token with field
-    .#{$prefix}--list-box__menu {
-      background-color: $layer-02;
-    }
-
-    .#{$prefix}--number__rule-divider {
-      background-color: $border-subtle-02;
-    }
-
-    .#{$prefix}--list-box__menu-item__option {
-      border-block-start-color: $border-subtle-02;
-    }
-
-    .#{$prefix}--list-box__menu-item:hover
-      .#{$prefix}--list-box__menu-item__option {
-      border-block-start-color: $layer-hover-02;
-    }
-
-    .#{$prefix}--list-box__menu-item--active:hover
-      .#{$prefix}--list-box__menu-item__option {
-      border-block-start-color: $layer-selected-hover-02;
-    }
-
-    // Fluid inputs
-    .#{$prefix}--text-input--fluid .#{$prefix}--text-input,
-    .#{$prefix}--text-area--fluid .#{$prefix}--text-area__wrapper,
-    .#{$prefix}--text-area--fluid .#{$prefix}--text-area,
-    .#{$prefix}--search--fluid .#{$prefix}--search-input,
-    .#{$prefix}--select--fluid .#{$prefix}--select-input,
-    .#{$prefix}--text-area--fluid
-      .#{$prefix}--text-area__wrapper[data-invalid]
-      .#{$prefix}--text-area__divider
-      + .#{$prefix}--form-requirement,
-    .#{$prefix}--list-box__wrapper--fluid .#{$prefix}--list-box,
-    .#{$prefix}--list-box__wrapper--fluid.#{$prefix}--list-box__wrapper,
-    .#{$prefix}--number-input--fluid input[type='number'],
-    .#{$prefix}--number-input--fluid .#{$prefix}--number__control-btn::before,
-    .#{$prefix}--number-input--fluid .#{$prefix}--number__control-btn::after,
-    .#{$prefix}--date-picker--fluid
-      .c#{$prefix}ds--date-picker-input__wrapper
-      .#{$prefix}--date-picker__input {
-      background-color: $field-01;
-    }
-
-    // Override to align layer token with field
-    .#{$prefix}--list-box__wrapper--fluid .#{$prefix}--list-box__menu {
-      background-color: $layer-01;
-    }
-
-    .#{$prefix}--list-box__menu-item:hover {
-      background-color: $layer-hover-02;
-    }
-
-    .#{$prefix}--list-box__menu-item--active {
-      background-color: $layer-selected-02;
-    }
-
-    .#{$prefix}--list-box__menu-item--active:hover {
-      background-color: $layer-selected-hover-02;
-    }
-
-    .#{$prefix}--number-input--fluid
-      .#{$prefix}--number__control-btn:hover::before,
-    .#{$prefix}--number-input--fluid
-      .#{$prefix}--number__control-btn:hover::after {
-      background-color: $field-hover;
-    }
-
-    .#{$prefix}--number-input--fluid
-      .#{$prefix}--number__control-btn:focus::before,
-    .#{$prefix}--number-input--fluid
-      .#{$prefix}--number__control-btn:focus::after {
-      border-inline-start: 2px solid $focus;
-    }
+    @include update_fields_on_layer;
   }
 
-  .#{$prefix}--modal.is-visible .#{$prefix}--modal-container {
-    transform: translate3d(0, 0, 0);
-    transition: transform $duration-moderate-02 motion(entrance, expressive);
+  // For modals using the native dialog element, the modal visibility is handled
+  // by the Dialog styles.
+  @if not(enabled('enable-dialog-element') or $enable-dialog-element) {
+    .#{$prefix}--modal--enable-presence {
+      @include modal-container-animations($has-presence: true);
+    }
+
+    :not(.#{$prefix}--modal--enable-presence) {
+      @include modal-container-animations(
+        $has-presence: enabled('enable-presence') or $enable-presence
+      );
+    }
   }
 
   // -----------------------------
@@ -156,8 +81,8 @@
   .#{$prefix}--modal-container {
     position: fixed;
     display: grid;
+    border: 1px solid $border-subtle-01;
     background-color: $layer;
-    block-size: 100%;
     grid-template-columns: 100%;
     grid-template-rows: auto 1fr auto;
     inline-size: 100%;
@@ -166,13 +91,10 @@
     // make modal edge visible on high contrast themes (#3880)
     outline: 3px solid transparent;
     outline-offset: -3px;
-    transform: translate3d(0, -24px, 0);
     transform-origin: top center;
-    transition: transform $duration-moderate-02 motion(exit, expressive);
 
     @include breakpoint(md) {
-      position: static;
-      block-size: auto;
+      position: relative;
       inline-size: 84%;
       max-block-size: 90%;
     }
@@ -203,12 +125,10 @@
     grid-column: 1/-1;
     grid-row: 2/-2;
     overflow-y: auto;
-    padding-block-end: $spacing-09;
+    padding-block: $spacing-03 $spacing-09;
     // Required to accommodate focus outline's negative offset:
-    padding-block-start: $spacing-03;
     // anything besides text/p spans full width, with just 16px padding
-    padding-inline-end: $spacing-05;
-    padding-inline-start: $spacing-05;
+    padding-inline: $spacing-05 $spacing-05;
 
     &:focus {
       @include focus-outline('outline');
@@ -217,11 +137,10 @@
 
   // fluid form in modal
   .#{$prefix}--modal-content .#{$prefix}--form--fluid {
-    margin-inline-end: -$spacing-05;
-    margin-inline-start: -$spacing-05;
+    margin-inline: -$spacing-03 - $spacing-03;
   }
 
-  //TO-DO: remove .#{$prefix}--modal-content__regular-content in v11 since hasForm has been deprecated
+  // TODO: remove .#{$prefix}--modal-content__regular-content in v11 since hasForm has been deprecated
   // text/p gets 20% right padding
   .#{$prefix}--modal-content > p,
   .#{$prefix}--modal-content__regular-content {
@@ -230,7 +149,7 @@
     padding-inline-end: calc(20% - $spacing-07);
   }
 
-  //TO-DO: remove .#{$prefix}--modal-content--with-form in v11 since hasForm has been deprecated\
+  // TODO: remove .#{$prefix}--modal-content--with-form in v11 since hasForm has been deprecated\
   // anything besides text/p spans full width, with just 16px padding
   .#{$prefix}--modal-content--with-form {
     padding-inline-end: $spacing-05;
@@ -243,9 +162,10 @@
     grid-column: 1/-1;
     grid-row: 1/1;
     margin-block-end: $spacing-03;
+    max-block-size: 50vh;
+    overflow-y: auto;
     padding-block-start: $spacing-05;
-    padding-inline-end: $spacing-09;
-    padding-inline-start: $spacing-05;
+    padding-inline: $spacing-05 $spacing-09;
   }
 
   .#{$prefix}--modal-header__label {
@@ -361,6 +281,20 @@
       linear-gradient(to top, $layer 0, 2px, transparent 2px);
   }
 
+  .#{$prefix}--modal--slug
+    .#{$prefix}--modal-content.#{$prefix}--modal-scroll-content.#{$prefix}--modal-scroll-content--no-fade,
+  .#{$prefix}--modal--decorator
+    .#{$prefix}--modal-content.#{$prefix}--modal-scroll-content.#{$prefix}--modal-scroll-content--no-fade,
+  .#{$prefix}--modal-scroll-content.#{$prefix}--modal-scroll-content--no-fade,
+  .#{$prefix}--modal-scroll-content--no-fade {
+    mask-image: none;
+  }
+
+  //removing mask image in case we have dropdown in modal
+  .#{$prefix}--modal-scroll-content:has(.#{$prefix}--autoalign) {
+    mask-image: none;
+  }
+
   // Required so overflow-indicator disappears at end of content
   .#{$prefix}--modal-scroll-content > *:last-child {
     margin-block-end: $spacing-06;
@@ -376,6 +310,10 @@
     grid-column: 1/-1;
     grid-row: -1/-1;
     margin-block-start: auto;
+
+    @if enabled('enable-v12-release') {
+      @include button.radius($border-radius-00);
+    }
   }
 
   .#{$prefix}--modal-footer .#{$prefix}--btn {
@@ -384,8 +322,10 @@
     margin: 0;
     block-size: convert.to-rem(64px);
     max-inline-size: none;
-    padding-block-end: $spacing-07;
-    padding-block-start: calc($spacing-05 - convert.to-rem(2px));
+  }
+
+  .#{$prefix}--modal-footer .#{$prefix}--btn:not(.#{$prefix}--skeleton) {
+    padding-block: calc($spacing-05 - convert.to-rem(2px)) $spacing-07;
   }
 
   .#{$prefix}--modal-footer--three-button .#{$prefix}--btn {
@@ -401,6 +341,10 @@
     position: absolute;
     inset-block-start: 0;
     inset-inline-end: 0;
+
+    @if enabled('enable-v12-release') {
+      @include button.radius($border-radius-00);
+    }
   }
 
   .#{$prefix}--modal-close {
@@ -412,8 +356,10 @@
     inline-size: 3rem;
     transition: background-color $duration-fast-02 motion(standard, productive);
 
-    &:hover {
-      background-color: $layer-hover;
+    @media (any-hover: hover) {
+      &:hover {
+        background-color: $layer-hover;
+      }
     }
 
     &:focus {
@@ -450,30 +396,39 @@
     margin: 0;
   }
 
-  // Slug styles
-  .#{$prefix}--modal--slug.#{$prefix}--modal {
+  // AIlabel styles
+  .#{$prefix}--modal--slug.#{$prefix}--modal,
+  .#{$prefix}--modal--decorator:has(.#{$prefix}--ai-label).#{$prefix}--modal {
     background-color: $ai-overlay;
   }
 
-  .#{$prefix}--modal--slug .#{$prefix}--modal-container {
+  .#{$prefix}--modal--slug .#{$prefix}--modal-container,
+  .#{$prefix}--modal--decorator:has(.#{$prefix}--ai-label)
+    .#{$prefix}--modal-container {
     @include ai-popover-gradient('default', 0, 'layer');
 
     border: 1px solid transparent;
     background-color: $layer;
-    box-shadow: inset 0 -80px 70px -65px $ai-inner-shadow,
+    box-shadow:
+      inset 0 -80px 70px -65px $ai-inner-shadow,
       0 24px 40px -24px $ai-drop-shadow;
   }
 
   .#{$prefix}--modal--slug
+    .#{$prefix}--modal-container:has(.#{$prefix}--modal-footer),
+  .#{$prefix}--modal--decorator:has(.#{$prefix}--ai-label)
     .#{$prefix}--modal-container:has(.#{$prefix}--modal-footer) {
     @include ai-popover-gradient('default', 64px, 'layer');
 
-    box-shadow: inset 0 -80px 0 -16px $layer,
+    box-shadow:
+      inset 0 -80px 0 -16px $layer,
       inset 0 -160px 70px -65px $ai-inner-shadow,
       0 24px 40px -24px $ai-drop-shadow;
   }
 
   .#{$prefix}--modal--slug
+    .#{$prefix}--modal-content.#{$prefix}--modal-scroll-content,
+  .#{$prefix}--modal--decorator
     .#{$prefix}--modal-content.#{$prefix}--modal-scroll-content {
     mask-image: linear-gradient(
         to bottom,
@@ -487,6 +442,27 @@
   }
 
   .#{$prefix}--modal-header
+    > .#{$prefix}--modal--inner__decorator:has(
+      + .#{$prefix}--modal-close-button
+    )
+    > *,
+  .#{$prefix}--modal-header
+    > .#{$prefix}--modal-close-button
+    ~ .#{$prefix}--modal--inner__decorator
+    > *,
+  .#{$prefix}--modal--decorator
+    .#{$prefix}--modal-container-body
+    > .#{$prefix}--modal--inner__decorator
+    > *,
+  .#{$prefix}--modal-header
+    > .#{$prefix}--ai-label:has(+ .#{$prefix}--modal-close-button),
+  .#{$prefix}--modal-header
+    > .#{$prefix}--modal-close-button
+    ~ .#{$prefix}--ai-label,
+  .#{$prefix}--modal--slug
+    .#{$prefix}--modal-container-body
+    > .#{$prefix}--ai-label,
+  .#{$prefix}--modal-header
     > .#{$prefix}--slug:has(+ .#{$prefix}--modal-close-button),
   .#{$prefix}--modal-header
     > .#{$prefix}--modal-close-button
@@ -499,20 +475,144 @@
     inset-inline-end: convert.to-rem(48px);
   }
 
-  .#{$prefix}--modal--slug
+  .#{$prefix}--modal-header
+    > .#{$prefix}--modal--inner__decorator:not(:has(.#{$prefix}--ai-label))
+    > * {
+    inset-block-start: 1rem;
+  }
+
+  .#{$prefix}--modal-header
+    > .#{$prefix}--modal--inner__decorator:has(.#{$prefix}--ai-label--revert)
+    > * {
+    inset-block-start: 1.475rem;
+  }
+
+  .#{$prefix}--modal--decorator
     .#{$prefix}--modal-content--overflow-indicator::before,
-  .#{$prefix}--modal--slug .#{$prefix}--modal-content--overflow-indicator {
+  .#{$prefix}--modal--decorator .#{$prefix}--modal-content--overflow-indicator {
     display: none;
   }
 
   // Windows HCM fix
-  /* stylelint-disable no-duplicate-selectors */
-  .#{$prefix}--modal-close__icon {
-    @include high-contrast-mode('icon-fill');
-  }
-
   .#{$prefix}--modal-close:focus {
     @include high-contrast-mode('focus');
   }
-  /* stylelint-enable no-duplicate-selectors */
+}
+
+@mixin modal-animations($has-presence: false) {
+  @if not($has-presence) {
+    opacity: 0;
+    transition:
+      opacity $duration-moderate-02 motion(exit, expressive),
+      visibility 0ms linear $duration-moderate-02;
+    visibility: hidden;
+
+    &.is-visible {
+      opacity: 1;
+      transition:
+        opacity $duration-moderate-02 motion(entrance, expressive),
+        visibility 0ms linear;
+      visibility: inherit;
+
+      @media screen and (prefers-reduced-motion: reduce) {
+        transition: none;
+      }
+    }
+  } @else {
+    animation: #{$prefix}--presence-modal__enter
+      $duration-moderate-02
+      motion(entrance, expressive)
+      forwards;
+
+    @media screen and (prefers-reduced-motion: reduce) {
+      animation: none;
+    }
+
+    &[data-exiting] {
+      animation: #{$prefix}--presence-modal__exit
+        $duration-moderate-02
+        motion(exit, expressive)
+        forwards;
+
+      @media screen and (prefers-reduced-motion: reduce) {
+        animation: none;
+      }
+    }
+
+    @keyframes #{$prefix}--presence-modal__enter {
+      from {
+        opacity: 0;
+      }
+
+      to {
+        opacity: 1;
+      }
+    }
+
+    @keyframes #{$prefix}--presence-modal__exit {
+      from {
+        opacity: 1;
+      }
+
+      to {
+        opacity: 0;
+      }
+    }
+  }
+}
+
+@mixin modal-container-animations($has-presence: false) {
+  @if not($has-presence) {
+    &.is-visible .#{$prefix}--modal-container {
+      transform: translate3d(0, 0, 0);
+      transition: transform $duration-moderate-02 motion(entrance, expressive);
+    }
+
+    .#{$prefix}--modal-container {
+      transform: translate3d(0, -24px, 0);
+      transition: transform $duration-moderate-02 motion(exit, expressive);
+    }
+  } @else {
+    &[data-exiting] .#{$prefix}--modal-container {
+      animation: #{$prefix}--presence-modal-container__exit
+        $duration-moderate-02
+        motion(exit, expressive)
+        forwards;
+
+      @media screen and (prefers-reduced-motion: reduce) {
+        animation: none;
+      }
+    }
+
+    .#{$prefix}--modal-container {
+      animation: #{$prefix}--presence-modal-container__enter
+        $duration-moderate-02
+        motion(entrance, expressive)
+        forwards;
+
+      @media screen and (prefers-reduced-motion: reduce) {
+        animation: none;
+      }
+    }
+
+    @keyframes #{$prefix}--presence-modal-container__enter {
+      from {
+        transform: translate3d(0, -24px, 0);
+      }
+
+      to {
+        transform: translate3d(0, 0, 0);
+      }
+    }
+
+    @keyframes #{$prefix}--presence-modal-container__exit {
+      from {
+        transform: translate3d(0, 0, 0);
+      }
+
+      to {
+        transform: translate3d(0, -24px, 0);
+      }
+    }
+  }
 }

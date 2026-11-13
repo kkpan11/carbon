@@ -1,5 +1,5 @@
 //
-// Copyright IBM Corp. 2016, 2023
+// Copyright IBM Corp. 2016, 2026
 //
 // This source code is licensed under the Apache-2.0 license found in the
 // LICENSE file in the root directory of this source tree.
@@ -20,6 +20,7 @@
 @use '../../spacing' as *;
 @use '../../motion' as *;
 @use '../../layer' as *;
+@use '../../layer/layer-tokens';
 @use '../../utilities/focus-outline' as *;
 @use '../../utilities/rotate' as *;
 @use '../../utilities/box-shadow' as *;
@@ -32,6 +33,7 @@
 @use '../../utilities/high-contrast-mode' as *;
 @use '../../utilities/convert';
 @use '../../utilities/layout';
+@use '../../utilities/update_fields_on_layer' as *;
 
 /// Tabs styles
 /// @access public
@@ -59,6 +61,7 @@
     inline-size: 100%;
     max-block-size: custom-property.get-var('layout-size-height-xl');
     min-block-size: layout.size('height');
+    overflow-x: hidden;
 
     &.#{$prefix}--tabs--contained {
       @include layout.use('size', $min: 'sm', $max: 'xl', $default: 'lg');
@@ -74,6 +77,43 @@
 
       &::-webkit-scrollbar {
         display: none;
+      }
+    }
+
+    &.#{$prefix}--tabs--vertical {
+      @include layout.use('size', $min: 'sm', $max: 'xl', $default: 'xl');
+
+      background: $layer;
+      box-shadow: inset -1px 0 $border-subtle;
+      grid-column: span 2;
+      max-block-size: none;
+
+      @include breakpoint(lg) {
+        grid-column: span 4;
+      }
+
+      .#{$prefix}--tab--list {
+        overflow: visible auto;
+        flex-direction: column;
+        inline-size: 100%;
+      }
+
+      .#{$prefix}--tab--list-gradient_bottom {
+        position: absolute;
+        background: linear-gradient(to bottom, transparent, $layer);
+        block-size: $spacing-10;
+        inset-block-end: 0;
+        inset-inline: 0;
+        pointer-events: none;
+      }
+
+      .#{$prefix}--tab--list-gradient_top {
+        position: absolute;
+        background: linear-gradient(to top, transparent, $layer);
+        block-size: $spacing-10;
+        inset-block-start: 0;
+        inset-inline: 0;
+        pointer-events: none;
       }
     }
 
@@ -99,6 +139,14 @@
       &:focus {
         @include focus-outline('outline');
       }
+
+      &:hover {
+        background-color: $background-hover;
+      }
+
+      &:active {
+        background-color: $background-active;
+      }
     }
 
     .#{$prefix}--tab--overflow-nav-button--hidden {
@@ -109,81 +157,101 @@
       margin: 0;
       background-color: $layer-accent;
       inline-size: $spacing-09;
+
+      &:hover {
+        background-color: $layer-accent-hover;
+      }
+
+      &:active {
+        background-color: $layer-accent-active;
+      }
     }
 
     .#{$prefix}--tab--overflow-nav-button svg {
       z-index: 2;
       fill: $icon-primary;
+
+      &:active,
+      &:hover {
+        fill: $icon-primary;
+      }
     }
 
     .#{$prefix}--tab--overflow-nav-button--next {
-      position: absolute;
-      inset-block-end: 0;
-      inset-block-start: 0;
+      position: relative;
+      inset-block: 0;
       inset-inline-end: 0;
     }
 
     .#{$prefix}--tab--overflow-nav-button--next::before {
       position: absolute;
       z-index: 1;
-      background: linear-gradient(
-        to right,
-        rgba(255, 255, 255, 0),
-        $background
-      );
       block-size: 100%;
       content: '';
       inline-size: $spacing-03;
       inset-inline-start: -$spacing-03;
     }
 
-    &.#{$prefix}--tabs--contained
+    &:not(.#{$prefix}--tabs--contained) {
       .#{$prefix}--tab--overflow-nav-button--next::before {
-      background-image: linear-gradient(
-        to right,
-        rgba(255, 255, 255, 0),
-        $layer-accent
-      );
+        background: linear-gradient(
+          to right,
+          rgb(255, 255, 255, 0),
+          $background
+        );
+      }
+      .#{$prefix}--tab--overflow-nav-button--previous::before {
+        background: linear-gradient(
+          to left,
+          rgb(255, 255, 255, 0),
+          $background
+        );
+      }
+
+      // In RTL the buttons swap sides; reverse the fade direction to match.
+      [dir='rtl'] & {
+        .#{$prefix}--tab--overflow-nav-button--next::before {
+          background: linear-gradient(
+            to left,
+            rgb(255, 255, 255, 0),
+            $background
+          );
+        }
+
+        .#{$prefix}--tab--overflow-nav-button--previous::before {
+          background: linear-gradient(
+            to right,
+            rgb(255, 255, 255, 0),
+            $background
+          );
+        }
+      }
     }
 
     .#{$prefix}--tab--overflow-nav-button--previous {
-      position: absolute;
-      inset-block-end: 0;
-      inset-block-start: 0;
+      position: relative;
+      z-index: 1;
+      inset-block: 0;
       inset-inline-start: 0;
     }
 
     .#{$prefix}--tab--overflow-nav-button--previous::before {
       position: absolute;
       z-index: 1;
-      background: $background;
       block-size: 100%;
       content: '';
-      inline-size: $spacing-08;
-      inset-inline-end: 0;
-    }
-
-    &.#{$prefix}--tabs--contained
-      .#{$prefix}--tab--overflow-nav-button--previous::before {
-      background: linear-gradient(
-        to left,
-        rgba(255, 255, 255, 0),
-        $layer-accent
-      );
+      inline-size: $spacing-03;
+      inset-inline-end: -$spacing-03;
     }
 
     .#{$prefix}--tabs--light .#{$prefix}--tabs__overflow-indicator--left {
-      background-image: linear-gradient(
-        to left,
-        rgba(255, 255, 255, 0),
-        $layer
-      );
+      background-image: linear-gradient(to left, rgb(255, 255, 255, 0), $layer);
     }
 
     .#{$prefix}--tabs--light .#{$prefix}--tabs__overflow-indicator--right {
       background-image: linear-gradient(
         to right,
-        rgba(255, 255, 255, 0),
+        rgb(255, 255, 255, 0),
         $layer
       );
     }
@@ -191,7 +259,7 @@
     &.#{$prefix}--tabs--contained .#{$prefix}--tabs__overflow-indicator--left {
       background-image: linear-gradient(
         to left,
-        rgba(255, 255, 255, 0),
+        rgb(255, 255, 255, 0),
         $layer-accent
       );
     }
@@ -199,7 +267,7 @@
     &.#{$prefix}--tabs--contained .#{$prefix}--tabs__overflow-indicator--right {
       background-image: linear-gradient(
         to right,
-        rgba(255, 255, 255, 0),
+        rgb(255, 255, 255, 0),
         $layer-accent
       );
     }
@@ -207,41 +275,40 @@
     // Safari-only media query
     // won't appear correctly with CSS custom properties
     // see: code snippet and modal overflow indicators
-    @media not all and (resolution >= 0.001dpcm) {
-      @supports (-webkit-appearance: none) and (stroke-color: transparent) {
+    @supports (hanging-punctuation: first) and (font: -apple-system-body) and
+      (-webkit-appearance: none) {
+      .#{$prefix}--tabs__overflow-indicator--left {
+        background-image: linear-gradient(
+          to left,
+          rgba($background, 0),
+          $background
+        );
+      }
+
+      .#{$prefix}--tabs__overflow-indicator--right {
+        background-image: linear-gradient(
+          to right,
+          rgba($background, 0),
+          $background
+        );
+      }
+
+      &.#{$prefix}--tabs--contained
         .#{$prefix}--tabs__overflow-indicator--left {
-          background-image: linear-gradient(
-            to left,
-            rgba($background, 0),
-            $background
-          );
-        }
+        background-image: linear-gradient(
+          to left,
+          rgba($layer-accent, 0),
+          $layer-accent
+        );
+      }
 
+      &.#{$prefix}--tabs--contained
         .#{$prefix}--tabs__overflow-indicator--right {
-          background-image: linear-gradient(
-            to right,
-            rgba($background, 0),
-            $background
-          );
-        }
-
-        &.#{$prefix}--tabs--contained
-          .#{$prefix}--tabs__overflow-indicator--left {
-          background-image: linear-gradient(
-            to left,
-            rgba($layer-accent, 0),
-            $layer-accent
-          );
-        }
-
-        &.#{$prefix}--tabs--contained
-          .#{$prefix}--tabs__overflow-indicator--right {
-          background-image: linear-gradient(
-            to right,
-            rgba($layer-accent, 0),
-            $layer-accent
-          );
-        }
+        background-image: linear-gradient(
+          to right,
+          rgba($layer-accent, 0),
+          $layer-accent
+        );
       }
     }
 
@@ -264,6 +331,7 @@
     .#{$prefix}--tabs__nav-item {
       @include reset;
 
+      position: relative;
       display: flex;
       flex: 1 0 auto;
       padding: 0;
@@ -283,7 +351,18 @@
       margin-inline-start: 0;
     }
 
-    &.#{$prefix}--tabs--contained
+    &.#{$prefix}--tabs--vertical .#{$prefix}--tabs__nav-item {
+      flex: none;
+      background-color: $layer-01;
+      block-size: layout.size('height');
+      border-block-end: 1px solid $border-subtle;
+      border-inline-end: 1px solid $border-subtle;
+      box-shadow: inset 3px 0 0 0 $border-subtle;
+      inline-size: 100%;
+      margin-inline-start: 0;
+    }
+
+    &.#{$prefix}--tabs--contained:not(.#{$prefix}--tabs--vertical)
       .#{$prefix}--tabs__nav-item--selected
       + div
       + .#{$prefix}--tabs__nav-item {
@@ -291,7 +370,8 @@
     }
 
     .#{$prefix}--tabs__nav-item .#{$prefix}--tabs__nav-link {
-      transition: color $duration-fast-01 motion(standard, productive),
+      transition:
+        color $duration-fast-01 motion(standard, productive),
         border-bottom-color $duration-fast-01 motion(standard, productive),
         outline $duration-fast-01 motion(standard, productive);
     }
@@ -346,7 +426,7 @@
       }
 
       svg:hover {
-        fill: $text-primary;
+        fill: $icon-primary;
       }
 
       &:hover {
@@ -363,12 +443,12 @@
       + .#{$prefix}--tabs__nav-item--close
       .#{$prefix}--tabs__nav-item--close-icon
       svg {
-      fill: $text-primary;
+      fill: $icon-primary;
     }
 
     .#{$prefix}--tabs__nav-item--close-icon--selected {
       svg {
-        fill: $text-primary;
+        fill: $icon-primary;
       }
     }
 
@@ -381,7 +461,9 @@
       cursor: not-allowed;
 
       svg {
-        fill: $tab-text-disabled;
+        // Note: $icon-disabled maps to the same color as $tab-text-disabled, but in high contrast mode, $icon-disabled
+        // maps to the system-defined "GrayText" color, which is better for high contrast mode support.
+        fill: $icon-disabled;
       }
 
       &:focus,
@@ -422,7 +504,8 @@
       text-align: start;
       text-decoration: none;
       text-overflow: ellipsis;
-      transition: border $duration-fast-01 motion(standard, productive),
+      transition:
+        border $duration-fast-01 motion(standard, productive),
         outline $duration-fast-01 motion(standard, productive);
       white-space: nowrap;
 
@@ -432,9 +515,9 @@
       }
     }
 
-    &.#{$prefix}--tabs--contained .#{$prefix}--tabs__nav-link {
+    &.#{$prefix}--tabs--contained:not(.#{$prefix}--tabs--vertical)
+      .#{$prefix}--tabs__nav-link {
       border-block-end: 0;
-      padding-inline: layout.density('padding-inline');
     }
 
     &.#{$prefix}--tabs--contained:not(.#{$prefix}--tabs--tall)
@@ -449,12 +532,23 @@
       min-block-size: convert.to-rem(16px);
     }
 
+    &.#{$prefix}--tabs--vertical:not(.#{$prefix}--tabs--tall)
+      .#{$prefix}--tabs__nav-item-label {
+      line-height: custom-property.get-var('body-compact-01-line-height');
+    }
+
     //-----------------------------
     // Icon Item
     //-----------------------------
+    &.#{$prefix}--tabs__icon--default,
+    &.#{$prefix}--tabs__icon--lg,
     &.#{$prefix}--tabs__icon--default .#{$prefix}--tab--list,
     &.#{$prefix}--tabs__icon--lg .#{$prefix}--tab--list {
       overflow-x: visible;
+    }
+
+    .#{$prefix}--tabs__nav-item--icon-only {
+      margin-inline-end: convert.to-rem(1px);
     }
 
     .#{$prefix}--tabs__nav-item--icon-only,
@@ -469,6 +563,15 @@
       .#{$prefix}--tabs__nav-item-label {
         line-height: 0;
       }
+    }
+
+    &.#{$prefix}--layout--size-sm
+      .#{$prefix}--tabs__nav-item--icon-only:not(
+        .#{$prefix}--tabs__nav-item--icon-only__20
+      )
+      .#{$prefix}--badge-indicator {
+      margin-block-start: $spacing-02;
+      margin-inline-end: $spacing-02;
     }
 
     //-----------------------------
@@ -492,6 +595,16 @@
       color: $text-primary;
     }
 
+    &.#{$prefix}--tabs--vertical
+      .#{$prefix}--tabs__nav-item:not(
+        .#{$prefix}--tabs__nav-item--selected
+      ):not(.#{$prefix}--tabs__nav-item--disabled):not(
+        .#{$prefix}--tabs__nav-item--hover-off
+      ):hover {
+      background-color: $layer-hover;
+      box-shadow: inset 3px 0 0 0 $border-strong;
+    }
+
     //-----------------------------
     // Item Selected
     //-----------------------------
@@ -510,6 +623,13 @@
       .#{$prefix}--tabs__nav-item.#{$prefix}--tabs__nav-item--selected {
       // Draws the border without affecting the inner-content
       box-shadow: inset 0 2px 0 0 $border-interactive;
+    }
+
+    &.#{$prefix}--tabs--vertical
+      .#{$prefix}--tabs__nav-item.#{$prefix}--tabs__nav-item--selected {
+      border-inline: none;
+      // Draws the border without affecting the inner-content
+      box-shadow: inset 3px 0 0 0 $border-interactive;
     }
 
     &.#{$prefix}--tabs--contained .#{$prefix}--tabs__nav-item--selected,
@@ -554,13 +674,13 @@
 
     .#{$prefix}--tabs__nav-item--disabled {
       background-color: transparent;
-      border-block-end: $tab-underline-disabled;
+      border-block-end: 2px solid $border-subtle;
       color: $tab-text-disabled;
       outline: none;
     }
 
     .#{$prefix}--tabs__nav-item--disabled:hover {
-      border-block-end: $tab-underline-disabled;
+      border-block-end: 2px solid $border-subtle;
       color: $tab-text-disabled;
       cursor: not-allowed;
     }
@@ -572,9 +692,17 @@
       background-color: button.$button-disabled;
     }
 
+    &.#{$prefix}--tabs--vertical
+      .#{$prefix}--tabs__nav-item.#{$prefix}--tabs__nav-item--disabled,
+    &.#{$prefix}--tabs--vertical
+      .#{$prefix}--tabs__nav-item.#{$prefix}--tabs__nav-item--disabled:hover {
+      background-color: $layer;
+      border-block-end: 1px solid $border-subtle;
+    }
+
     .#{$prefix}--tabs__nav-item--disabled:focus,
     .#{$prefix}--tabs__nav-item--disabled:active {
-      border-block-end: $tab-underline-disabled;
+      border-block-end: 2px solid $border-subtle;
       outline: none;
       pointer-events: none;
     }
@@ -600,7 +728,8 @@
       border-block-end-color: $border-subtle;
     }
 
-    &.#{$prefix}--tabs--contained .#{$prefix}--tabs__nav-item--disabled {
+    &.#{$prefix}--tabs--contained:not(.#{$prefix}--tabs--vertical)
+      .#{$prefix}--tabs__nav-item--disabled {
       border-block-end: none;
       color: $text-on-color-disabled;
     }
@@ -620,9 +749,14 @@
     background: $layer;
   }
 
-  .#{$prefix}--tab-content--interactive {
-    &:focus {
-      outline: none;
+  .#{$prefix}--tabs--vertical ~ .#{$prefix}--tab-content {
+    @include update_fields_on_layer;
+
+    grid-column: 3/-1;
+    overflow-y: auto;
+
+    @include breakpoint(lg) {
+      grid-column: 5/-1;
     }
   }
 
@@ -656,10 +790,15 @@
   }
 
   // Windows HCM fix
-  .#{$prefix}--tabs__nav-item
-    .#{$prefix}--tabs__nav-item--selected
-    .#{$prefix}--tabs__nav-item--selected {
-    @include high-contrast-mode('focus');
+  .#{$prefix}--tabs__nav-item--selected .#{$prefix}--tabs__nav-link,
+  .#{$prefix}--tabs__nav-item--selected.#{$prefix}--tabs__nav-link,
+  .#{$prefix}--tabs.#{$prefix}--tabs--contained
+    .#{$prefix}--tabs__nav-item--selected,
+  .#{$prefix}--tabs.#{$prefix}--tabs--contained
+    .#{$prefix}--tabs__nav-item--selected.#{$prefix}--tabs__nav-link {
+    @include high-contrast-mode {
+      background-color: SelectedItem;
+    }
   }
 
   .#{$prefix}--tabs
@@ -687,6 +826,38 @@
     }
     .#{$prefix}--tabs__nav-item--icon {
       margin-inline-start: auto;
+    }
+  }
+}
+
+.#{$prefix}--tabs.#{$prefix}--tabs--vertical {
+  .#{$prefix}--tabs__nav-link {
+    .#{$prefix}--tabs__nav-item-label {
+      display: -webkit-box;
+      overflow: hidden;
+      -webkit-box-orient: vertical;
+      -webkit-line-clamp: 2;
+      text-overflow: ellipsis;
+      white-space: normal;
+    }
+  }
+}
+
+//-----------------------------
+// Popover tooltip
+//-----------------------------
+.#{$prefix}--tabs .#{$prefix}--icon-tooltip .#{$prefix}--popover-content {
+  @include custom-property.declaration('popover-offset', convert.to-rem(8px));
+}
+
+.#{$prefix}--tabs .#{$prefix}--icon-tooltip .#{$prefix}--popover-caret {
+  @include custom-property.declaration('popover-offset', convert.to-rem(8px));
+}
+
+.#{$prefix}--tabs.#{$prefix}--tabs--vertical.#{$prefix}--layout--size-sm {
+  .#{$prefix}--tabs__nav-link {
+    .#{$prefix}--tabs__nav-item-label {
+      -webkit-line-clamp: 1;
     }
   }
 }

@@ -65,7 +65,8 @@ row before the </tbody></table> line.
   - [Guidelines](#guidelines)
     - [Writing a component](#writing-a-component)
       - [When to use `React.ForwardRef`](#when-to-use-reactforwardref)
-    - [Class names, `data-testid` attributes, and `...rest`](#class-names-data-testid-attributes-and-rest)
+    - [`className`, `data-testid`, and `...rest`](#classname-data-testid-and-rest)
+      - [Stable selectors](#stable-selectors)
     - [Authoring dynamic/inline styles](#authoring-dynamicinline-styles)
     - [Translating a component](#translating-a-component)
       - [Working with messages that depend on state](#working-with-messages-that-depend-on-state)
@@ -74,11 +75,10 @@ row before the </tbody></table> line.
     - [Hooks that use a callback](#hooks-that-use-a-callback)
   - [Style](#style-1)
     - [Naming event handlers](#naming-event-handlers)
-    - [Naming experimental code](#naming-experimental-code)
+    - [Naming preview code](#naming-preview-code)
   - [Testing](#testing)
     - [Strategy](#strategy)
     - [Organization](#organization)
-    - [Stable selectors](#stable-selectors)
     - [Recipes](#recipes)
       - [`ComponentName-test.js`](#componentname-testjs)
       - [`ComponentName-test.a11y.js`](#componentname-testa11yjs)
@@ -87,12 +87,17 @@ row before the </tbody></table> line.
 - [Sass](#sass)
   - [Guidelines](#guidelines-1)
     - [Author component styles using mixins](#author-component-styles-using-mixins)
+    - [Class names](#class-names)
     - [Use design tokens where appropriate](#use-design-tokens-where-appropriate)
+      - [Avoid magic numbers](#avoid-magic-numbers)
+    - [Use CSS logical properties and values](#use-css-logical-properties-and-values)
     - [Avoid nesting selectors](#avoid-nesting-selectors)
     - [Use only as much specificity as needed](#use-only-as-much-specificity-as-needed)
     - [Use the global `$prefix` variable](#use-the-global-prefix-variable)
     - [Annotate relevant Sass values with SassDoc](#annotate-relevant-sass-values-with-sassdoc)
   - [Style](#style-2)
+    - [Start a new `block` or `element`?](#start-a-new-block-or-element)
+    - [Red flags](#red-flags)
     - [Comments](#comments)
   - [Testing](#testing-1)
     - [Recipes](#recipes-1)
@@ -159,7 +164,7 @@ const add = (a, b) => a + b;
 ```
 
 We've found that, while this style is terse and compact, it can be at odds with
-the fact that code is revisited often and that developers need to peak inside
+the fact that code is revisited often and that developers need to peek inside
 sometimes to see what is going on. For example, if we needed to debug a specific
 value in the function above then we would go through the following steps:
 
@@ -241,7 +246,7 @@ slots that you can fill if you need this functionality in a component._
 
 ##### When to use `React.ForwardRef`
 
-From the [react docs](https://reactjs.org/docs/forwarding-refs.html),
+From the [React docs](https://reactjs.org/docs/forwarding-refs.html),
 
 > Ref forwarding is an opt-in feature that lets some components take a ref they
 > receive, and pass it further down (in other words, “forward” it) to a child.
@@ -256,7 +261,7 @@ or animatable.
 Note that adding a forwarded ref to a component should be considered a breaking
 change. When creating a new component, even if you do not anticipate an explicit
 need to provide a forwarded ref, it's likely still worthwhile to include one to
-avoid unecessary breaking changes in the future.
+avoid unnecessary breaking changes in the future.
 
 #### `className`, `data-testid`, and `...rest`
 
@@ -298,7 +303,7 @@ between versions. This can be accomplished by explicitly placing this prop on
 the outermost element, or it can be accomplished by having `...rest` spread on
 the outermost element.
 
-In some cases `...rest` can not be spread on the outermost element and needs to
+In some cases `...rest` cannot be spread on the outermost element and needs to
 be spread on other key interior elements, such as inputs. For these cases we
 cannot rely on `data-testid` being included in `...rest` and it must explicitly
 be applied to the outermost element.
@@ -325,7 +330,7 @@ or HTML5 and ARIA semantics for selecting elements for testing.**
 It's increasingly common for applications to use a Content Security Policy (CSP)
 header with a
 [`style-src` directive](https://content-security-policy.com/style-src/). When
-this is configured, inline styles are blocked. Due to this, `style={{}}` can not
+this is configured, inline styles are blocked. Due to this, `style={{}}` cannot
 be used on any element within the codebase. The `react/forbid-component-props`
 eslint rule is configured to flag invalid usages of the `style` attribute/prop.
 
@@ -367,24 +372,33 @@ For component translation, you will need to define a map of translation ids and
 their corresponding default values, along with a default `translateWithId` prop.
 For example:
 
-```js
-const translationIds = {
+```tsx
+const translationIds = [
+  'carbon.component-name.field',
+  'carbon.component-name.other-field',
+] as const;
+
+type TranslationKey = (typeof translationIds)[number];
+
+const defaultTranslations: Record<TranslationKey, string> = {
   'carbon.component-name.field': 'Default value',
   'carbon.component-name.other-field': 'Other value',
 };
 
-function translateWithId(messageId) {
-  return translationIds[messageId];
-}
+const defaultTranslateWithId: TFunc<TranslationKey> = (messageId) => {
+  return defaultTranslations[messageId];
+};
 
-function MyComponent({ translateWithId: t = translateWithId }) {
+const MyComponent = ({
+  translateWithId: t = defaultTranslateWithId,
+}: MyComponentProps) => {
   return (
     <>
-      <span>t('carbon.component-name.field')</span>
-      <span>t('carbon.component-name.other-field')</span>
+      <span>{t('carbon.component-name.field')}</span>
+      <span>{t('carbon.component-name.other-field')}</span>
     </>
   );
-}
+};
 ```
 
 The `id`s used in `translationIds` should be consistent between major versions.
@@ -402,8 +416,10 @@ For example, when working with something that can be sorted in ascending or
 descending order you could create two message ids and choose, based on state,
 which one to use.
 
-```jsx
-function MyComponent({ translateWithId: t = translateWithId }) {
+```tsx
+const MyComponent = ({
+  translateWithId: t = defaultTranslateWithId,
+}: MyComponentProps) => {
   const [sortDirection, setSortDirection] = useState('ASC');
 
   function onClick() {
@@ -421,17 +437,21 @@ function MyComponent({ translateWithId: t = translateWithId }) {
           ? t('carbon.component-name.sort.ascending')
           : t('carbon.component-name.sort.descending')}
       </span>
-      <button onClick={onClick}>t('carbon.component-name.toggle-sort')</button>
+      <button onClick={onClick}>
+        {t('carbon.component-name.toggle-sort')}
+      </button>
     </>
   );
-}
+};
 ```
 
 If the message depends on a state value, for example a count, then you should
 pass along this information as a state argument to `translateWithId`.
 
 ```jsx
-function MyComponent({ translateWithId: t = translateWithId }) {
+const MyComponent = ({
+  translateWithId: t = defaultTranslateWithId,
+}: MyComponentProps) => {
   const [count, updateCount] = useState(0);
   const translationState = {
     count,
@@ -448,7 +468,7 @@ function MyComponent({ translateWithId: t = translateWithId }) {
       </button>
     </>
   );
-}
+};
 ```
 
 #### Using `useCallback` and `useMemo`
@@ -630,9 +650,9 @@ shorthand. If that name is already being used in a given scope, which often
 happens if the component supports a prop `onClick`, then we prefer to specify
 the function as `handleOnClick`.
 
-#### Naming experimental code
+#### Naming preview code
 
-See [Experimental Code](./experimental-code.md#naming-experimental-code);
+See [preview code](./preview-code.md#naming-preview-code).
 
 ### Testing
 
@@ -646,24 +666,20 @@ suites.
 
 #### Organization
 
-Every component should have tests covering a series of Categories
+Every component should have tests covering a series of categories:
 
 - General component functionality/API
-- Accessibility
 - End to end tests
-- Server side rendering
 
 Each of these are separated into individual files. In some cases the syntax may
 be slightly different and separate files make this easier to understand.
 Additionally separate file types can be more easily globbed to only run certain
 tests in certain environments (local, CI, Pre-release checks, etc).
 
-| File name                    | Category                        |
-| ---------------------------- | ------------------------------- |
-| `ComponentName-test.js`      | General component functionality |
-| `ComponentName-test.a11y.js` | Accessibility testing           |
-| `ComponentName-test.e2e.js`  | End to end tests                |
-| `ComponentName-test.ssr.js`  | Server side rendering           |
+| File name                   | Category                        |
+| --------------------------- | ------------------------------- |
+| `ComponentName-test.js`     | General component functionality |
+| `ComponentName-test.e2e.js` | End to end tests                |
 
 There are corresponding commands to run all categories, individual categories,
 or a combination. Depending on your shell, modifiers can be used to run two
@@ -713,7 +729,7 @@ describe('ComponentName', () => {
     });
 
     it('should place extra props on the outermost DOM node', () => {
-      const { container } = render(<ComponentName data-testid="test" />);
+      const { container } = render(<ComponentName id="test" />);
       expect(container.firstChild).toHaveAttribute('data-testid', 'test');
     });
 
@@ -739,7 +755,7 @@ describe('ComponentName', () => {
     // it can be helpful to make assertions about when these
     // props are called and what they are called with in order
     // to test the Public API of the component.
-    // To make assertions on a function, such as whether its
+    // To make assertions on a function, such as whether it has
     // been called or what it has been called with, we can make
     // use of Jest's `jest.fn()` method to create mock
     // functions. We can then make assertions on these mock
@@ -757,7 +773,7 @@ describe('ComponentName', () => {
     // Optional ref tests
     // A component that accepts a ref falls in one of three scenarios:
     // 1. A class component
-    // 2. A component that uses React.forwardRef and placed
+    // 2. A component that uses React.forwardRef and places
     //    it on an HTML element
     // 3. A component that uses React.forwardRef and uses
     //    useImperativeHandle to decorate the ref (this is
@@ -768,7 +784,8 @@ describe('ComponentName', () => {
 
 ##### `ComponentName-test.a11y.js`
 
-- Use `accessibility-checker` and `axe`
+- Use `axe`. `accessibility-checker` runs in the Playwright AVT tests under
+  `e2e/`, not in unit tests
 - Optionally configure common props to ensure component variants do not contain
   accessibility errors.
 - Always use the destructured `container` from `render()` to ensure the entire
@@ -779,11 +796,6 @@ describe('ComponentName AVT1', () => {
   it('should have no aXe violations', async () => {
     const { container } = render(<ComponentName />);
     await expect(container).toHaveNoAxeViolations();
-  });
-
-  it('should have no AC violations', async () => {
-    const { container } = render(<ComponentName />);
-    await expect(container).toHaveNoACViolations('ComponentName');
   });
 });
 ```
@@ -845,10 +857,49 @@ Authoring component styles under a mixin allows the design system to:
 
 - Control when the CSS for accordion gets emitted, or not emitted, from the
   library
-- Allows us to author experimental or future styles in a separate mixin and
-  toggle its inclusion through feature flags
+- Allows us to author preview or future styles in a separate mixin and toggle
+  its inclusion through feature flags
 - Could allow developers consuming the design system to control when styles get
   emitted
+
+#### Class names
+
+Prefix all class names with `#{$prefix}--` in SCSS, which is replaced with
+`cds--` by default, and design systems inheriting Carbon can override. This
+prefix prevents potential conflicts with class names from the user.
+
+All Carbon class selectors should start with the `#{$prefix}` variable.
+
+**HTML**
+
+```html
+<div
+  class="cds--inline-notification cds--inline-notification--error"
+  role="alert">
+  <div class="cds--inline-notification__details">...</div>
+</div>
+```
+
+**SCSS**
+
+```scss
+.#{$prefix}--inline-notification {
+  ...
+}
+
+.#{$prefix}--inline-notification__details {
+  ...
+}
+```
+
+Follow BEM naming convention for classes. Again, the only thing we do
+differently is prefix all classes with `#{$prefix}--`.
+
+```scss
+.#{$prefix}--block
+.#{$prefix}--block__element
+.#{$prefix}--block--modifier
+```
 
 #### Use design tokens where appropriate
 
@@ -858,7 +909,7 @@ these instead of hard coding values for colors, type, or even spacing. You can
 visit the following SassDoc links to view all of the design tokens relevant to
 this project:
 
-- [Color](../packages/theme/docs/sass.md)
+- [Color](../packages/themes/docs/sass.md)
 - [Layout](../packages/layout/docs/sass.md)
 - [Motion](../packages/motion/docs/sass.md)
 - [Type](../packages/type/docs/sass.md)
@@ -897,6 +948,33 @@ especially if they are never reused. Instead:
    be used in the first place).
 3. Decide to either introduce a new constant to meet the need; or rework the
    code in question to use other constants (or perhaps none at all).
+
+#### Use CSS logical properties and values
+
+Use
+[CSS logical properties and values](https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_logical_properties_and_values)
+for layout. These are impacted by the writing mode and provide support for
+right-to-left styling out of the box.
+
+```scss
+// Don't do this
+.my-element {
+  padding-top: 2em;
+  padding-bottom: 2em;
+  margin-left: 2em;
+  position: relative;
+  top: 0.2em;
+}
+
+// Do this instead
+.my-element {
+  padding-block-start: 2em;
+  padding-block-end: 2em;
+  margin-inline-start: 2em;
+  position: relative;
+  inset-block-start: 0.2em;
+}
+```
 
 #### Avoid nesting selectors
 
@@ -952,30 +1030,8 @@ contract for accessibility.
 
 #### Use the global `$prefix` variable
 
-When writing selectors, always include the global `$prefix` variable. This value
-is used to namespace all of the selectors that we ship in the design system.
-
-<table>
-<thead><tr><th>Unpreferred</th><th>Preferred</th></tr></thead>
-<tbody>
-<tr><td>
-
-```scss
-.my-component {
-  // ...
-}
-```
-
-</td><td>
-
-```scss
-.#{$prefix}--my-component {
-  // ...
-}
-```
-
-</td></tr>
-</tbody></table>
+For guidance on using the global `$prefix` variable for selectors, see
+[Class names](#class-names).
 
 #### Annotate relevant Sass values with SassDoc
 
@@ -992,7 +1048,102 @@ information:
 }
 ```
 
+[SassDoc](http://sassdoc.com) is used to document the Carbon Sass source.
+SassDoc annotations start each line with `///`; do not use `///` in non-SassDoc
+comments.
+
+For consistency, capitalize types (used in `@type`, `@param`, `@return`) and
+descriptions (used in `@param`, `@return`, `@deprecated`, `@example`, `@link`).
+
+The following annotations are used:
+
+**Required annotations**
+
+- [Description](http://sassdoc.com/annotations/#description) - can be one line
+  or multiple lines
+- [`@access`](http://sassdoc.com/annotations/#access) - `public` or `private`,
+  where public items make up our public API
+- [`@group`](http://sassdoc.com/annotations/#group) - typically a package or
+  component name
+- [`@type`](http://sassdoc.com/annotations/#type) - allowed on **variables**,
+  (e.g. `Map`, `Color`, `Number`)
+- [`@param`](http://sassdoc.com/annotations/#parameter) - allowed on
+  **functions** and **mixins**, include the type, name, and description, with a
+  default value if there is one (e.g.
+  `@param {Map} $breakpoints [$carbon--grid-breakpoints] - A map of breakpoints where the key is the name`)
+- [`@return`](http://sassdoc.com/annotations/#return) - allowed on
+  **functions**, include the type and description (e.g.
+  `@return {Number} In px`)
+- [`@alias`](http://sassdoc.com/annotations/#alias) - do not include the `$` if
+  aliasing a variable
+- [`@content`](http://sassdoc.com/annotations/#content) - allowed on **mixins**,
+  describe the usage of content
+- [`@deprecated`](http://sassdoc.com/annotations/#deprecated) - context around
+  possible replacements or when the item will no longer be available
+
+  **Optional annotations**
+
+- [`@example`](http://sassdoc.com/annotations/#example) - if the usage isn't
+  straightforward or there are multiple use cases
+- [`@link`](http://sassdoc.com/annotations/#link) - if there's a related link to
+  reference
+
+  **Examples**
+
+```scss
+// Variable example
+
+/// Primary interactive color; Primary buttons
+/// @type Color
+/// @access public
+/// @group @carbon/themes
+$interactive-01: map-get($carbon--theme, interactive-01) !default;
+
+// Mixin example
+
+/// Create the container for a grid. Will cause full-bleed for the grid unless
+/// max-width properties are added with `make-container-max-widths`
+/// @param {Map} $breakpoints [$carbon--grid-breakpoints] - A map of breakpoints where the key is the name
+/// @access private
+/// @group @carbon/grid
+@mixin carbon--make-container($breakpoints: $carbon--grid-breakpoints) {
+}
+
+// Function example
+
+/// Compute the type size for the given type scale step
+/// @param {Number} $step - Type scale step
+/// @return {Number} In px
+/// @access public
+/// @group @carbon/type
+@function carbon--get-type-size($step) {
+}
+```
+
 ### Style
+
+#### Start a new `block` or `element`?
+
+A nested element can use a new block name as long as the styles are independent
+of the parent.
+
+```html
+<div class="cds--component">
+  <button class="cds--component-button">Button</button>
+</div>
+```
+
+:point_up: The `#{$prefix}--component-button` class implies that this button has
+independent styles from its parent. Generally, it's preferred to start a new
+block.
+
+#### Red flags
+
+Avoid names with multiple `__element` names:
+
+- :x: `.#{$prefix}--card__list__item`
+- :white_check_mark: `.#{$prefix}--card-item`
+- :white_check_mark: `.#{$prefix}--card__item`
 
 #### Comments
 
@@ -1078,7 +1229,7 @@ describe('@carbon/styles/scss/config', () => {
     `);
 
     // get('<key>') gives you both the JavaScript representation of a value
-    // along with the `nativeValue` which comes from Dart sass. Use `.value`
+    // along with the `nativeValue` which comes from Dart Sass. Use `.value`
     // to get the JavaScript value and make assertions
     expect(get('test').value).toBe(true);
   });
@@ -1108,7 +1259,11 @@ test('Public API', async () => {
     $_: get('variables', meta.module-functions('module'));
 
     // Verify that a mixin exists, optionally within a module
-    $_: get('mixin-name', meta.mixin-exists('mixin-name', 'module');
+    $_: get('mixin-name', meta.mixin-exists('mixin-name', 'module'));
   `);
 });
 ```
+
+You can run `yarn test -u` from the root to update the snapshot and include it
+in your pull request for review. This helps core reviewers to determine if API
+changes are being made in a backwards compatible way to avoid breaking changes.

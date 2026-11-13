@@ -10,6 +10,7 @@
 'use strict';
 
 const { SassRenderer } = require('@carbon/test-utils/scss');
+const css = require('css');
 const { files } = require('../files');
 
 const { render } = SassRenderer.create(__dirname);
@@ -78,5 +79,24 @@ describe('@carbon/styles', () => {
         `)
       ).resolves.not.toThrow();
     });
+  });
+
+  it('should emit DatePicker position-try rules at the top level', async () => {
+    const { result } = await render(`
+    @use '../scss/components/date-picker/date-picker-next' as date-picker;
+
+    @include date-picker.date-picker-next();
+  `);
+
+    const output = result.css.toString();
+
+    expect(output).toContain('@position-try --bottom-left {');
+    expect(output).toContain(
+      'position-try-fallbacks: --bottom-left, --top-left, --bottom-right, --top-right'
+    );
+
+    expect(output).not.toMatch(
+      /@position-try --bottom-left\s*{\s*\.cds--date-picker/
+    );
   });
 });

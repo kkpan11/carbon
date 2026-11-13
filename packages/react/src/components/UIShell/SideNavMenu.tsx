@@ -1,5 +1,5 @@
 /**
- * Copyright IBM Corp. 2016, 2023
+ * Copyright IBM Corp. 2016, 2026
  *
  * This source code is licensed under the Apache-2.0 license found in the
  * LICENSE file in the root directory of this source tree.
@@ -9,18 +9,23 @@ import { ChevronDown } from '@carbon/icons-react';
 import cx from 'classnames';
 import PropTypes from 'prop-types';
 import React, {
-  ForwardedRef,
-  ReactNode,
-  Ref,
+  forwardRef,
+  useEffect,
   useContext,
+  useRef,
   useState,
+  type LiHTMLAttributes,
+  type KeyboardEvent,
+  type ReactNode,
+  type Ref,
 } from 'react';
 import SideNavIcon from './SideNavIcon';
 import { keys, match } from '../../internal/keyboard';
 import { usePrefix } from '../../internal/usePrefix';
-import { SideNavContext } from './SideNav';
+import { composeEventHandlers } from '../../tools/events';
+import { SideNavContext } from './SideNavContext';
 
-interface SideNavMenuProps {
+export interface SideNavMenuProps extends LiHTMLAttributes<HTMLLIElement> {
   /**
    * An optional CSS class to apply to the component.
    */
@@ -47,7 +52,7 @@ interface SideNavMenuProps {
   large?: boolean;
 
   /**
-   * A custom icon to render next to the SideNavMenu title. This can be a function returning JSX or JSX itself.
+   * A component used to render an icon.
    */
   renderIcon?: React.ComponentType;
 
@@ -67,8 +72,8 @@ interface SideNavMenuProps {
   title: string;
 }
 
-const SideNavMenu = React.forwardRef<HTMLElement, SideNavMenuProps>(
-  function SideNavMenu(
+const SideNavMenu = forwardRef<HTMLElement, SideNavMenuProps>(
+  (
     {
       className: customClassName,
       children,
@@ -79,13 +84,18 @@ const SideNavMenu = React.forwardRef<HTMLElement, SideNavMenuProps>(
       isSideNavExpanded,
       tabIndex,
       title,
+      onKeyDown,
+      ...rest
     },
-    ref: ForwardedRef<HTMLElement>
-  ) {
-    const { isRail } = useContext(SideNavContext);
+    ref
+  ) => {
+    const { isRail, isSideNavExpanded: contextIsSideNavExpanded } =
+      useContext(SideNavContext);
+    const currentIsSideNavExpanded =
+      isSideNavExpanded ?? contextIsSideNavExpanded;
     const prefix = usePrefix();
     const [isExpanded, setIsExpanded] = useState<boolean>(defaultExpanded);
-    const [prevExpanded, setPrevExpanded] = useState<boolean>(defaultExpanded);
+    const prevExpandedRef = useRef(false);
     const className = cx({
       [`${prefix}--side-nav__item`]: true,
       [`${prefix}--side-nav__item--active`]:
@@ -95,23 +105,30 @@ const SideNavMenu = React.forwardRef<HTMLElement, SideNavMenuProps>(
       [customClassName as string]: !!customClassName,
     });
 
-    if (!isSideNavExpanded && isExpanded && isRail) {
-      setIsExpanded(false);
-      setPrevExpanded(true);
-    } else if (isSideNavExpanded && prevExpanded && isRail) {
-      setIsExpanded(true);
-      setPrevExpanded(false);
-    }
+    useEffect(() => {
+      if (!isRail) return;
+
+      if (!currentIsSideNavExpanded && isExpanded) {
+        setIsExpanded(false);
+        prevExpandedRef.current = true;
+      } else if (currentIsSideNavExpanded && prevExpandedRef.current) {
+        setIsExpanded(true);
+        prevExpandedRef.current = false;
+      }
+    }, [currentIsSideNavExpanded, isExpanded, isRail]);
+
+    const handleOnKeyDown = (event: KeyboardEvent<HTMLLIElement>) => {
+      if (match(event, keys.Escape)) {
+        setIsExpanded(false);
+      }
+    };
 
     return (
       // eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions
       <li
+        {...rest}
         className={className}
-        onKeyDown={(event) => {
-          if (match(event, keys.Escape)) {
-            setIsExpanded(false);
-          }
-        }}>
+        onKeyDown={composeEventHandlers([onKeyDown, handleOnKeyDown])}>
         <button
           aria-expanded={isExpanded}
           className={`${prefix}--side-nav__submenu`}
@@ -122,7 +139,7 @@ const SideNavMenu = React.forwardRef<HTMLElement, SideNavMenuProps>(
           type="button"
           tabIndex={
             tabIndex === undefined
-              ? !isSideNavExpanded && !isRail
+              ? !currentIsSideNavExpanded && !isRail
                 ? -1
                 : 0
               : tabIndex
@@ -180,9 +197,8 @@ SideNavMenu.propTypes = {
   large: PropTypes.bool,
 
   /**
-   * Pass in a custom icon to render next to the `SideNavMenu` title
+   * A component used to render an icon.
    */
-  // @ts-expect-error - PropTypes are unable to cover this case.
   renderIcon: PropTypes.oneOfType([PropTypes.func, PropTypes.object]),
 
   /**

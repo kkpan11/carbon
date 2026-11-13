@@ -1,5 +1,5 @@
 /**
- * Copyright IBM Corp. 2016, 2023
+ * Copyright IBM Corp. 2016, 2025
  *
  * This source code is licensed under the Apache-2.0 license found in the
  * LICENSE file in the root directory of this source tree.
@@ -31,7 +31,7 @@ export interface ButtonSkeletonProps extends React.HTMLAttributes<HTMLElement> {
   small?: boolean;
 }
 
-const ButtonSkeleton: React.FC<ButtonSkeletonProps> = ({
+const ButtonSkeleton = ({
   className,
   small = false,
   href,
@@ -43,11 +43,13 @@ const ButtonSkeleton: React.FC<ButtonSkeletonProps> = ({
   const buttonClasses = cx(className, {
     [`${prefix}--skeleton`]: true,
     [`${prefix}--btn`]: true,
+    [`${prefix}--btn--xs`]: size === 'xs',
     [`${prefix}--btn--sm`]: small || size === 'sm',
     [`${prefix}--btn--md`]: size === 'md',
     [`${prefix}--btn--lg`]: size === 'lg',
     [`${prefix}--btn--xl`]: size === 'xl',
     [`${prefix}--btn--2xl`]: size === '2xl',
+    [`${prefix}--layout--size-${size}`]: size,
   });
 
   const commonProps = {
@@ -78,7 +80,7 @@ ButtonSkeleton.propTypes = {
    * For `default` buttons, this prop can remain unspecified or use `default`.
    * In the next major release of Carbon, `default`, `field`, and `small` will be removed
    */
-  size: PropTypes.oneOf(['sm', 'md', 'lg', 'xl', '2xl']),
+  size: PropTypes.oneOf(['xs', 'sm', 'md', 'lg', 'xl', '2xl']),
 
   /**
    * @deprecated This property will be removed in the next major Carbon version,

@@ -5,9 +5,15 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-import { PolymorphicProps } from '../../types/common';
+import { PolymorphicComponentPropWithRef } from '../../internal/PolymorphicProps';
+import PropTypes from 'prop-types';
 
 export interface GridBaseProps {
+  /**
+   * Specify grid alignment. Default is center
+   */
+  align?: 'start' | 'center' | 'end';
+
   /**
    * Pass in content that will be rendered within the `Grid`
    */
@@ -34,16 +40,22 @@ export interface GridBaseProps {
    * typographic alignment with and without containers.
    */
   narrow?: boolean;
+
+  /**
+   * Add a row gap to the grid that matches the current gutter size.
+   * This is useful when you want consistent vertical spacing between rows.
+   */
+  withRowGap?: boolean;
 }
 
-export type GridProps<T extends React.ElementType> = PolymorphicProps<
-  T,
-  GridBaseProps
->;
+export type GridProps<T extends React.ElementType> =
+  PolymorphicComponentPropWithRef<T, GridBaseProps>;
 
 export interface GridComponent {
-  <T extends React.ElementType>(
-    props: GridProps<T>,
-    context?: any
-  ): React.ReactElement<any, any> | null;
+  <T extends React.ElementType = 'div'>(
+    props: GridProps<T>
+  ): React.ReactElement | null;
+  displayName?: string;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- https://github.com/carbon-design-system/carbon/issues/20452
+  propTypes?: PropTypes.WeakValidationMap<GridProps<any>>;
 }

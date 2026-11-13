@@ -1,19 +1,15 @@
 /**
- * Copyright IBM Corp. 2018, 2023
+ * Copyright IBM Corp. 2018, 2026
  *
  * This source code is licensed under the Apache-2.0 license found in the
  * LICENSE file in the root directory of this source tree.
  */
 
-'use strict';
-
-global.__DEV__ = true;
+import { jest } from '@jest/globals';
 
 jest.setTimeout(20000);
 
-global.requestAnimationFrame = function requestAnimationFrame(callback) {
-  // TODO: replace with async version
-  // setTimeout(callback);
+global.requestAnimationFrame = (callback) => {
   callback();
 };
 
@@ -75,4 +71,26 @@ if (global.window && global.AnimationEvent === undefined) {
     }
   }
   global.AnimationEvent = AnimationEvent;
+}
+
+// jsdom doesn't implement HTMLDialogElement
+// https://github.com/jsdom/jsdom/issues/3294
+if (global.window) {
+  if (!window.HTMLDialogElement.prototype.show) {
+    HTMLDialogElement.prototype.show = jest.fn(function () {
+      this.open = true;
+    });
+  }
+
+  if (!window.HTMLDialogElement.prototype.showModal) {
+    HTMLDialogElement.prototype.showModal = jest.fn(function () {
+      this.open = true;
+    });
+  }
+
+  if (!window.HTMLDialogElement.prototype.close) {
+    HTMLDialogElement.prototype.close = jest.fn(function () {
+      this.open = false;
+    });
+  }
 }

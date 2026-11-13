@@ -1,5 +1,5 @@
 /**
- * Copyright IBM Corp. 2016, 2023
+ * Copyright IBM Corp. 2016, 2026
  *
  * This source code is licensed under the Apache-2.0 license found in the
  * LICENSE file in the root directory of this source tree.
@@ -7,17 +7,18 @@
 
 import cx from 'classnames';
 import PropTypes from 'prop-types';
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, type HTMLAttributes } from 'react';
 import { matches, keys } from '../../internal/keyboard';
-import { ButtonKinds } from '../../prop-types/types';
-import uid from '../../tools/uniqueId';
+import { useId } from '../../internal/useId';
+import { useMergedRefs } from '../../internal/useMergedRefs';
+import { useNoInteractiveChildrenForLabel } from '../FeatureFlags/useNoInteractiveChildrenForLabel';
 import { usePrefix } from '../../internal/usePrefix';
-import deprecate from '../../prop-types/deprecate';
-import { ReactAttr } from '../../types/common';
+import { deprecate } from '../../prop-types/deprecate';
 import { noopFn } from '../../internal/noopFn';
+import { ButtonKinds } from '../Button';
 
 export interface FileUploaderButtonProps
-  extends Omit<ReactAttr<HTMLButtonElement>, 'onChange' | 'tabIndex'> {
+  extends Omit<HTMLAttributes<HTMLButtonElement>, 'onChange' | 'tabIndex'> {
   /**
    * Specify the types of files that this input should be able to receive
    */
@@ -101,7 +102,7 @@ export interface FileUploaderButtonProps
    */
   tabIndex?: number | string;
 
-  innerRef?: React.RefObject<HTMLLabelElement>;
+  innerRef?: React.RefObject<HTMLLabelElement | null>;
 }
 
 function FileUploaderButton({
@@ -116,15 +117,17 @@ function FileUploaderButton({
   onChange = noopFn,
   name,
   size = 'md',
-  // eslint-disable-next-line react/prop-types
+
   innerRef,
   ...other
 }: FileUploaderButtonProps) {
   const prefix = usePrefix();
   const [labelText, setLabelText] = useState(ownerLabelText);
-  const [prevOwnerLabelText, setPrevOwnerLabelText] = useState(ownerLabelText);
-  const { current: inputId } = useRef(id || uid());
+  const generatedId = useId();
+  const { current: inputId } = useRef(id || generatedId);
   const inputNode = useRef<HTMLInputElement>(null);
+  const labelRef = useRef<HTMLLabelElement>(null);
+  const mergedLabelRef = useMergedRefs([labelRef, innerRef]);
   const classes = cx(`${prefix}--btn`, className, {
     [`${prefix}--btn--${buttonKind}`]: buttonKind,
     [`${prefix}--btn--disabled`]: disabled,
@@ -134,11 +137,9 @@ function FileUploaderButton({
     [`${prefix}--layout--size-${size}`]: size,
   });
 
-  // Adjust label text state based on changes to the labelText prop
-  if (ownerLabelText !== prevOwnerLabelText) {
+  useEffect(() => {
     setLabelText(ownerLabelText);
-    setPrevOwnerLabelText(ownerLabelText);
-  }
+  }, [ownerLabelText]);
 
   function onClick(event) {
     event.target.value = null;
@@ -149,9 +150,12 @@ function FileUploaderButton({
   }
 
   function onKeyDown(event) {
-    if (matches(event, [keys.Enter, keys.Space]) && inputNode.current) {
-      inputNode.current.value = '';
-      inputNode.current.click();
+    if (matches(event, [keys.Enter, keys.Space])) {
+      event.preventDefault();
+      if (inputNode.current) {
+        inputNode.current.value = '';
+        inputNode.current.click();
+      }
     }
   }
 
@@ -167,6 +171,11 @@ function FileUploaderButton({
     }
     onChange(event);
   }
+
+  useNoInteractiveChildrenForLabel(
+    labelRef,
+    'The FileUploaderButton component `labelText` prop must have no interactive content'
+  );
 
   return (
     <>
@@ -186,7 +195,7 @@ function FileUploaderButton({
       </button>
       <label
         className={`${prefix}--visually-hidden`}
-        ref={innerRef}
+        ref={mergedLabelRef}
         htmlFor={inputId}>
         <span>{labelText}</span>
       </label>

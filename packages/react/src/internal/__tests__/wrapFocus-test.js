@@ -1,17 +1,18 @@
-import wrapFocus from '../wrapFocus';
-
 /**
- * Copyright IBM Corp. 2020
+ * Copyright IBM Corp. 2020, 2025
  *
  * This source code is licensed under the Apache-2.0 license found in the
  * LICENSE file in the root directory of this source tree.
  */
+
+import { wrapFocus, wrapFocusWithoutSentinels } from '../wrapFocus';
 
 describe('wrapFocus', () => {
   let node;
   let spyInnerModal;
   let spyButton0;
   let spyButton2;
+  let tooltip;
 
   beforeEach(() => {
     node = document.createElement('div');
@@ -39,6 +40,7 @@ describe('wrapFocus', () => {
       <div class="cds--tooltip" tabindex="0"></div>
     `;
     document.body.appendChild(node);
+    tooltip = node.querySelector('.cds--tooltip');
     spyInnerModal = jest.spyOn(node.querySelector('#inner-modal'), 'focus');
     spyButton0 = jest.spyOn(node.querySelector('#button-0'), 'focus');
     spyButton2 = jest.spyOn(node.querySelector('#button-2'), 'focus');
@@ -61,6 +63,7 @@ describe('wrapFocus', () => {
       node.parentNode.removeChild(node);
       node = null;
     }
+    tooltip = null;
   });
 
   it('runs forward focus-wrap when following outer node is focused on', () => {
@@ -120,10 +123,24 @@ describe('wrapFocus', () => {
     expect(spyButton2).not.toHaveBeenCalled();
   });
 
+  it('respects prefix overrides when checking floating menus', () => {
+    tooltip.className = 'bx--tooltip';
+    wrapFocus({
+      bodyNode: node.querySelector('#inner-modal'),
+      startSentinelNode: node.querySelector('#start-sentinel'),
+      endSentinelNode: node.querySelector('#end-sentinel'),
+      currentActiveNode: tooltip,
+      oldActiveNode: node.querySelector('#button-2'),
+      prefix: 'bx',
+    });
+    expect(spyInnerModal).not.toHaveBeenCalled();
+    expect(spyButton0).not.toHaveBeenCalled();
+    expect(spyButton2).not.toHaveBeenCalled();
+  });
+
   it('uses inner modal node as a escape hatch for focusing for forward focus-wrap', () => {
-    node.querySelector(
-      '#inner-modal'
-    ).innerHTML = `<div id="dummy-old-active-node"></div>`;
+    node.querySelector('#inner-modal').innerHTML =
+      `<div id="dummy-old-active-node"></div>`;
     wrapFocus({
       bodyNode: node.querySelector('#inner-modal'),
       startSentinelNode: node.querySelector('#start-sentinel'),
@@ -135,9 +152,8 @@ describe('wrapFocus', () => {
   });
 
   it('uses inner modal node as a escape hatch for focusing for reverse focus-wrap', () => {
-    node.querySelector(
-      '#inner-modal'
-    ).innerHTML = `<div id="dummy-old-active-node"></div>`;
+    node.querySelector('#inner-modal').innerHTML =
+      `<div id="dummy-old-active-node"></div>`;
     wrapFocus({
       bodyNode: node.querySelector('#inner-modal'),
       startSentinelNode: node.querySelector('#start-sentinel'),
@@ -146,5 +162,56 @@ describe('wrapFocus', () => {
       oldActiveNode: node.querySelector('#dummy-old-active-node'),
     });
     expect(spyInnerModal).toHaveBeenCalled();
+  });
+});
+
+describe('wrapFocusWithoutSentinels', () => {
+  let container;
+  let button1;
+
+  beforeEach(() => {
+    container = document.createElement('div');
+    container.innerHTML = `
+      <button id="button-0">Button 0</button>
+      <button id="button-1">Button 1</button>
+    `;
+    document.body.appendChild(container);
+    button1 = container.querySelector('#button-1');
+  });
+
+  afterEach(() => {
+    document.body.removeChild(container);
+  });
+
+  it('should not throw an error when called during keydown event', () => {
+    const event = new KeyboardEvent('keydown', { key: 'Tab' });
+    Object.defineProperty(event, 'shiftKey', { value: false });
+
+    expect(() =>
+      wrapFocusWithoutSentinels({
+        containerNode: container,
+        currentActiveNode: button1,
+        event,
+      })
+    ).not.toThrow();
+  });
+
+  it('should throw an error when called during unsupported event', () => {
+    const event = new FocusEvent('focusin');
+    const originalEnv = process.env.NODE_ENV;
+
+    process.env.NODE_ENV = 'development';
+
+    expect(() =>
+      wrapFocusWithoutSentinels({
+        containerNode: container,
+        currentActiveNode: button1,
+        event,
+      })
+    ).toThrow(
+      /^Error: wrapFocusWithoutSentinels\(\.\.\.\) called in unsupported focusin event\.\s+Call wrapFocusWithoutSentinels\(\.\.\.\) from onKeyDown instead\.$/
+    );
+
+    process.env.NODE_ENV = originalEnv;
   });
 });

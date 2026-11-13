@@ -5,22 +5,9 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-'use strict';
-
-module.exports = {
+export default {
   preset: 'jest-config-carbon',
-  collectCoverageFrom: [
-    'packages/**/src/**/*.js',
-    '!packages/{cli,components}/**',
-    '!packages/**/{examples,stories}/**',
-    '!**/*-story.js',
-  ],
   testMatch: ['<rootDir>/e2e/**/*-test.js'],
-  testPathIgnorePatterns: [
-    'examples',
-    '/packages/components/',
-    '/packages/react/',
-  ],
-  transformIgnorePatterns: ['[/\\\\]node_modules[/\\\\].+\\.(js|jsx)$'],
-  reporters: ['default', 'jest-junit'],
+  testPathIgnorePatterns: [],
+  transformIgnorePatterns: ['<rootDir>/node_modules/(?!chalk|@babel/)'],
 };

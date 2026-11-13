@@ -408,11 +408,11 @@ like to see changed.
 
 Component tokens are available for the following components:
 
-| Component    | Import                                                       | File                                                                            |
-| :----------- | :----------------------------------------------------------- | :------------------------------------------------------------------------------ |
-| button       | `@use '@carbon/styles/scss/components/button/tokens';`       | [`scss/components/button/tokens`](../scss/components/button/tokens)             |
-| notification | `@use '@carbon/styles/scss/components/notification/tokens';` | [`scss/components/notification/tokens`](../scss/components/notification/tokens) |
-| tag          | `@use '@carbon/styles/scss/components/tag/tokens';`          | [`scss/components/tag/tokens`](../scss/components/tag/tokens)                   |
+| Component    | Import                                                       | File                                                                                  |
+| :----------- | :----------------------------------------------------------- | :------------------------------------------------------------------------------------ |
+| button       | `@use '@carbon/styles/scss/components/button/tokens';`       | [`scss/components/button/tokens`](../scss/components/button/_tokens.scss)             |
+| notification | `@use '@carbon/styles/scss/components/notification/tokens';` | [`scss/components/notification/tokens`](../scss/components/notification/_tokens.scss) |
+| tag          | `@use '@carbon/styles/scss/components/tag/tokens';`          | [`scss/components/tag/tokens`](../scss/components/tag/_tokens.scss)                   |
 
 For example, if you wanted to change the component token `button-primary` for
 `button` you could do the following:
@@ -539,32 +539,32 @@ $button-tokens: utilities.merge(
 
 **Files**
 
-| Import                                                     | Description                                                                |
-| :--------------------------------------------------------- | :------------------------------------------------------------------------- |
-| `@use '@carbon/styles/scss/utilities/box-shadow';`         | Adds the Carbon defined box-shadow value                                   |
-| `@use '@carbon/styles/scss/utilities/button-reset';`       | Resets Button styles                                                       |
-| `@use '@carbon/styles/scss/utilities/component-reset';`    | Resets default styles                                                      |
-| `@use '@carbon/styles/scss/utilities/component-tokens';`   | Get tokens and inverse values for a given theme                            |
-| `@use '@carbon/styles/scss/utilities/convert';`            | Converts a given px value to a rem unit                                    |
-| `@use '@carbon/styles/scss/utilities/custom-property';`    | Get the var() representation for a given token                             |
-| `@use '@carbon/styles/scss/utilities/focus-outline';`      | Adds the Carbon defined focus styles                                       |
-| `@use '@carbon/styles/scss/utilities/hide-at-breakpoint';` | Hides elements at specific breakpoints only                                |
-| `@use '@carbon/styles/scss/utilities/high-contrast-mode';` | Sets Windows High Contrast Mode styles                                     |
-| `@use '@carbon/styles/scss/utilities/keyframes';`          | Animations for skeleton states, showing + hiding                           |
-| `@use '@carbon/styles/scss/utilities/layout';`             | [_(experimental)_ Use contextual layout tokens](#contextual-layout-tokens) |
-| `@use '@carbon/styles/scss/utilities/placeholder-colors';` | Sets the Carbon defined placeholder styles                                 |
-| `@use '@carbon/styles/scss/utilities/rotate';`             | Adds rotational transformation                                             |
-| `@use '@carbon/styles/scss/utilities/skeleton';`           | Adds Carbon defined skeleton styles                                        |
-| `@use '@carbon/styles/scss/utilities/text-overflow';`      | Adds text overflow styling                                                 |
-| `@use '@carbon/styles/scss/utilities/text-truncate';`      | Truncates text at beginning or end of text                                 |
-| `@use '@carbon/styles/scss/utilities/tooltip';`            | Shared Tooltip styles                                                      |
-| `@use '@carbon/styles/scss/utilities/visually-hidden';`    | Hides elements visually, but available to screen reader/assistive text     |
-| `@use '@carbon/styles/scss/utilities/z-index';`            | The Carbon stack hierarchy                                                 |
+| Import                                                     | Description                                                            |
+| :--------------------------------------------------------- | :--------------------------------------------------------------------- |
+| `@use '@carbon/styles/scss/utilities/box-shadow';`         | Adds the Carbon defined box-shadow value                               |
+| `@use '@carbon/styles/scss/utilities/button-reset';`       | Resets Button styles                                                   |
+| `@use '@carbon/styles/scss/utilities/component-reset';`    | Resets default styles                                                  |
+| `@use '@carbon/styles/scss/utilities/component-tokens';`   | Get tokens and inverse values for a given theme                        |
+| `@use '@carbon/styles/scss/utilities/convert';`            | Converts a given px value to a rem unit                                |
+| `@use '@carbon/styles/scss/utilities/custom-property';`    | Get the var() representation for a given token                         |
+| `@use '@carbon/styles/scss/utilities/focus-outline';`      | Adds the Carbon defined focus styles                                   |
+| `@use '@carbon/styles/scss/utilities/hide-at-breakpoint';` | Hides elements at specific breakpoints only                            |
+| `@use '@carbon/styles/scss/utilities/high-contrast-mode';` | Sets Windows High Contrast Mode styles                                 |
+| `@use '@carbon/styles/scss/utilities/keyframes';`          | Animations for skeleton states, showing + hiding                       |
+| `@use '@carbon/styles/scss/utilities/layout';`             | [_(preview)_ Use contextual layout tokens](#contextual-layout-tokens)  |
+| `@use '@carbon/styles/scss/utilities/placeholder-colors';` | Sets the Carbon defined placeholder styles                             |
+| `@use '@carbon/styles/scss/utilities/rotate';`             | Adds rotational transformation                                         |
+| `@use '@carbon/styles/scss/utilities/skeleton';`           | Adds Carbon defined skeleton styles                                    |
+| `@use '@carbon/styles/scss/utilities/text-overflow';`      | Adds text overflow styling                                             |
+| `@use '@carbon/styles/scss/utilities/text-truncate';`      | Truncates text at beginning or end of text                             |
+| `@use '@carbon/styles/scss/utilities/tooltip';`            | Shared Tooltip styles                                                  |
+| `@use '@carbon/styles/scss/utilities/visually-hidden';`    | Hides elements visually, but available to screen reader/assistive text |
+| `@use '@carbon/styles/scss/utilities/z-index';`            | The Carbon stack hierarchy                                             |
 
 ### Contextual layout tokens
 
-**_Note: This feature is experimental and its API and behaviour may change at
-any time!_**
+**_Note: This feature is in preview. It is intended to be used in production and
+is only subject to change based on consumer feedback._**
 
 #### Concept
 
@@ -579,22 +579,26 @@ To define a group's setting, follow the structure of
 `.#{$prefix}--layout--group-step` with the details below (e.g.
 `.#{$prefix}--layout--size-lg`):
 
-| Group     | Steps                                         | Properties       |
-| :-------- | :-------------------------------------------- | :--------------- |
-| `size`    | `xs`<br>`sm`<br>`md`<br>`lg`<br>`xl`<br>`2xl` | `height`         |
-| `density` | `condensed`<br>`normal`                       | `padding-inline` |
+| Group     | Steps                                         | Properties             |
+| :-------- | :-------------------------------------------- | :--------------------- |
+| `size`    | `xs`<br>`sm`<br>`md`<br>`lg`<br>`xl`<br>`2xl` | `height`<br>`icon-gap` |
+| `density` | `condensed`<br>`normal`                       | `padding-inline`       |
 
 Inside a layout context, the associated css custom properties are available with
 the following naming structure: `--#{$prefix}-layout-group-property` (e.g.
 `--cds-layout-size-height` or `--cds-layout-density-padding-inline`). These css
 custom properties can be used in components to automatically react to the layout
 context and _should_ (but don't have to) be set on the css properties their
-names suggest (e.g. `height: var(--cds-layout-size-height);`). Note that these
-css custom properties are not set if a component is not within a layout context,
-so you'll need to provide a fallback. This should be the component's default
-styling and can still rely on the layout tokens by explicitely defining the
-step. For example, a component that, by default, should have a height of `md`
-but participate in layout contexts could be built in the following way:
+names suggest (e.g. `height: var(--cds-layout-size-height);`). An exception is
+`icon-gap`, which has no matching css property: it defines the space between an
+icon and the element placed inline beside it (e.g. a divider or button inside an
+input) and can be used on properties like `gap`, `margin` or `padding`, or in
+calculations such as `calc()`. Note that these css custom properties are not set
+if a component is not within a layout context, so you'll need to provide a
+fallback. This should be the component's default styling and can still rely on
+the layout tokens by explicitly defining the step. For example, a component
+that, by default, should have a height of `md` but participate in layout
+contexts could be built in the following way:
 
 ```scss
 .my-component {
@@ -605,7 +609,7 @@ but participate in layout contexts could be built in the following way:
 }
 ```
 
-In order to make your component support different layout modes explicitely via
+In order to make your component support different layout modes explicitly via
 props, you can pass the layout sizes directly on your component as well.
 Example:
 
@@ -836,6 +840,9 @@ layout group.
 
   height: layout.size('height');
   // => height: var(--cds-layout-size-height-local);
+
+  column-gap: layout.size('icon-gap');
+  // => column-gap: var(--cds-layout-size-icon-gap-local);
 }
 ```
 

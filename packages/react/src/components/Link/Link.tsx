@@ -1,5 +1,5 @@
 /**
- * Copyright IBM Corp. 2016, 2023
+ * Copyright IBM Corp. 2016, 2026
  *
  * This source code is licensed under the Apache-2.0 license found in the
  * LICENSE file in the root directory of this source tree.
@@ -14,8 +14,8 @@ import React, {
   ElementType,
   HTMLAttributeAnchorTarget,
 } from 'react';
+import { PolymorphicComponentPropWithRef } from '../../internal/PolymorphicProps';
 import { usePrefix } from '../../internal/usePrefix';
-import { PolymorphicProps } from '../../types/common';
 
 export interface LinkBaseProps extends AnchorHTMLAttributes<HTMLAnchorElement> {
   /**
@@ -47,13 +47,12 @@ export interface LinkBaseProps extends AnchorHTMLAttributes<HTMLAnchorElement> {
   inline?: boolean;
 
   /**
-   * @description Optional prop to render an icon next to the link.
-   *   Can be a React component class
+   * A component used to render an icon.
    */
   renderIcon?: ComponentType;
 
   /**
-   * Specify the size of the Link. Currently supports either `sm`, 'md' (default) or 'lg` as an option.
+   * Specify the size of the Link. Currently supports either `sm`, `md` (default) or `lg` as an option.
    */
   size?: 'sm' | 'md' | 'lg';
 
@@ -63,71 +62,105 @@ export interface LinkBaseProps extends AnchorHTMLAttributes<HTMLAnchorElement> {
   target?: HTMLAttributeAnchorTarget;
 
   /**
-   * Specify whether you want the link to receive visited styles after the link has been clicked
+   * When enabled, applies Carbon's visited-link styles to browser-controlled :visited link state.
    */
   visited?: boolean;
 }
 
-export type LinkProps<E extends ElementType> = PolymorphicProps<
-  E,
-  LinkBaseProps
->;
+export type LinkProps<T extends React.ElementType> =
+  PolymorphicComponentPropWithRef<T, LinkBaseProps>;
 
-const Link = React.forwardRef(function Link<E extends React.ElementType>(
-  {
-    as: BaseComponent,
-    children,
-    className: customClassName,
-    href,
-    disabled = false,
-    inline = false,
-    visited = false,
-    renderIcon: Icon,
-    size,
-    target,
-    ...rest
-  }: LinkProps<E>,
-  ref
-) {
-  const prefix = usePrefix();
-  const className = cx(`${prefix}--link`, customClassName, {
-    [`${prefix}--link--disabled`]: disabled,
-    [`${prefix}--link--inline`]: inline,
-    [`${prefix}--link--visited`]: visited,
-    [`${prefix}--link--${size}`]: size,
-  });
-  const rel = target === '_blank' ? 'noopener' : undefined;
-  const linkProps: AnchorHTMLAttributes<HTMLAnchorElement> = {
-    className: BaseComponent ? undefined : className,
-    rel,
-    target,
-  };
+type LinkComponent = <T extends React.ElementType = 'a'>(
+  props: LinkProps<T>
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- https://github.com/carbon-design-system/carbon/issues/20452
+) => React.ReactElement | any;
 
-  // Reference for disabled links:
-  // https://www.scottohara.me/blog/2021/05/28/disabled-links.html
-  if (!disabled) {
-    linkProps.href = href;
-  } else {
-    linkProps.role = 'link';
-    linkProps['aria-disabled'] = true;
+// First create the component with basic types
+const LinkBase = React.forwardRef<
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- https://github.com/carbon-design-system/carbon/issues/20452
+  any,
+  LinkBaseProps & {
+    as?: ElementType;
+  } & React.AnchorHTMLAttributes<HTMLAnchorElement>
+>(
+  (
+    {
+      as: BaseComponent,
+      children,
+      className: customClassName,
+      href,
+      disabled = false,
+      inline = false,
+      visited = false,
+      renderIcon: Icon,
+      size,
+      target,
+      ...rest
+    },
+    ref
+  ) => {
+    const prefix = usePrefix();
+    const className = cx(`${prefix}--link`, customClassName, {
+      [`${prefix}--link--disabled`]: disabled,
+      [`${prefix}--link--inline`]: inline,
+      [`${prefix}--link--visited`]: visited,
+      [`${prefix}--link--${size}`]: size,
+      [`${prefix}--link--icon`]: Icon,
+    });
+    const rel = target === '_blank' ? 'noopener' : undefined;
+    const linkProps: AnchorHTMLAttributes<HTMLAnchorElement> = {
+      className,
+      rel,
+      target,
+    };
+
+    // Reference for disabled links:
+    // https://www.scottohara.me/blog/2021/05/28/disabled-links.html
+    if (!disabled) {
+      linkProps.href = href;
+    } else {
+      linkProps.role = 'link';
+      linkProps['aria-disabled'] = true;
+    }
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- https://github.com/carbon-design-system/carbon/issues/20452
+    const BaseComponentAsAny = (BaseComponent ?? 'a') as any;
+
+    const handleOnClick = (event: React.MouseEvent<HTMLAnchorElement>) => {
+      if (disabled) {
+        event.preventDefault();
+        event.stopPropagation();
+      } else {
+        // If the link is not disabled, we allow the onClick event to propagate
+        // so that any parent handlers can also respond to the click.
+        if (rest.onClick) {
+          rest.onClick(event);
+        }
+      }
+    };
+
+    return (
+      <BaseComponentAsAny
+        ref={ref}
+        {...linkProps}
+        {...rest}
+        onClick={handleOnClick}>
+        {children}
+        {!inline && Icon && (
+          <span className={`${prefix}--link__icon`}>
+            <Icon />
+          </span>
+        )}
+      </BaseComponentAsAny>
+    );
   }
+);
 
-  const BaseComponentAsAny = (BaseComponent ?? 'a') as any;
+LinkBase.displayName = 'Link';
 
-  return (
-    <BaseComponentAsAny ref={ref} {...linkProps} {...rest}>
-      {children}
-      {!inline && Icon && (
-        <div className={`${prefix}--link__icon`}>
-          <Icon />
-        </div>
-      )}
-    </BaseComponentAsAny>
-  );
-});
+const Link = LinkBase as LinkComponent;
 
-Link.displayName = 'Link';
-
+// @ts-expect-error - `propTypes` isn't typed.
 Link.propTypes = {
   /**
    * Provide a custom element or component to render the top-level node for the
@@ -161,18 +194,17 @@ Link.propTypes = {
   inline: PropTypes.bool,
 
   /**
-   * Optional prop to render an icon next to the link.
-   * Can be a React component class
+   * A component used to render an icon.
    */
   renderIcon: PropTypes.oneOfType([PropTypes.func, PropTypes.object]),
 
   /**
-   * Specify the size of the Link. Currently supports either `sm`, 'md' (default) or 'lg` as an option.
+   * Specify the size of the Link. Currently supports either `sm`, `md` (default) or `lg` as an option.
    */
   size: PropTypes.oneOf(['sm', 'md', 'lg']),
 
   /**
-   * Specify whether you want the link to receive visited styles after the link has been clicked
+   * When enabled, applies Carbon's visited-link styles to browser-controlled :visited link state.
    */
   visited: PropTypes.bool,
 };

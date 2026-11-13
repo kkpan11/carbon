@@ -1,5 +1,5 @@
 /**
- * Copyright IBM Corp. 2022
+ * Copyright IBM Corp. 2022, 2026
  *
  * This source code is licensed under the Apache-2.0 license found in the
  * LICENSE file in the root directory of this source tree.
@@ -14,7 +14,7 @@ test.describe('@avt FluidMultiSelect', () => {
   test('@avt-default-state', async ({ page }) => {
     await visitStory(page, {
       component: 'FluidMultiSelect',
-      id: 'experimental-fluid-components-unstable-fluidmultiselect--default',
+      id: 'components-fluid-components-fluidmultiselect--default',
       globals: {
         theme: 'white',
       },
@@ -27,7 +27,7 @@ test.describe('@avt FluidMultiSelect', () => {
   test('@avt-advanced-states condensed', async ({ page }) => {
     await visitStory(page, {
       component: 'FluidMultiSelect',
-      id: 'experimental-fluid-components-unstable-fluidmultiselect--condensed',
+      id: 'components-fluid-components-fluidmultiselect--condensed',
       globals: {
         theme: 'white',
       },
@@ -38,7 +38,7 @@ test.describe('@avt FluidMultiSelect', () => {
   test('@avt-advanced-states skeleton', async ({ page }) => {
     await visitStory(page, {
       component: 'FluidMultiSelect',
-      id: 'experimental-fluid-components-unstable-fluidmultiselect--skeleton',
+      id: 'components-fluid-components-fluidmultiselect--skeleton',
       globals: {
         theme: 'white',
       },
@@ -49,7 +49,7 @@ test.describe('@avt FluidMultiSelect', () => {
   test('@avt-keyboard-nav FluidMultiSelect', async ({ page }) => {
     await visitStory(page, {
       component: 'FluidMultiSelect',
-      id: 'experimental-fluid-components-unstable-fluidmultiselect--default',
+      id: 'components-fluid-components-fluidmultiselect--default',
       globals: {
         theme: 'white',
       },
@@ -58,7 +58,7 @@ test.describe('@avt FluidMultiSelect', () => {
       expanded: false,
     });
     const selection = page.getByRole('button', {
-      name: 'Clear all selected items',
+      name: 'Clear selected items',
     });
     const menu = page.getByRole('listbox');
 
@@ -81,6 +81,7 @@ test.describe('@avt FluidMultiSelect', () => {
     await expect(toggleButton).toBeFocused();
     await page.keyboard.press('Space');
     await expect(menu).toBeVisible();
+    await page.keyboard.press('ArrowDown');
     // Navigation inside the menu
     // Focus on first element by default
     await expect(
@@ -143,7 +144,7 @@ test.describe('@avt FluidMultiSelect', () => {
   test('@avt-keyboard-nav FluidMultiSelect condensed', async ({ page }) => {
     await visitStory(page, {
       component: 'FluidMultiSelect',
-      id: 'experimental-fluid-components-unstable-fluidmultiselect--condensed',
+      id: 'components-fluid-components-fluidmultiselect--condensed',
       globals: {
         theme: 'white',
       },
@@ -152,7 +153,7 @@ test.describe('@avt FluidMultiSelect', () => {
       expanded: false,
     });
     const selection = page.getByRole('button', {
-      name: 'Clear all selected items',
+      name: 'Clear selected items',
     });
     const menu = page.getByRole('listbox');
 
@@ -175,6 +176,7 @@ test.describe('@avt FluidMultiSelect', () => {
     await expect(toggleButton).toBeFocused();
     await page.keyboard.press('Space');
     await expect(menu).toBeVisible();
+    await page.keyboard.press('ArrowDown');
     // Navigation inside the menu
     // Focus on first element by default
     await expect(

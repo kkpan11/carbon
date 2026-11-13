@@ -1,17 +1,13 @@
 /**
- * Copyright IBM Corp. 2019, 2023
+ * Copyright IBM Corp. 2019, 2025
  *
  * This source code is licensed under the Apache-2.0 license found in the
  * LICENSE file in the root directory of this source tree.
  */
 
-/* eslint-disable no-console */
-
-'use strict';
-
-const { reporter } = require('@carbon/cli-reporter');
-const { exec } = require('child-process-promise');
-const { workspace } = require('../workspace');
+import { reporter } from '@carbon/cli-reporter';
+import { exec } from 'child-process-promise';
+import { workspace } from '../workspace.js';
 
 async function check(args, env) {
   reporter.info('Running checks in CI...');
@@ -23,8 +19,8 @@ async function check(args, env) {
   const tasks = [
     `yarn carbon-cli check --ignore '**/@(node_modules|examples|components|react|fixtures|compat)/**' 'packages/**/*.scss'`,
     `cross-env BABEL_ENV=test yarn test --ci --maxWorkers 2 --reporters=default --reporters=jest-junit`,
+    `yarn test:scss-generator --ci --reporters=default --reporters=jest-junit`,
     `cross-env BABEL_ENV=test yarn test:e2e --ci --maxWorkers 2 --reporters=default --reporters=jest-junit`,
-    `cross-env PERCY_TOKEN=dd3392142006a6483c8f524697f39f052755fa9dc087ff4437cac3d64227abdd yarn run percy exec -- yarn workspace @carbon/react test:e2e`,
   ];
 
   try {
@@ -43,9 +39,7 @@ async function check(args, env) {
   }
 }
 
-module.exports = {
-  command: 'ci-check',
-  desc: 'run CI checks',
-  builder: {},
-  handler: workspace(check),
-};
+export const builder = {};
+export const command = 'ci-check';
+export const desc = 'run CI checks';
+export const handler = workspace(check);

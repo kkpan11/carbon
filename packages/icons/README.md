@@ -20,16 +20,15 @@ yarn add @carbon/icons
 
 ## Usage
 
-Icons in Carbon are provided through a variety of packages, often specific for
-the framework that will use them. Currently, we support the following packages
-for various frameworks:
+Icons in Carbon are available directly from `@carbon/icons` for Vanilla
+JavaScript. First-party framework packages in this repo are available for:
 
-- [Angular](https://github.com/carbon-design-system/carbon-icons-angular)
 - [React](../icons-react)
 - [Vue](../icons-vue)
-- [Svelte](https://github.com/IBM/carbon-icons-svelte)
 
-We also support using icons in Vanilla JavaScript.
+Additional ecosystem packages are also available for:
+
+- [Svelte](https://github.com/IBM/carbon-icons-svelte)
 
 In order to use an icon, it may be helpful to reference our
 [Icon library](https://carbon-elements.netlify.app/icons/examples/preview/)
@@ -113,9 +112,9 @@ Licensed under the [Apache 2.0 License](/LICENSE).
 
 ## <picture><source height="20" width="20" media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/ibm-telemetry/telemetry-js/main/docs/images/ibm-telemetry-dark.svg"><source height="20" width="20" media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/ibm-telemetry/telemetry-js/main/docs/images/ibm-telemetry-light.svg"><img height="20" width="20" alt="IBM Telemetry" src="https://raw.githubusercontent.com/ibm-telemetry/telemetry-js/main/docs/images/ibm-telemetry-light.svg"></picture> IBM Telemetry
 
-This package uses IBM Telemetry to collect metrics data. By installing this
-package as a dependency you are agreeing to telemetry collection. To opt out,
-see
+This package uses IBM Telemetry to collect de-identified and anonymized metrics
+data. By installing this package as a dependency you are agreeing to telemetry
+collection. To opt out, see
 [Opting out of IBM Telemetry data collection](https://github.com/ibm-telemetry/telemetry-js/tree/main#opting-out-of-ibm-telemetry-data-collection).
 For more information on the data being collected, please see the
 [IBM Telemetry documentation](https://github.com/ibm-telemetry/telemetry-js/tree/main#ibm-telemetry-collection-basics).

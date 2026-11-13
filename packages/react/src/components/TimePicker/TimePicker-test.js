@@ -1,5 +1,5 @@
 /**
- * Copyright IBM Corp. 2016, 2023
+ * Copyright IBM Corp. 2016, 2026
  *
  * This source code is licensed under the Apache-2.0 license found in the
  * LICENSE file in the root directory of this source tree.
@@ -20,8 +20,22 @@ describe('TimePicker', () => {
     });
 
     it('passes classNames as expected', () => {
-      render(<TimePicker id="time-picker" className="🚀" />);
-      expect(screen.getByRole('textbox')).toHaveClass('🚀');
+      const { container } = render(
+        <TimePicker
+          id="time-picker"
+          className="timepicker-container"
+          inputClassName="tp-input-class"
+          pickerClassName="tp-picker-class"
+        />
+      );
+      expect(
+        container.querySelector('.timepicker-container')
+      ).toBeInTheDocument();
+      expect(container.querySelector('.tp-picker-class')).toBeInTheDocument();
+      expect(screen.getByRole('textbox')).not.toHaveClass(
+        'timepicker-container'
+      );
+      expect(screen.getByRole('textbox')).toHaveClass('tp-input-class');
     });
 
     it('should set type as expected', () => {
@@ -90,6 +104,39 @@ describe('TimePicker', () => {
       render(<TimePicker id="time-picker" placeholder="🧸" />);
       expect(screen.getByPlaceholderText('🧸')).toBeInTheDocument();
     });
+
+    it('should call onBlur when not disabled or readOnly', () => {
+      const onBlur = jest.fn();
+      render(<TimePicker id="time-picker" onBlur={onBlur} />);
+      const input = screen.getByRole('textbox');
+
+      fireEvent.blur(input);
+      expect(onBlur).toHaveBeenCalled();
+    });
+
+    it('should not call onBlur when disabled', () => {
+      const onBlur = jest.fn();
+      render(<TimePicker id="time-picker" onBlur={onBlur} disabled />);
+      const input = screen.getByRole('textbox');
+
+      fireEvent.blur(input);
+      expect(onBlur).not.toHaveBeenCalled();
+    });
+
+    it('should update value when value prop changes', () => {
+      const { rerender } = render(
+        <TimePicker id="time-picker" value="10:00" />
+      );
+
+      // Initial render
+      expect(screen.getByRole('textbox')).toHaveValue('10:00');
+
+      // Rerender with a new value
+      rerender(<TimePicker id="time-picker" value="11:00" />);
+
+      // Check if the value is updated
+      expect(screen.getByRole('textbox')).toHaveValue('11:00');
+    });
   });
 
   describe('label', () => {
@@ -98,9 +145,54 @@ describe('TimePicker', () => {
       expect(screen.queryByLabelText('🐳')).not.toBeInTheDocument();
     });
 
+    it('should warn without throwing for interactive content in labelText', () => {
+      const spy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+
+      expect(() => {
+        render(
+          <TimePicker
+            id="time-picker"
+            labelText={
+              <>
+                TimePicker label <button type="button">Help</button>
+              </>
+            }
+          />
+        );
+      }).not.toThrow();
+
+      expect(spy).toHaveBeenCalledWith(
+        expect.stringContaining(
+          'Warning: The TimePicker component `labelText` prop must have no interactive content'
+        )
+      );
+
+      spy.mockRestore();
+    });
+
+    it('should allow non-interactive content in labelText', () => {
+      expect(() => {
+        render(
+          <TimePicker
+            id="time-picker"
+            labelText={
+              <>
+                TimePicker label <span>additional label content</span>
+              </>
+            }
+          />
+        );
+      }).not.toThrow();
+    });
+
     it('renders a label as expected', () => {
       render(<TimePicker id="time-picker" labelText="🐳" />);
       expect(screen.getByLabelText('🐳')).toBeInTheDocument();
+    });
+
+    it('renders labelText with value 0', () => {
+      render(<TimePicker id="time-picker" labelText={0} />);
+      expect(screen.getByLabelText('0')).toBeInTheDocument();
     });
   });
 
@@ -109,6 +201,194 @@ describe('TimePicker', () => {
       render(<TimePicker id="time-picker" />);
       await userEvent.type(screen.getByRole('textbox'), '🧛');
       expect(screen.getByRole('textbox')).toHaveValue('🧛');
+    });
+  });
+  describe('invalid and warning states', () => {
+    it('should show invalid state when invalid is true', () => {
+      const { container } = render(
+        <TimePicker id="time-picker" invalid invalidText="Invalid time" />
+      );
+      expect(
+        container.querySelector('.cds--time-picker__error__icon')
+      ).toBeInTheDocument();
+      expect(
+        container.querySelector('.cds--form-requirement')
+      ).toBeInTheDocument();
+      expect(
+        container.querySelector('.cds--form-requirement')
+      ).toHaveTextContent('Invalid time');
+      const invalidText = screen.getByText('Invalid time');
+      expect(screen.getByRole('textbox')).toHaveAttribute(
+        'aria-describedby',
+        invalidText.id
+      );
+      expect(screen.getByRole('textbox')).toHaveAttribute(
+        'aria-invalid',
+        'true'
+      );
+    });
+
+    it('should show warning state when warning is true', () => {
+      const { container } = render(
+        <TimePicker id="time-picker" warning warningText="Warning message" />
+      );
+      expect(
+        container.querySelector('.cds--time-picker__error__icon')
+      ).toBeInTheDocument();
+      expect(
+        container.querySelector('.cds--form-requirement')
+      ).toBeInTheDocument();
+      expect(
+        container.querySelector('.cds--form-requirement')
+      ).toHaveTextContent('Warning message');
+      const warningText = screen.getByText('Warning message');
+      expect(screen.getByRole('textbox')).toHaveAttribute(
+        'aria-describedby',
+        warningText.id
+      );
+      expect(screen.getByRole('textbox')).not.toHaveAttribute('aria-invalid');
+    });
+
+    it('should not show invalid state when disabled', () => {
+      const { container } = render(
+        <TimePicker
+          id="time-picker"
+          invalid
+          invalidText="Invalid time"
+          disabled
+        />
+      );
+      expect(
+        container.querySelector('.cds--time-picker__error__icon')
+      ).not.toBeInTheDocument();
+      expect(
+        container.querySelector('.cds--form-requirement')
+      ).not.toBeInTheDocument();
+      expect(
+        container.querySelector('.cds--time-picker--invalid')
+      ).not.toBeInTheDocument();
+      expect(
+        container.querySelector('.cds--time-picker__input-field-error')
+      ).not.toBeInTheDocument();
+      // data-invalid attribute should not be present when disabled
+      expect(container.querySelector('[data-invalid]')).not.toBeInTheDocument();
+    });
+
+    it('should not show warning state when disabled', () => {
+      const { container } = render(
+        <TimePicker
+          id="time-picker"
+          warning
+          warningText="Warning message"
+          disabled
+        />
+      );
+      expect(
+        container.querySelector('.cds--time-picker__error__icon')
+      ).not.toBeInTheDocument();
+      expect(
+        container.querySelector('.cds--form-requirement')
+      ).not.toBeInTheDocument();
+      expect(
+        container.querySelector('.cds--time-picker--warning')
+      ).not.toBeInTheDocument();
+      expect(
+        container.querySelector('.cds--time-picker__input-field-error')
+      ).not.toBeInTheDocument();
+    });
+
+    it('should not show invalid state when readOnly', () => {
+      const { container } = render(
+        <TimePicker
+          id="time-picker"
+          invalid
+          invalidText="Invalid time"
+          readOnly
+        />
+      );
+      expect(
+        container.querySelector('.cds--time-picker__error__icon')
+      ).not.toBeInTheDocument();
+      expect(
+        container.querySelector('.cds--form-requirement')
+      ).not.toBeInTheDocument();
+      expect(
+        container.querySelector('.cds--time-picker--invalid')
+      ).not.toBeInTheDocument();
+      expect(
+        container.querySelector('.cds--time-picker__input-field-error')
+      ).not.toBeInTheDocument();
+      // data-invalid attribute should not be present when readonly
+      expect(container.querySelector('[data-invalid]')).not.toBeInTheDocument();
+    });
+
+    it('should not show warning state when readOnly', () => {
+      const { container } = render(
+        <TimePicker
+          id="time-picker"
+          warning
+          warningText="Warning message"
+          readOnly
+        />
+      );
+      expect(
+        container.querySelector('.cds--time-picker__error__icon')
+      ).not.toBeInTheDocument();
+      expect(
+        container.querySelector('.cds--form-requirement')
+      ).not.toBeInTheDocument();
+      expect(
+        container.querySelector('.cds--time-picker--warning')
+      ).not.toBeInTheDocument();
+      expect(
+        container.querySelector('.cds--time-picker__input-field-error')
+      ).not.toBeInTheDocument();
+    });
+
+    it('should preserve provided aria-describedby when not invalid or warning', () => {
+      render(<TimePicker id="time-picker" aria-describedby="custom-hint" />);
+      expect(screen.getByRole('textbox')).toHaveAttribute(
+        'aria-describedby',
+        'custom-hint'
+      );
+    });
+
+    it('should merge invalid aria attributes with consumer-provided aria-describedby', () => {
+      render(
+        <TimePicker
+          id="time-picker"
+          invalid
+          invalidText="Invalid time"
+          aria-describedby="custom-hint"
+          aria-invalid={false}
+        />
+      );
+      const invalidText = screen.getByText('Invalid time');
+      expect(screen.getByRole('textbox')).toHaveAttribute(
+        'aria-describedby',
+        `${invalidText.id} custom-hint`
+      );
+      expect(screen.getByRole('textbox')).toHaveAttribute(
+        'aria-invalid',
+        'true'
+      );
+    });
+
+    it('should merge warning aria attributes with consumer-provided aria-describedby', () => {
+      render(
+        <TimePicker
+          id="time-picker"
+          warning
+          warningText="Warning message"
+          aria-describedby="custom-hint"
+        />
+      );
+      const warningText = screen.getByText('Warning message');
+      expect(screen.getByRole('textbox')).toHaveAttribute(
+        'aria-describedby',
+        `${warningText.id} custom-hint`
+      );
+      expect(screen.getByRole('textbox')).not.toHaveAttribute('aria-invalid');
     });
   });
 });

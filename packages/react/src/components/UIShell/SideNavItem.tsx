@@ -1,5 +1,5 @@
 /**
- * Copyright IBM Corp. 2016, 2023
+ * Copyright IBM Corp. 2016, 2025
  *
  * This source code is licensed under the Apache-2.0 license found in the
  * LICENSE file in the root directory of this source tree.
@@ -10,7 +10,7 @@ import PropTypes from 'prop-types';
 import React from 'react';
 import { usePrefix } from '../../internal/usePrefix';
 
-interface SideNavItemProps {
+export interface SideNavItemProps {
   /**
    * Provide a single icon as the child to `SideNavItem` to render in the
    * container
@@ -28,7 +28,7 @@ interface SideNavItemProps {
   large?: boolean;
 }
 
-const SideNavItem: React.FC<SideNavItemProps> = ({
+const SideNavItem = ({
   className: customClassName,
   children,
   large = false,

@@ -1,5 +1,5 @@
 /**
- * Copyright IBM Corp. 2016, 2023
+ * Copyright IBM Corp. 2016, 2025
  *
  * This source code is licensed under the Apache-2.0 license found in the
  * LICENSE file in the root directory of this source tree.
@@ -10,15 +10,12 @@ import React from 'react';
 import cx from 'classnames';
 import { usePrefix } from '../../internal/usePrefix';
 
-interface ToggleSkeletonProps {
+export interface ToggleSkeletonProps {
   'aria-label'?: string;
   className?: string;
 }
 
-const ToggleSkeleton: React.FC<ToggleSkeletonProps> = ({
-  className,
-  ...rest
-}) => {
+const ToggleSkeleton = ({ className, ...rest }: ToggleSkeletonProps) => {
   const prefix = usePrefix();
 
   const skeletonClassNames = cx(

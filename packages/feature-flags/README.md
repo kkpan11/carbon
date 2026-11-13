@@ -21,8 +21,8 @@ yarn add @carbon/feature-flags
 ## Usage
 
 The `@carbon/feature-flags` provides a runtime-based feature flag system that
-you can use to enable or disable experimental features from Carbon or in your
-own code.
+you can use to enable or disable preview features from Carbon or in your own
+code.
 
 To check if a feature flag is enabled, you can use the `enabled` function in
 JavaScript:
@@ -108,9 +108,9 @@ Licensed under the [Apache 2.0 License](/LICENSE).
 
 ## <picture><source height="20" width="20" media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/ibm-telemetry/telemetry-js/main/docs/images/ibm-telemetry-dark.svg"><source height="20" width="20" media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/ibm-telemetry/telemetry-js/main/docs/images/ibm-telemetry-light.svg"><img height="20" width="20" alt="IBM Telemetry" src="https://raw.githubusercontent.com/ibm-telemetry/telemetry-js/main/docs/images/ibm-telemetry-light.svg"></picture> IBM Telemetry
 
-This package uses IBM Telemetry to collect metrics data. By installing this
-package as a dependency you are agreeing to telemetry collection. To opt out,
-see
+This package uses IBM Telemetry to collect de-identified and anonymized metrics
+data. By installing this package as a dependency you are agreeing to telemetry
+collection. To opt out, see
 [Opting out of IBM Telemetry data collection](https://github.com/ibm-telemetry/telemetry-js/tree/main#opting-out-of-ibm-telemetry-data-collection).
 For more information on the data being collected, please see the
 [IBM Telemetry documentation](https://github.com/ibm-telemetry/telemetry-js/tree/main#ibm-telemetry-collection-basics).

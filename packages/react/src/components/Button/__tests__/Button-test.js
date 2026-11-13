@@ -1,5 +1,5 @@
 /**
- * Copyright IBM Corp. 2016, 2023
+ * Copyright IBM Corp. 2016, 2026
  *
  * This source code is licensed under the Apache-2.0 license found in the
  * LICENSE file in the root directory of this source tree.
@@ -85,6 +85,11 @@ describe('Button', () => {
     expect(screen.getByRole('button')).toBeInTheDocument();
   });
 
+  it('should not pass tooltipPosition to the button element when hasIconOnly=false', () => {
+    render(<Button tooltipPosition="bottom" />);
+    expect(screen.getByRole('button')).not.toHaveAttribute('tooltipposition');
+  });
+
   it.each([
     ['primary', 'cds--btn'],
     ['secondary', 'cds--btn--secondary'],
@@ -97,16 +102,25 @@ describe('Button', () => {
   ])(
     'should set the expected classes for the button of kind: `%s`',
     (kind, className) => {
-      render(
-        <Button className={className} kind={kind}>
-          test
-        </Button>
-      );
+      render(<Button kind={kind}>test</Button>);
       expect(screen.getByText('test')).toHaveClass(className);
     }
   );
 
+  it('does not render danger assistive text when dangerDescription is empty', () => {
+    render(
+      <Button kind="danger" dangerDescription="">
+        Delete
+      </Button>
+    );
+
+    expect(screen.getByRole('button', { name: 'Delete' })).not.toHaveAttribute(
+      'aria-describedby'
+    );
+  });
+
   it.each([
+    ['xs', 'cds--btn--xs'],
     ['sm', 'cds--btn--sm'],
     ['md', 'cds--btn--md'],
     ['lg', 'cds--btn--lg'],
@@ -115,11 +129,7 @@ describe('Button', () => {
   ])(
     'should set the expected classes for the button of size: `%s`',
     (size, className) => {
-      render(
-        <Button className={className} size={size}>
-          test
-        </Button>
-      );
+      render(<Button size={size}>test</Button>);
       expect(screen.getByText('test')).toHaveClass(className);
     }
   );
@@ -157,6 +167,34 @@ describe('Button', () => {
       expect(screen.getByLabelText('test')).toHaveClass('cds--btn--icon-only');
     });
 
+    it('should support badge indicator', () => {
+      render(
+        <Button
+          renderIcon={Add}
+          hasIconOnly
+          iconDescription="test"
+          badgeCount={12}
+          kind="ghost"
+          size="lg"
+        />
+      );
+      expect(screen.getByText('12')).toBeInTheDocument();
+    });
+
+    it('should support badge indicator and truncate', () => {
+      render(
+        <Button
+          renderIcon={Add}
+          hasIconOnly
+          iconDescription="test"
+          badgeCount={1200}
+          kind="ghost"
+          size="lg"
+        />
+      );
+      expect(screen.getByText('999+')).toBeInTheDocument();
+    });
+
     it('should support rendering as a custom element with the `as` prop', () => {
       function CustomComponent(props) {
         return <div data-testid="custom-component" {...props} />;
@@ -172,6 +210,42 @@ describe('Button', () => {
       );
       expect(screen.getByTestId('custom-component')).toBeInTheDocument();
       expect(screen.getByLabelText('test')).toHaveClass('cds--btn--icon-only');
+    });
+
+    it.each([
+      ['bottom', 'end', 'bottom-end'],
+      ['top', 'start', 'top-start'],
+      ['right', 'center', 'right'],
+    ])(
+      'should map tooltipPosition=%s and tooltipAlignment=%s to IconButton align=%s',
+      (tooltipPosition, tooltipAlignment, expectedAlign) => {
+        const result = Button.render(
+          {
+            hasIconOnly: true,
+            iconDescription: 'test',
+            renderIcon: Add,
+            tooltipAlignment,
+            tooltipPosition,
+          },
+          null
+        );
+
+        expect(result.props.align).toBe(expectedAlign);
+      }
+    );
+
+    it('should pass children through to IconButton when `hasIconOnly` is true without `renderIcon`', () => {
+      const result = Button.render(
+        {
+          children: '🧪',
+          hasIconOnly: true,
+          iconDescription: 'test',
+        },
+        null
+      );
+
+      expect(result.props.renderIcon).toBeUndefined();
+      expect(result.props.children).toBe('🧪');
     });
   });
 });

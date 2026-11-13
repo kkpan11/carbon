@@ -1,5 +1,5 @@
 /**
- * Copyright IBM Corp. 2016, 2023
+ * Copyright IBM Corp. 2016, 2025
  *
  * This source code is licensed under the Apache-2.0 license found in the
  * LICENSE file in the root directory of this source tree.
@@ -9,19 +9,14 @@ import React from 'react';
 import classNames from 'classnames';
 import { usePrefix } from '../../internal/usePrefix';
 
-interface SkeletonIconProps {
+export interface SkeletonIconProps {
   /**
    * Specify an optional className to add.
    */
   className?: string;
-
-  /**
-   * The CSS styles.
-   */
-  style?: React.CSSProperties;
 }
 
-const SkeletonIcon: React.FC<SkeletonIconProps> = ({ className, ...other }) => {
+const SkeletonIcon = ({ className, ...other }: SkeletonIconProps) => {
   const prefix = usePrefix();
 
   const skeletonIconClasses = classNames(className, {
@@ -36,11 +31,6 @@ SkeletonIcon.propTypes = {
    * Specify an optional className to add.
    */
   className: PropTypes.string,
-
-  /**
-   * The CSS styles.
-   */
-  style: PropTypes.object,
 };
 
 export default SkeletonIcon;

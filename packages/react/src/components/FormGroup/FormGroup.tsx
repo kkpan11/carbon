@@ -1,17 +1,17 @@
 /**
- * Copyright IBM Corp. 2016, 2023
+ * Copyright IBM Corp. 2016, 2026
  *
  * This source code is licensed under the Apache-2.0 license found in the
  * LICENSE file in the root directory of this source tree.
  */
 
 import PropTypes from 'prop-types';
-import React from 'react';
+import React, { useRef, type HTMLAttributes } from 'react';
 import cx from 'classnames';
 import { usePrefix } from '../../internal/usePrefix';
-import { ReactAttr } from '../../types/common';
+import { useNoInteractiveChildrenForLabel } from '../FeatureFlags/useNoInteractiveChildrenForLabel';
 
-export interface FormGroupProps extends ReactAttr<HTMLFieldSetElement> {
+export interface FormGroupProps extends HTMLAttributes<HTMLFieldSetElement> {
   /**
    * Provide the children form elements to be rendered inside of the <fieldset>
    */
@@ -20,6 +20,10 @@ export interface FormGroupProps extends ReactAttr<HTMLFieldSetElement> {
    * Provide a custom className to be applied to the containing <fieldset> node
    */
   className?: string;
+  /**
+   * Specify whether the FormGroup should be disabled
+   */
+  disabled?: boolean;
   /**
    * Specify whether the <FormGroup> is invalid
    */
@@ -45,6 +49,7 @@ export interface FormGroupProps extends ReactAttr<HTMLFieldSetElement> {
 }
 
 const FormGroup = ({
+  disabled = false,
   legendId,
   legendText,
   invalid = false,
@@ -55,18 +60,25 @@ const FormGroup = ({
   ...rest
 }: FormGroupProps) => {
   const prefix = usePrefix();
+  const legendRef = useRef<HTMLLegendElement>(null);
 
   const classNamesFieldset = cx(`${prefix}--fieldset`, className);
+  useNoInteractiveChildrenForLabel(
+    legendRef,
+    'The FormGroup component `legendText` prop must have no interactive content'
+  );
 
   return (
     <fieldset
+      disabled={disabled}
       {...(invalid && { 'data-invalid': '' })}
       className={classNamesFieldset}
       {...rest}
       aria-labelledby={rest['aria-labelledby'] || legendId}>
       <legend
         className={`${prefix}--label`}
-        id={legendId || rest['aria-labelledby']}>
+        id={legendId || rest['aria-labelledby']}
+        ref={legendRef}>
         {legendText}
       </legend>
       {children}
@@ -87,6 +99,11 @@ FormGroup.propTypes = {
    * Provide a custom className to be applied to the containing <fieldset> node
    */
   className: PropTypes.string,
+
+  /**
+   * Specify whether the FormGroup should be disabled
+   */
+  disabled: PropTypes.bool,
 
   /**
    * Specify whether the <FormGroup> is invalid

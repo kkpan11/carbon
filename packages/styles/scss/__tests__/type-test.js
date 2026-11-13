@@ -50,7 +50,7 @@ describe('@carbon/styles/scss/type', () => {
       'font-weight': true,
     });
     expect(api.variables).toMatchInlineSnapshot(`
-      Array [
+      [
         "caption-01",
         "caption-02",
         "label-01",
@@ -148,5 +148,24 @@ describe('@carbon/styles/scss/type', () => {
     `);
     const { stylesheet } = css.parse(result.css.toString());
     expect(stylesheet).toMatchSnapshot();
+  });
+});
+
+describe('type custom properties', () => {
+  it('should emit the css Custom properties for non-fluid typography', async () => {
+    const { result } = await render(`
+      @use '../type';
+
+      .selector {
+        @include type.emit-type-custom-properties()
+      }
+    `);
+    const { stylesheet } = css.parse(result.css.toString());
+    const rules = stylesheet.rules.filter(
+      (rule) => rule.selectors[0] === '.selector'
+    );
+    const declarations = rules[0].declarations;
+
+    expect(declarations.length).toBe(191);
   });
 });

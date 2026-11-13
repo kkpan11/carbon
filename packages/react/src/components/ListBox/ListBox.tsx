@@ -1,18 +1,28 @@
 /**
- * Copyright IBM Corp. 2016, 2023
+ * Copyright IBM Corp. 2016, 2026
  *
  * This source code is licensed under the Apache-2.0 license found in the
  * LICENSE file in the root directory of this source tree.
  */
 
 import cx from 'classnames';
-import React, { type KeyboardEvent, type MouseEvent, useContext } from 'react';
+import React, {
+  forwardRef,
+  useContext,
+  type HTMLAttributes,
+  type KeyboardEvent,
+  type MouseEvent,
+} from 'react';
 import PropTypes from 'prop-types';
-import deprecate from '../../prop-types/deprecate';
-import { ListBoxType, ListBoxSize } from './ListBoxPropTypes';
+import { deprecate } from '../../prop-types/deprecate';
+import {
+  ListBoxSizePropType,
+  ListBoxTypePropType,
+  type ListBoxSize,
+  type ListBoxType,
+} from './ListBoxPropTypes';
 import { usePrefix } from '../../internal/usePrefix';
 import { FormContext } from '../FluidForm';
-import { ForwardRefReturn, ReactAttr } from '../../types/common';
 
 const handleOnKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
   if (event.keyCode === 27) {
@@ -28,7 +38,7 @@ const handleClick = (event: MouseEvent<HTMLDivElement>) => {
 type ExcludedAttributes = 'onKeyDown' | 'onKeyPress' | 'ref';
 
 export interface ListBoxProps
-  extends Omit<ReactAttr<HTMLDivElement>, ExcludedAttributes> {
+  extends Omit<HTMLAttributes<HTMLDivElement>, ExcludedAttributes> {
   /**
    * Specify whether the ListBox is currently disabled
    */
@@ -64,7 +74,7 @@ export interface ListBoxProps
   light?: boolean;
 
   /**
-   * Specify the size of the ListBox. Currently supports either `sm`, `md` or `lg` as an option.
+   * Specify the size of the ListBox. Currently supports either `xs`, `sm`, `md` or `lg` as an option.
    */
   size?: ListBoxSize;
 
@@ -90,14 +100,12 @@ export interface ListBoxProps
   warnTextId?: string;
 }
 
-export type ListBoxComponent = ForwardRefReturn<HTMLDivElement, ListBoxProps>;
-
 /**
  * `ListBox` is a generic container component that handles creating the
  * container class name in response to certain props.
  */
-const ListBox: ListBoxComponent = React.forwardRef(function ListBox(
-  {
+const ListBox = forwardRef<HTMLDivElement, ListBoxProps>((props, ref) => {
+  const {
     children,
     className: containerClassName,
     disabled = false,
@@ -112,9 +120,7 @@ const ListBox: ListBoxComponent = React.forwardRef(function ListBox(
     light,
     isOpen,
     ...rest
-  }: ListBoxProps,
-  ref: React.LegacyRef<HTMLDivElement>
-) {
+  } = props;
   const prefix = usePrefix();
   const { isFluid } = useContext(FormContext);
   const showWarning = !invalid && warn;
@@ -123,6 +129,7 @@ const ListBox: ListBoxComponent = React.forwardRef(function ListBox(
     ...(containerClassName && { [containerClassName]: true }),
     [`${prefix}--list-box`]: true,
     [`${prefix}--list-box--${size}`]: size,
+    [`${prefix}--layout--size-${size}`]: size,
     [`${prefix}--list-box--inline`]: type === 'inline',
     [`${prefix}--list-box--disabled`]: disabled,
     [`${prefix}--list-box--light`]: light,
@@ -205,15 +212,15 @@ ListBox.propTypes = {
   ),
 
   /**
-   * Specify the size of the ListBox. Currently supports either `sm`, `md` or `lg` as an option.
+   * Specify the size of the ListBox. Currently supports either `xs`, `sm`, `md` or `lg` as an option.
    */
-  size: ListBoxSize,
+  size: ListBoxSizePropType,
 
   /**
    * Specify the "type" of the ListBox. Currently supports either `default` or
    * `inline` as an option.
    */
-  type: ListBoxType,
+  type: ListBoxTypePropType,
 
   /**
    * Specify whether the control is currently in warning state

@@ -1,3 +1,10 @@
+/**
+ * Copyright IBM Corp. 2022, 2023
+ *
+ * This source code is licensed under the Apache-2.0 license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
+
 import React from 'react';
 import { ModalFooter } from './ModalFooter';
 import { render, screen } from '@testing-library/react';
@@ -89,7 +96,21 @@ describe('ModalFooter', () => {
     );
 
     expect(screen.getByText('Submit')).toHaveClass('cds--btn--danger');
-    expect(screen.getByText('danger', { hidden: true })).toBeInTheDocument();
+    expect(screen.getByText('Submit')).not.toHaveAttribute('aria-describedby');
+  });
+
+  it('should allow a localized danger description for the primary button', () => {
+    render(
+      <ModalFooter
+        secondaryButtonText="Cancel"
+        primaryButtonText="Submit"
+        danger
+        dangerDescription="gefahr"
+      />
+    );
+
+    expect(screen.getByText('Submit')).toHaveAttribute('aria-describedby');
+    expect(screen.getByText('gefahr', { hidden: true })).toBeInTheDocument();
   });
 
   it('should call onRequestClose when close requested', async () => {
@@ -141,5 +162,44 @@ describe('ModalFooter', () => {
     expect(container.firstChild).toHaveClass('cds--modal-footer--three-button');
     expect(screen.getByText('Keep both')).toBeInTheDocument();
     expect(screen.getByText('Rename')).toBeInTheDocument();
+  });
+
+  it('should call close handlers for secondary buttons without `onClick`', async () => {
+    const closeModal = jest.fn();
+    const onRequestClose = jest.fn();
+
+    render(
+      <ModalFooter
+        closeModal={closeModal}
+        onRequestClose={onRequestClose}
+        secondaryButtons={[
+          { buttonText: 'Cancel' },
+          { buttonText: 'Rename', onClick: jest.fn() },
+        ]}
+      />
+    );
+
+    await userEvent.click(screen.getByText('Cancel'));
+
+    expect(closeModal).toHaveBeenCalled();
+    expect(onRequestClose).toHaveBeenCalled();
+  });
+
+  it('should render active loading state for primary button', () => {
+    const { container } = render(
+      <ModalFooter
+        loadingStatus="active"
+        primaryClassName="custom-class"
+        primaryButtonText="Submit"
+        secondaryButtonText="Cancel"
+      />
+    );
+
+    const primaryButton = container.querySelector('button.custom-class');
+
+    expect(primaryButton).toBeTruthy();
+    expect(primaryButton).toHaveClass('cds--btn--loading');
+    expect(screen.getByText('Cancel')).toBeDisabled();
+    expect(container.querySelector('.cds--inline-loading--btn')).toBeTruthy();
   });
 });

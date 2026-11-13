@@ -56,6 +56,12 @@ describe('Breadcrumb', () => {
     );
   });
 
+  it('should respect size prop', () => {
+    render(<Breadcrumb size="sm" />);
+
+    expect(screen.getByRole('list')).toHaveClass(`${prefix}--breadcrumb--sm`);
+  });
+
   it('should accept a `className` for outermost DOM node', () => {
     const { container } = render(<Breadcrumb className="test" />);
 
@@ -85,17 +91,6 @@ describe('Breadcrumb', () => {
         </Breadcrumb>
       );
       await expect(container).toHaveNoAxeViolations();
-    });
-
-    it('should have no AC violations', async () => {
-      const { container } = render(
-        <Breadcrumb>
-          <BreadcrumbItem href="#a">A</BreadcrumbItem>
-          <BreadcrumbItem href="#b">B</BreadcrumbItem>
-          <BreadcrumbItem href="#c">C</BreadcrumbItem>
-        </Breadcrumb>
-      );
-      await expect(container).toHaveNoACViolations('Breadcrumb');
     });
   });
 });

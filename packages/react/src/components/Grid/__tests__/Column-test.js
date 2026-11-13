@@ -1,17 +1,24 @@
 /**
- * Copyright IBM Corp. 2016, 2023
+ * Copyright IBM Corp. 2016, 2026
  *
  * This source code is licensed under the Apache-2.0 license found in the
  * LICENSE file in the root directory of this source tree.
  */
 
-import { render } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import React from 'react';
 import { Column } from '../';
 
 const prefix = 'cds';
 
 describe('Column', () => {
+  // Add this test case inside the main describe('Column', () => {}) block
+  it('should forward ref to the underlying DOM element', () => {
+    const ref = React.createRef();
+    const { container } = render(<Column ref={ref} />);
+    expect(ref.current).toBe(container.firstChild);
+  });
+
   it('should support a custom element as the root node', () => {
     const { container } = render(<Column as="section" />);
     expect(container.firstChild.tagName).toBe('SECTION');
@@ -28,14 +35,12 @@ describe('Column', () => {
   });
 
   it('should render `children` that are given', () => {
-    const { container } = render(
+    render(
       <Column>
         <span id="test">Test</span>
       </Column>
     );
-    // eslint-disable-next-line testing-library/no-container, testing-library/no-node-access
-    const testNode = container.querySelector('#test');
-    expect(testNode).toBeInstanceOf(HTMLElement);
+    expect(screen.getByText('Test')).toHaveAttribute('id', 'test');
   });
 
   it('should default to rendering a column that auto-spans', () => {
@@ -111,8 +116,8 @@ describe('Column', () => {
 
     beforeEach(() => {
       jest.resetModules();
-      const FeatureFlags = require('@carbon/feature-flags');
-      FeatureFlags.enable('enable-css-grid');
+      const { enable } = require('@carbon/feature-flags');
+      enable('enable-css-grid');
 
       cleanup = require('@testing-library/react/pure').cleanup;
       render = require('@testing-library/react/pure').render;
@@ -123,6 +128,17 @@ describe('Column', () => {
 
     afterEach(() => {
       cleanup();
+    });
+
+    it('should forward ref in CSS Grid mode', () => {
+      const ref = React.createRef();
+      render(
+        <Grid>
+          <Column ref={ref} lg={4} />
+        </Grid>
+      );
+      expect(ref.current).toBeInstanceOf(HTMLDivElement);
+      expect(ref.current).toHaveClass('cds--css-grid-column');
     });
 
     describe.each(['sm', 'md', 'lg', 'xlg', 'max'])('%s', (breakpoint) => {

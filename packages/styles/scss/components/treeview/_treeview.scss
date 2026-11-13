@@ -1,5 +1,5 @@
 //
-// Copyright IBM Corp. 2016, 2023
+// Copyright IBM Corp. 2016, 2026
 //
 // This source code is licensed under the Apache-2.0 license found in the
 // LICENSE file in the root directory of this source tree.
@@ -35,9 +35,15 @@
       outline: none;
     }
 
-    &:hover {
-      cursor: pointer;
+    @media (any-hover: hover) {
+      &:hover {
+        cursor: pointer;
+      }
     }
+  }
+
+  .#{$prefix}--tree-node--hidden {
+    display: none;
   }
 
   .#{$prefix}--tree-node__children {
@@ -53,66 +59,104 @@
   .#{$prefix}--tree-node:focus > .#{$prefix}--tree-node__label {
     @include focus-outline('outline');
   }
-
+  .#{$prefix}--tree-node.#{$prefix}--tree-parent-node
+    > .#{$prefix}--tree-node__label {
+    inline-size: auto;
+  }
   .#{$prefix}--tree-node--disabled:focus > .#{$prefix}--tree-node__label {
     outline: none;
   }
 
-  .#{$prefix}--tree-node--disabled,
-  .#{$prefix}--tree-node--disabled .#{$prefix}--tree-node__label:hover,
-  .#{$prefix}--tree-node--disabled
-    .#{$prefix}--tree-node__label:hover
-    .#{$prefix}--tree-node__label__details {
+  .#{$prefix}--tree-node--disabled {
     background-color: $field-01;
     color: $text-disabled;
+    cursor: not-allowed;
   }
 
   .#{$prefix}--tree-node--disabled .#{$prefix}--tree-parent-node__toggle-icon,
-  .#{$prefix}--tree-node--disabled .#{$prefix}--tree-node__icon,
-  .#{$prefix}--tree-node--disabled
-    .#{$prefix}--tree-node__label:hover
-    .#{$prefix}--tree-parent-node__toggle-icon,
-  .#{$prefix}--tree-node--disabled
-    .#{$prefix}--tree-node__label:hover
-    .#{$prefix}--tree-node__icon {
+  .#{$prefix}--tree-node--disabled .#{$prefix}--tree-node__icon {
     fill: $icon-disabled;
   }
 
-  .#{$prefix}--tree-node--disabled,
-  .#{$prefix}--tree-node--disabled
-    .#{$prefix}--tree-parent-node__toggle-icon:hover {
-    cursor: not-allowed;
+  @media (any-hover: hover) {
+    .#{$prefix}--tree-node--disabled .#{$prefix}--tree-node__label:hover,
+    .#{$prefix}--tree-node--disabled
+      .#{$prefix}--tree-node__label:hover
+      .#{$prefix}--tree-node__label__details {
+      background-color: $field-01;
+      color: $text-disabled;
+    }
+
+    .#{$prefix}--tree-node--disabled
+      .#{$prefix}--tree-node__label:hover
+      .#{$prefix}--tree-parent-node__toggle-icon,
+    .#{$prefix}--tree-node--disabled
+      .#{$prefix}--tree-node__label:hover
+      .#{$prefix}--tree-node__icon {
+      fill: $icon-disabled;
+    }
+
+    .#{$prefix}--tree-node--disabled
+      .#{$prefix}--tree-parent-node__toggle-icon:hover {
+      cursor: not-allowed;
+    }
+  }
+
+  // Overrides link styling
+  li a.#{$prefix}--tree-node {
+    text-decoration: none;
+
+    &:not(.#{$prefix}--tree-node--disabled) {
+      color: $text-secondary;
+    }
+  }
+
+  li.#{$prefix}--tree-node-link-parent {
+    display: flex;
+    flex-direction: column;
+    background-color: $layer-01;
+
+    > .#{$prefix}--tree-node__children {
+      padding-inline-start: $spacing-05;
+    }
   }
 
   .#{$prefix}--tree-node__label {
     @include type-style('body-compact-01');
 
+    position: relative;
     display: flex;
+    box-sizing: border-box;
     flex: 1;
     align-items: center;
+    inline-size: 100%;
     min-block-size: convert.to-rem(32px);
+    padding-inline-end: 1rem;
 
-    &:hover {
-      background-color: $layer-hover-01;
-      color: $text-primary;
+    @media (any-hover: hover) {
+      &:hover {
+        background-color: $layer-hover-01;
+        color: $text-primary;
+      }
     }
   }
 
   .#{$prefix}--tree-node:not(.#{$prefix}--tree-parent-node)
     .#{$prefix}--tree-node__label {
-    padding-block-end: convert.to-rem(7px);
+    padding-block: convert.to-rem(7px) convert.to-rem(7px);
     // (min-height 32px - single line text height 18px) / 2 = 7px
-    padding-block-start: convert.to-rem(7px);
   }
 
-  .#{$prefix}--tree-node__label:hover .#{$prefix}--tree-node__label__details {
-    color: $text-primary;
-  }
+  @media (any-hover: hover) {
+    .#{$prefix}--tree-node__label:hover .#{$prefix}--tree-node__label__details {
+      color: $text-primary;
+    }
 
-  .#{$prefix}--tree-node__label:hover
-    .#{$prefix}--tree-parent-node__toggle-icon,
-  .#{$prefix}--tree-node__label:hover .#{$prefix}--tree-node__icon {
-    fill: $icon-primary;
+    .#{$prefix}--tree-node__label:hover
+      .#{$prefix}--tree-parent-node__toggle-icon,
+    .#{$prefix}--tree-node__label:hover .#{$prefix}--tree-node__icon {
+      fill: $icon-primary;
+    }
   }
 
   .#{$prefix}--tree-leaf-node {
@@ -132,6 +176,7 @@
   .#{$prefix}--tree-node__label__details {
     display: flex;
     align-items: center;
+    min-inline-size: 0;
   }
 
   .#{$prefix}--tree-node--with-icon .#{$prefix}--tree-parent-node__toggle {
@@ -141,17 +186,16 @@
   .#{$prefix}--tree-parent-node__toggle {
     display: flex;
     align-items: center;
-    align-self: flex-start;
     border: 0;
     block-size: convert.to-rem(24px);
     inline-size: convert.to-rem(24px);
-    margin-block-start: $spacing-02;
-    margin-inline-end: $spacing-02;
-    margin-inline-start: -$spacing-02;
+    margin-inline: -$spacing-02 $spacing-02;
     padding-inline-start: $spacing-02;
 
-    &:hover {
-      cursor: pointer;
+    @media (any-hover: hover) {
+      &:hover {
+        cursor: pointer;
+      }
     }
 
     &:focus {
@@ -170,11 +214,8 @@
   }
 
   .#{$prefix}--tree-node__icon {
-    align-self: flex-start;
     fill: $icon-secondary;
-    margin-block-start: convert.to-rem(1px);
-    margin-inline-end: $spacing-03;
-    margin-inline-start: $spacing-03;
+    margin-inline: $spacing-03 $spacing-03;
     min-block-size: 1rem;
     min-inline-size: 1rem;
   }
@@ -189,8 +230,10 @@
     background-color: $layer-selected-01;
     color: $text-primary;
 
-    &:hover {
-      background-color: $layer-selected-hover-01;
+    @media (any-hover: hover) {
+      &:hover {
+        background-color: $layer-selected-hover-01;
+      }
     }
   }
 
@@ -230,5 +273,55 @@
 
   .#{$prefix}--tree--xs .#{$prefix}--tree-parent-node__toggle {
     margin-block-start: 0;
+  }
+  .#{$prefix}--tree-node__label__text {
+    @include type-style('body-compact-01');
+
+    display: block;
+    overflow: hidden;
+    line-height: 1.2;
+    padding-inline-start: convert.to-rem(4px);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .#{$prefix}--tree-node__label .#{$prefix}--icon-tooltip {
+    inline-size: 100%;
+  }
+
+  .#{$prefix}--tree-node__label
+    .#{$prefix}--icon-tooltip
+    .#{$prefix}--btn--icon-only {
+    padding: 0;
+    border: none;
+    background: transparent;
+    block-size: auto;
+    color: inherit;
+    inline-size: 100%;
+    min-block-size: unset;
+    text-align: start;
+  }
+
+  .#{$prefix}--tree-node__label
+    .#{$prefix}--icon-tooltip
+    .#{$prefix}--btn--icon-only
+    .#{$prefix}--tree-node__label__text {
+    color: inherit;
+    inline-size: 100%;
+  }
+
+  .#{$prefix}--tree-node__label .#{$prefix}--tooltip-content {
+    padding: 1rem;
+  }
+
+  .#{$prefix}--tree-node__label .#{$prefix}--popover-container {
+    inline-size: 100%;
+  }
+  .#{$prefix}--tree
+    .#{$prefix}--tree-node__label
+    .#{$prefix}--tooltip-trigger__wrapper
+    .#{$prefix}--btn--ghost:focus {
+    box-shadow: none;
+    outline: 2px solid $focus;
   }
 }

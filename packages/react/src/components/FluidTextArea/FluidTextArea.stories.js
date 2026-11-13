@@ -1,9 +1,11 @@
 /**
- * Copyright IBM Corp. 2016, 2023
+ * Copyright IBM Corp. 2016, 2026
  *
  * This source code is licensed under the Apache-2.0 license found in the
  * LICENSE file in the root directory of this source tree.
  */
+
+import styles from './fluid-text-area-story.scss?inline';
 
 import React from 'react';
 
@@ -11,17 +13,30 @@ import { WithLayer } from '../../../.storybook/templates/WithLayer';
 
 import FluidTextArea from '../FluidTextArea';
 import FluidTextAreaSkeleton from './FluidTextArea.Skeleton';
-import {
-  ToggletipLabel,
-  Toggletip,
-  ToggletipButton,
-  ToggletipContent,
-} from '../Toggletip';
+import { Toggletip, ToggletipButton, ToggletipContent } from '../Toggletip';
 import { Information } from '@carbon/icons-react';
+import mdx from './FluidTextArea.mdx';
 
 export default {
-  title: 'Experimental/Fluid Components/unstable__FluidTextArea',
+  title: 'Components/Fluid Components/FluidTextArea',
   component: FluidTextArea,
+  decorators: [
+    (Story) => (
+      <>
+        <style>{styles}</style>
+        <Story />
+      </>
+    ),
+  ],
+  parameters: {
+    styles,
+    docs: {
+      page: mdx,
+    },
+    controls: {
+      exclude: ['id', 'value', 'defaultValue'],
+    },
+  },
   subcomponents: {
     FluidTextAreaSkeleton,
   },
@@ -36,98 +51,15 @@ export default {
         disable: true,
       },
     },
-    id: {
-      table: {
-        disable: true,
-      },
-    },
     light: {
       table: {
         disable: true,
       },
     },
-    value: {
-      table: {
-        disable: true,
-      },
-    },
-    defaultValue: {
-      table: {
-        disable: true,
-      },
-    },
   },
 };
 
-export const Default = () => (
-  <FluidTextArea
-    labelText="Text Area label"
-    placeholder="Placeholder text"
-    id="text-area-1"
-  />
-);
-
-export const DefaultWithLayers = () => (
-  <WithLayer>
-    {(layer) => (
-      <FluidTextArea
-        labelText="Text Area label"
-        placeholder="Placeholder text"
-        id={`text-area-${layer}`}
-      />
-    )}
-  </WithLayer>
-);
-
-const ToggleTip = (
-  <>
-    <ToggletipLabel>Text Area label</ToggletipLabel>
-    <Toggletip align="top-left">
-      <ToggletipButton label="Show information">
-        <Information />
-      </ToggletipButton>
-      <ToggletipContent>
-        <p>Additional field information here.</p>
-      </ToggletipContent>
-    </Toggletip>
-  </>
-);
-
-export const DefaultWithTooltip = () => (
-  <FluidTextArea labelText={ToggleTip} placeholder="Placeholder text" />
-);
-
-export const Skeleton = () => (
-  <div style={{ width: '300px' }}>
-    <FluidTextAreaSkeleton />
-  </div>
-);
-
-export const Playground = (args) => (
-  <div style={{ width: args.playgroundWidth }}>
-    <FluidTextArea {...args} />
-  </div>
-);
-
-Playground.args = {
-  playgroundWidth: 300,
-  className: 'test-class',
-  placeholder: 'Placeholder text',
-  invalid: false,
-  invalidText:
-    'Error message that is really long can wrap to more lines but should not be excessively long.',
-  disabled: false,
-  enableCounter: false,
-  labelText: 'Text Area label',
-  maxCount: 500,
-  warn: false,
-  warnText: 'This is a warning message.',
-};
-
-Playground.argTypes = {
-  playgroundWidth: {
-    control: { type: 'range', min: 300, max: 800, step: 50 },
-  },
+const sharedArgTypes = {
   className: {
     control: {
       type: 'text',
@@ -153,6 +85,14 @@ Playground.argTypes = {
       type: 'boolean',
     },
   },
+  cols: {
+    control: {
+      type: 'number',
+    },
+  },
+  defaultWidth: {
+    control: { type: 'range', min: 300, max: 800, step: 50 },
+  },
   enableCounter: {
     control: {
       type: 'boolean',
@@ -165,7 +105,23 @@ Playground.argTypes = {
   },
   maxCount: {
     control: {
-      type: 'text',
+      type: 'number',
+    },
+  },
+  onChange: {
+    action: 'onChange',
+  },
+  onClick: {
+    action: 'onClick',
+  },
+  readOnly: {
+    control: {
+      type: 'boolean',
+    },
+  },
+  rows: {
+    control: {
+      type: 'number',
     },
   },
   warn: {
@@ -179,3 +135,108 @@ Playground.argTypes = {
     },
   },
 };
+
+const sharedArgs = {
+  className: 'test-class',
+  cols: 40,
+  defaultWidth: 300,
+  disabled: false,
+  enableCounter: false,
+  invalid: false,
+  invalidText:
+    'Error message that is really long can wrap to more lines but should not be excessively long.',
+  labelText: 'Text Area label',
+  maxCount: 500,
+  placeholder: 'Placeholder text',
+  readOnly: false,
+  rows: 4,
+  warn: false,
+  warnText: 'This is a warning message.',
+};
+
+export const Default = (args) => {
+  const { defaultWidth, ...textAreaArgs } = args;
+  return (
+    <div style={{ width: defaultWidth }}>
+      <FluidTextArea {...textAreaArgs} />
+    </div>
+  );
+};
+
+Default.args = {
+  ...sharedArgs,
+};
+
+Default.argTypes = {
+  ...sharedArgTypes,
+};
+
+export const DefaultWithLayers = (args) => {
+  const { defaultWidth, ...textAreaArgs } = args;
+  return (
+    <WithLayer>
+      {(layer) => (
+        <div style={{ width: defaultWidth }}>
+          <FluidTextArea {...textAreaArgs} id={`text-area-${layer}`} />
+        </div>
+      )}
+    </WithLayer>
+  );
+};
+
+DefaultWithLayers.args = {
+  ...sharedArgs,
+};
+
+DefaultWithLayers.argTypes = {
+  ...sharedArgTypes,
+};
+
+export const DefaultWithToggletip = (args) => {
+  const { defaultWidth, ...textAreaArgs } = args;
+  const labelToggletip = (
+    <span className="fluid-text-area-story__toggletip">
+      <Toggletip align="top-left">
+        <ToggletipButton label="Show information">
+          <Information />
+        </ToggletipButton>
+        <ToggletipContent>
+          <p>Additional field information here.</p>
+        </ToggletipContent>
+      </Toggletip>
+    </span>
+  );
+  return (
+    <div className="fluid-text-area-story" style={{ width: defaultWidth }}>
+      {labelToggletip}
+      <FluidTextArea {...textAreaArgs} labelText="Text Area label" />
+    </div>
+  );
+};
+
+DefaultWithToggletip.args = {
+  ...sharedArgs,
+};
+
+DefaultWithToggletip.argTypes = {
+  ...sharedArgTypes,
+};
+
+DefaultWithToggletip.parameters = {
+  controls: {
+    exclude: ['id', 'value', 'defaultValue', 'labelText'],
+  },
+};
+
+export const Skeleton = (args) => {
+  const { defaultWidth } = args;
+  return (
+    <div style={{ width: defaultWidth }}>
+      <FluidTextAreaSkeleton />
+    </div>
+  );
+};
+
+Skeleton.args = { defaultWidth: sharedArgs.defaultWidth };
+Skeleton.argTypes = { defaultWidth: sharedArgTypes.defaultWidth };
+Skeleton.parameters = { controls: { include: ['defaultWidth'] } };

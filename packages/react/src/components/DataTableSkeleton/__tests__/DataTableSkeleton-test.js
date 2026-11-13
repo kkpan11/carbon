@@ -1,5 +1,5 @@
 /**
- * Copyright IBM Corp. 2023
+ * Copyright IBM Corp. 2023, 2026
  *
  * This source code is licensed under the Apache-2.0 license found in the
  * LICENSE file in the root directory of this source tree.
@@ -7,7 +7,7 @@
 
 import React from 'react';
 import DataTableSkeleton from '../DataTableSkeleton';
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 
 const prefix = 'cds';
 
@@ -40,14 +40,6 @@ describe('DataTableSkeleton', () => {
       expect(screen.getAllByRole('columnheader').length).toEqual(3);
     });
 
-    it('should respect the compact prop', () => {
-      render(<DataTableSkeleton compact />);
-
-      expect(screen.getByRole('table')).toHaveClass(
-        `${prefix}--data-table--compact`
-      );
-    });
-
     it('should respect the headers prop', () => {
       const headers = [
         {
@@ -71,11 +63,10 @@ describe('DataTableSkeleton', () => {
     });
 
     it('should respect the rowCount prop', () => {
-      const { container } = render(<DataTableSkeleton rowCount={20} />);
+      render(<DataTableSkeleton rowCount={20} />);
 
-      // eslint-disable-next-line testing-library/no-container, testing-library/no-node-access
-      const rows = container.querySelectorAll('tbody tr');
-      expect(rows.length).toEqual(20);
+      const [, body] = screen.getAllByRole('rowgroup');
+      expect(within(body).getAllByRole('row')).toHaveLength(20);
     });
 
     it('should respect the showHeader prop', () => {
@@ -87,11 +78,36 @@ describe('DataTableSkeleton', () => {
     });
 
     it('should respect the showToolbar prop', () => {
-      const { container } = render(<DataTableSkeleton showToolbar={false} />);
+      render(<DataTableSkeleton showToolbar={false} />);
 
-      // eslint-disable-next-line testing-library/no-container, testing-library/no-node-access
-      const toolbar = container.querySelector(`.${prefix}--table-toolbar`);
+      const toolbar = screen.queryByRole('region', { hidden: true });
       expect(toolbar).not.toBeInTheDocument();
+    });
+
+    it('should respect the toolbarLabel prop', () => {
+      render(<DataTableSkeleton toolbarLabel="Barre d'outils du tableau" />);
+
+      expect(
+        screen.getByRole('region', {
+          name: "Barre d'outils du tableau",
+        })
+      ).toBeInTheDocument();
+    });
+
+    it('should apply the default size when none is provided', () => {
+      render(<DataTableSkeleton />);
+
+      expect(screen.getByRole('table')).toHaveClass(
+        `${prefix}--data-table--lg`
+      );
+    });
+
+    it('should respect the size prop', () => {
+      render(<DataTableSkeleton size="xs" />);
+
+      expect(screen.getByRole('table')).toHaveClass(
+        `${prefix}--data-table--xs`
+      );
     });
 
     it('should respect the zebra prop', () => {

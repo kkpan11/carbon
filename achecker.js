@@ -7,19 +7,29 @@
 
 'use strict';
 
+const os = require('os');
 const path = require('path');
 
 module.exports = {
-  ruleArchive: 'latest',
+  ruleArchive: 'versioned',
   policies: ['Custom_Ruleset'],
   failLevels: ['violation'],
-  reportLevels: [
-    'violation',
-    'potentialviolation',
-    'recommendation',
-    'potentialrecommendation',
-    'manual',
-  ],
+  reportLevels: !process.env.CI
+    ? ['violation']
+    : [
+        'violation',
+        'potentialviolation',
+        'recommendation',
+        'potentialrecommendation',
+        'manual',
+      ],
+  // don't share parallel workers
+  cacheFolder: path.join(
+    os.tmpdir(),
+    process.env.JEST_WORKER_ID
+      ? `accessibility-checker-${process.env.JEST_WORKER_ID}`
+      : 'accessibility-checker'
+  ),
   outputFormat: ['json'],
   outputFolder: path.join('.avt', 'reports'),
   baselineFolder: path.join('.avt', 'baseline'),

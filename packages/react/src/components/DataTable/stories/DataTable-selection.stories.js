@@ -1,5 +1,5 @@
 /**
- * Copyright IBM Corp. 2016, 2023
+ * Copyright IBM Corp. 2016, 2026
  *
  * This source code is licensed under the Apache-2.0 license found in the
  * LICENSE file in the root directory of this source tree.
@@ -17,13 +17,21 @@ import DataTable, {
   TableSelectAll,
   TableSelectRow,
 } from '..';
-import { rows, headers } from './shared';
+import { dataTableArgs, dataTableArgTypes, rows, headers } from './shared';
 import mdx from '../DataTable.mdx';
-import { action } from '@storybook/addon-actions';
+import { action } from 'storybook/actions';
 
 export default {
   title: 'Components/DataTable/Selection',
   component: DataTable,
+  args: { ...dataTableArgs, radio: false },
+  argTypes: {
+    ...dataTableArgTypes,
+    radio: {
+      control: 'boolean',
+      description: 'Use radio selection instead of multi-selection.',
+    },
+  },
   subcomponents: {
     TableSelectAll,
     TableSelectRow,
@@ -38,136 +46,14 @@ export default {
   parameters: {
     docs: {
       page: mdx,
+      source: {
+        type: 'code',
+      },
     },
   },
 };
 
-export const Default = () => (
-  <DataTable rows={rows} headers={headers}>
-    {({
-      rows,
-      headers,
-      getHeaderProps,
-      getRowProps,
-      getSelectionProps,
-      getTableProps,
-      getTableContainerProps,
-    }) => (
-      <TableContainer
-        title="DataTable"
-        description="With selection"
-        {...getTableContainerProps()}>
-        <Table {...getTableProps()} aria-label="sample table">
-          <TableHead>
-            <TableRow>
-              <TableSelectAll {...getSelectionProps()} />
-              {headers.map((header, i) => (
-                <TableHeader key={i} {...getHeaderProps({ header })}>
-                  {header.header}
-                </TableHeader>
-              ))}
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {rows.map((row, i) => (
-              <TableRow key={i} {...getRowProps({ row })}>
-                <TableSelectRow {...getSelectionProps({ row })} />
-                {row.cells.map((cell) => (
-                  <TableCell key={cell.id}>{cell.value}</TableCell>
-                ))}
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </TableContainer>
-    )}
-  </DataTable>
-);
-
-export const WithRadioSelection = () => (
-  <DataTable rows={rows} headers={headers} radio>
-    {({
-      rows,
-      headers,
-      getHeaderProps,
-      getRowProps,
-      getSelectionProps,
-      getTableProps,
-      getTableContainerProps,
-    }) => (
-      <TableContainer
-        title="DataTable"
-        description="With radio selection"
-        {...getTableContainerProps()}>
-        <Table {...getTableProps()} aria-label="sample table">
-          <TableHead>
-            <TableRow>
-              <th scope="col" />
-              {headers.map((header, i) => (
-                <TableHeader key={i} {...getHeaderProps({ header })}>
-                  {header.header}
-                </TableHeader>
-              ))}
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {rows.map((row, i) => (
-              <TableRow key={i} {...getRowProps({ row })}>
-                <TableSelectRow {...getSelectionProps({ row })} />
-                {row.cells.map((cell) => (
-                  <TableCell key={cell.id}>{cell.value}</TableCell>
-                ))}
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </TableContainer>
-    )}
-  </DataTable>
-);
-
-export const WithSelectionAndSorting = () => (
-  <DataTable rows={rows} headers={headers} isSortable>
-    {({
-      rows,
-      headers,
-      getHeaderProps,
-      getRowProps,
-      getSelectionProps,
-      getTableProps,
-      getTableContainerProps,
-    }) => (
-      <TableContainer
-        title="DataTable"
-        description="With selection"
-        {...getTableContainerProps()}>
-        <Table {...getTableProps()} aria-label="sample table">
-          <TableHead>
-            <TableRow>
-              <TableSelectAll {...getSelectionProps()} />
-              {headers.map((header, i) => (
-                <TableHeader key={i} {...getHeaderProps({ header })}>
-                  {header.header}
-                </TableHeader>
-              ))}
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {rows.map((row, i) => (
-              <TableRow key={i} {...getRowProps({ row })}>
-                <TableSelectRow {...getSelectionProps({ row })} />
-                {row.cells.map((cell) => (
-                  <TableCell key={cell.id}>{cell.value}</TableCell>
-                ))}
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </TableContainer>
-    )}
-  </DataTable>
-);
-export const Playground = (args) => (
+export const Default = (args) => (
   <DataTable rows={rows} headers={headers} {...args}>
     {({
       rows,
@@ -177,6 +63,7 @@ export const Playground = (args) => (
       getSelectionProps,
       getTableProps,
       getTableContainerProps,
+      getCellProps,
     }) => (
       <TableContainer
         title="DataTable"
@@ -198,9 +85,8 @@ export const Playground = (args) => (
             </TableRow>
           </TableHead>
           <TableBody>
-            {rows.map((row, i) => (
+            {rows.map((row) => (
               <TableRow
-                key={i}
                 {...getRowProps({ row })}
                 onClick={(evt) => {
                   action('TableRow onClick')(evt);
@@ -210,7 +96,9 @@ export const Playground = (args) => (
                   onChange={action('TableSelectRow - onChange')}
                 />
                 {row.cells.map((cell) => (
-                  <TableCell key={cell.id}>{cell.value}</TableCell>
+                  <TableCell {...getCellProps({ cell })}>
+                    {cell.value}
+                  </TableCell>
                 ))}
               </TableRow>
             ))}
@@ -221,35 +109,102 @@ export const Playground = (args) => (
   </DataTable>
 );
 
-Playground.argTypes = {
-  filterRows: {
-    table: {
-      disable: true,
-    },
-  },
-  headers: {
-    table: {
-      disable: true,
-    },
-  },
-  overflowMenuOnHover: {
-    table: {
-      disable: true,
-    },
-  },
-  rows: {
-    table: {
-      disable: true,
-    },
-  },
-  translateWithId: {
-    table: {
-      disable: true,
-    },
-  },
-  sortRow: {
-    table: {
-      disable: true,
-    },
-  },
+export const WithRadioSelection = (args) => (
+  <DataTable rows={rows} headers={headers} {...args}>
+    {({
+      rows,
+      headers,
+      getHeaderProps,
+      getRowProps,
+      getSelectionProps,
+      getTableProps,
+      getTableContainerProps,
+      getCellProps,
+    }) => (
+      <TableContainer
+        title="DataTable"
+        description="With radio selection"
+        {...getTableContainerProps()}>
+        <Table {...getTableProps()} aria-label="sample table">
+          <TableHead>
+            <TableRow>
+              <th scope="col" />
+              {headers.map((header, i) => (
+                <TableHeader key={i} {...getHeaderProps({ header })}>
+                  {header.header}
+                </TableHeader>
+              ))}
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {rows.map((row) => (
+              <TableRow {...getRowProps({ row })}>
+                <TableSelectRow {...getSelectionProps({ row })} />
+                {row.cells.map((cell) => (
+                  <TableCell {...getCellProps({ cell })}>
+                    {cell.value}
+                  </TableCell>
+                ))}
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </TableContainer>
+    )}
+  </DataTable>
+);
+
+WithRadioSelection.args = { radio: true };
+WithRadioSelection.argTypes = {
+  radio: { table: { readonly: true } },
+};
+
+export const WithSelectionAndSorting = (args) => (
+  <DataTable rows={rows} headers={headers} {...args}>
+    {({
+      rows,
+      headers,
+      getHeaderProps,
+      getRowProps,
+      getSelectionProps,
+      getTableProps,
+      getTableContainerProps,
+      getCellProps,
+    }) => (
+      <TableContainer
+        title="DataTable"
+        description="With selection"
+        {...getTableContainerProps()}>
+        <Table {...getTableProps()} aria-label="sample table">
+          <TableHead>
+            <TableRow>
+              <TableSelectAll {...getSelectionProps()} />
+              {headers.map((header, i) => (
+                <TableHeader key={i} {...getHeaderProps({ header })}>
+                  {header.header}
+                </TableHeader>
+              ))}
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {rows.map((row) => (
+              <TableRow {...getRowProps({ row })}>
+                <TableSelectRow {...getSelectionProps({ row })} />
+                {row.cells.map((cell) => (
+                  <TableCell {...getCellProps({ cell })}>
+                    {cell.value}
+                  </TableCell>
+                ))}
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </TableContainer>
+    )}
+  </DataTable>
+);
+
+WithSelectionAndSorting.args = { isSortable: true };
+WithSelectionAndSorting.argTypes = {
+  isSortable: { table: { readonly: true } },
 };

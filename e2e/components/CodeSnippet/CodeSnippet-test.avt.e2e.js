@@ -32,7 +32,7 @@ test.describe('@avt CodeSnippet', () => {
     });
 
     await expect(page.getByRole('button')).toBeVisible();
-    page.getByRole('button').hover();
+    await page.getByRole('button').hover();
     await expect(page).toHaveNoACViolations('CodeSnippet inline hover');
   });
 
@@ -82,6 +82,20 @@ test.describe('@avt CodeSnippet', () => {
       },
     });
     await expect(page).toHaveNoACViolations('CodeSnippet skeleton');
+  });
+
+  test('@avt-advanced-states multi skeleton', async ({ page }) => {
+    await visitStory(page, {
+      component: 'CodeSnippet',
+      id: 'components-codesnippet--skeleton',
+      globals: {
+        theme: 'white',
+      },
+      args: {
+        type: 'multi',
+      },
+    });
+    await expect(page).toHaveNoACViolations('CodeSnippet multi skeleton');
   });
 
   test('@avt-keyboard-nav inline', async ({ page }) => {
@@ -150,13 +164,5 @@ test.describe('@avt CodeSnippet', () => {
 
     // Checking the Arrow navigation
     await page.keyboard.press('Shift+Tab');
-
-    await expect(
-      page.locator('div.cds--snippet__overflow-indicator--right')
-    ).toBeVisible();
-    await page.keyboard.press('ArrowRight');
-    await expect(
-      page.locator('div.cds--snippet__overflow-indicator--left')
-    ).toBeVisible();
   });
 });

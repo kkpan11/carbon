@@ -1,5 +1,5 @@
 /**
- * Copyright IBM Corp. 2016, 2023
+ * Copyright IBM Corp. 2016, 2026
  *
  * This source code is licensed under the Apache-2.0 license found in the
  * LICENSE file in the root directory of this source tree.
@@ -7,21 +7,26 @@
 
 import PropTypes from 'prop-types';
 import React, {
+  Children,
+  cloneElement,
   createContext,
-  ReactElement,
-  ReactNode,
+  useEffect,
   useRef,
   useState,
+  type ReactNode,
 } from 'react';
 import classNames from 'classnames';
-import type { RadioButtonProps } from '../RadioButton';
-import { Legend } from '../Text';
+import RadioButton, { type RadioButtonProps } from '../RadioButton';
+import { Text } from '../Text';
 import { usePrefix } from '../../internal/usePrefix';
 import { WarningFilled, WarningAltFilled } from '@carbon/icons-react';
-import mergeRefs from '../../tools/mergeRefs';
-import setupGetInstanceId from '../../tools/setupGetInstanceId';
-
-const getInstanceId = setupGetInstanceId();
+import { deprecate } from '../../prop-types/deprecate';
+import { mergeRefs } from '../../tools/mergeRefs';
+import { useId } from '../../internal/useId';
+import { hasHelperText } from '../../internal/hasHelperText';
+import { AILabel } from '../AILabel';
+import { isComponentElement } from '../../internal';
+import { useNoInteractiveChildrenForLabel } from '../FeatureFlags/useNoInteractiveChildrenForLabel';
 
 export const RadioButtonGroupContext = createContext(null);
 
@@ -41,6 +46,11 @@ export interface RadioButtonGroupProps
    * Provide an optional className to be applied to the container node
    */
   className?: string;
+
+  /**
+   * **Experimental**: Provide a decorator component to be rendered inside the `RadioButtonGroup` component
+   */
+  decorator?: ReactNode;
 
   /**
    * Specify the `<RadioButton>` to be selected by default
@@ -104,6 +114,7 @@ export interface RadioButtonGroupProps
   readOnly?: boolean;
 
   /**
+   * @deprecated please use decorator instead.
    * **Experimental**: Provide a `Slug` component to be rendered inside the `RadioButtonGroup` component
    */
   slug?: ReactNode;
@@ -134,6 +145,7 @@ const RadioButtonGroup = React.forwardRef(
     const {
       children,
       className,
+      decorator,
       defaultSelected,
       disabled,
       helperText,
@@ -155,43 +167,38 @@ const RadioButtonGroup = React.forwardRef(
     const prefix = usePrefix();
 
     const [selected, setSelected] = useState(valueSelected ?? defaultSelected);
-    const [prevValueSelected, setPrevValueSelected] = useState(valueSelected);
+    const prevValueSelected = useRef(valueSelected);
 
-    const { current: radioButtonGroupInstanceId } = useRef(getInstanceId());
+    const radioButtonGroupInstanceId = useId();
 
-    /**
-     * prop + state alignment - getDerivedStateFromProps
-     * only update if selected prop changes
-     */
-    if (valueSelected !== prevValueSelected) {
-      setSelected(valueSelected);
-      setPrevValueSelected(valueSelected);
-    }
+    useEffect(() => {
+      if (valueSelected !== prevValueSelected.current) {
+        setSelected(valueSelected);
+        prevValueSelected.current = valueSelected;
+      }
+    }, [valueSelected]);
 
     function getRadioButtons() {
-      const mappedChildren = React.Children.map(
-        children as ReactElement<RadioButtonProps>,
-        (radioButton) => {
-          if (!radioButton) {
-            return;
-          }
-
-          const newProps = {
-            name: name,
-            key: radioButton.props.value,
-            value: radioButton.props.value,
-            onChange: handleOnChange,
-            checked: radioButton.props.value === selected,
-            required: required,
-          };
-
-          if (!selected && radioButton.props.checked) {
-            newProps.checked = true;
-          }
-
-          return React.cloneElement(radioButton, newProps);
+      const mappedChildren = Children.map(children, (radioButton) => {
+        if (!isComponentElement(radioButton, RadioButton)) {
+          return radioButton;
         }
-      );
+
+        const newProps = {
+          name: name,
+          key: radioButton.props.value,
+          value: radioButton.props.value,
+          onChange: handleOnChange,
+          checked: radioButton.props.value === selected,
+          required: required,
+        };
+
+        if (!selected && radioButton.props.checked) {
+          newProps.checked = true;
+        }
+
+        return cloneElement(radioButton, newProps);
+      });
 
       return mappedChildren;
     }
@@ -209,7 +216,7 @@ const RadioButtonGroup = React.forwardRef(
       }
     }
 
-    const showWarning = !readOnly && !invalid && warn;
+    const showWarning = !readOnly && !disabled && !invalid && warn;
     const showHelper = !invalid && !disabled && !warn;
 
     const wrapperClasses = classNames(`${prefix}--form-item`, className);
@@ -219,35 +226,41 @@ const RadioButtonGroup = React.forwardRef(
         orientation === 'vertical',
       [`${prefix}--radio-button-group--label-${labelPosition}`]: labelPosition,
       [`${prefix}--radio-button-group--readonly`]: readOnly,
-      [`${prefix}--radio-button-group--invalid`]: !readOnly && invalid,
+      [`${prefix}--radio-button-group--invalid`]:
+        !readOnly && !disabled && invalid,
       [`${prefix}--radio-button-group--warning`]: showWarning,
       [`${prefix}--radio-button-group--slug`]: slug,
+      [`${prefix}--radio-button-group--decorator`]: decorator,
     });
 
     const helperClasses = classNames(`${prefix}--form__helper-text`, {
       [`${prefix}--form__helper-text--disabled`]: disabled,
     });
 
-    const helperId = !helperText
+    const hasHelper = hasHelperText(helperText);
+    const helperId = !hasHelper
       ? undefined
       : `radio-button-group-helper-text-${radioButtonGroupInstanceId}`;
 
-    const helper = helperText ? (
+    const helper = hasHelper && (
       <div id={helperId} className={helperClasses}>
         {helperText}
       </div>
-    ) : null;
+    );
 
     const divRef = useRef<HTMLDivElement>(null);
+    const legendRef = useRef<HTMLLegendElement>(null);
 
-    // Slug is always size `mini`
-    let normalizedSlug: ReactElement | undefined;
-    if (slug && slug['type']?.displayName === 'Slug') {
-      normalizedSlug = React.cloneElement(slug as React.ReactElement<any>, {
-        size: 'mini',
-        kind: 'default',
-      });
-    }
+    // AILabel is always size `mini`
+    const candidate = slug ?? decorator;
+    const candidateIsAILabel = isComponentElement(candidate, AILabel);
+    const normalizedDecorator = candidateIsAILabel
+      ? cloneElement(candidate, { size: 'mini', kind: 'default' })
+      : candidate;
+    useNoInteractiveChildrenForLabel(
+      legendRef,
+      'The RadioButtonGroup component `legendText` prop must have no interactive content'
+    );
 
     return (
       <div className={wrapperClasses} ref={mergeRefs(divRef, ref)}>
@@ -255,18 +268,24 @@ const RadioButtonGroup = React.forwardRef(
           className={fieldsetClasses}
           disabled={disabled}
           data-invalid={invalid ? true : undefined}
-          aria-describedby={showHelper && helperText ? helperId : undefined}
+          aria-describedby={showHelper && hasHelper ? helperId : undefined}
           {...rest}>
           {legendText && (
-            <Legend className={`${prefix}--label`}>
+            <Text as="legend" className={`${prefix}--label`} ref={legendRef}>
               {legendText}
-              {normalizedSlug}
-            </Legend>
+            </Text>
           )}
+          {legendText && slug ? (
+            normalizedDecorator
+          ) : legendText && decorator ? (
+            <div className={`${prefix}--radio-button-group-inner--decorator`}>
+              {normalizedDecorator}
+            </div>
+          ) : null}
           {getRadioButtons()}
         </fieldset>
         <div className={`${prefix}--radio-button__validation-msg`}>
-          {!readOnly && invalid && (
+          {!readOnly && !disabled && invalid && (
             <>
               <WarningFilled
                 className={`${prefix}--radio-button__invalid-icon`}
@@ -299,6 +318,11 @@ RadioButtonGroup.propTypes = {
    * Provide an optional className to be applied to the container node
    */
   className: PropTypes.string,
+
+  /**
+   * **Experimental**: Provide a decorator component to be rendered inside the `RadioButtonGroup` component
+   */
+  decorator: PropTypes.node,
 
   /**
    * Specify the `<RadioButton>` to be selected by default
@@ -365,7 +389,10 @@ RadioButtonGroup.propTypes = {
   /**
    * **Experimental**: Provide a `Slug` component to be rendered inside the `RadioButtonGroup` component
    */
-  slug: PropTypes.node,
+  slug: deprecate(
+    PropTypes.node,
+    'The `slug` prop has been deprecated and will be removed in the next major version. Use the decorator prop instead.'
+  ),
 
   /**
    * Specify the value that is currently selected in the group

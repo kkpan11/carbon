@@ -1,5 +1,5 @@
 /**
- * Copyright IBM Corp. 2022
+ * Copyright IBM Corp. 2022, 2026
  *
  * This source code is licensed under the Apache-2.0 license found in the
  * LICENSE file in the root directory of this source tree.
@@ -70,6 +70,68 @@ describe('PasswordInput', () => {
       expect(screen.getByText('This is helper text')).toBeInTheDocument();
       expect(screen.getByText('This is helper text')).toHaveClass(
         `${prefix}--form__helper-text`
+      );
+    });
+
+    it('should warn without throwing for interactive content in labelText', () => {
+      const spy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+
+      expect(() => {
+        render(
+          <PasswordInput
+            id="input-1"
+            labelText={
+              <>
+                PasswordInput label <button type="button">Help</button>
+              </>
+            }
+          />
+        );
+      }).not.toThrow();
+
+      expect(spy).toHaveBeenCalledWith(
+        expect.stringContaining(
+          'Warning: The PasswordInput component `labelText` prop must have no interactive content'
+        )
+      );
+
+      spy.mockRestore();
+    });
+
+    it('should allow non-interactive content in labelText', () => {
+      expect(() => {
+        render(
+          <PasswordInput
+            id="input-1"
+            labelText={
+              <>
+                PasswordInput label <span>additional label content</span>
+              </>
+            }
+          />
+        );
+      }).not.toThrow();
+    });
+
+    it('should render helperText with value 0', () => {
+      render(<PasswordInput id="input-1" labelText="label" helperText={0} />);
+      expect(screen.getByText('0')).toBeInTheDocument();
+    });
+
+    it('should not render helperText when helperText is an empty string', () => {
+      const { container } = render(
+        <PasswordInput
+          id="input-1"
+          labelText="PasswordInput label"
+          helperText=""
+        />
+      );
+
+      expect(
+        container.querySelector(`.${prefix}--form__helper-text`)
+      ).not.toBeInTheDocument();
+      expect(screen.getByLabelText('PasswordInput label')).not.toHaveAttribute(
+        'aria-describedby'
       );
     });
 
@@ -159,6 +221,24 @@ describe('PasswordInput', () => {
       );
     });
 
+    it('should set aria-errormessage to the invalid message element id', () => {
+      render(
+        <PasswordInput
+          id="input-1"
+          labelText="PasswordInput label"
+          invalid
+          invalidText="This is invalid text"
+        />
+      );
+
+      const input = screen.getByLabelText('PasswordInput label');
+      expect(input).toHaveAttribute('aria-errormessage', 'input-1-error-msg');
+      expect(screen.getByText('This is invalid text')).toHaveAttribute(
+        'id',
+        'input-1-error-msg'
+      );
+    });
+
     it('should respect labelText prop', () => {
       render(<PasswordInput id="input-1" labelText="TextInput label" />);
 
@@ -166,6 +246,11 @@ describe('PasswordInput', () => {
       expect(screen.getByText('TextInput label')).toHaveClass(
         `${prefix}--label`
       );
+    });
+
+    it('should render labelText with value 0', () => {
+      render(<PasswordInput id="input-1" labelText={0} />);
+      expect(screen.getByText('0')).toBeInTheDocument();
     });
 
     it('should respect placeholder prop', () => {
@@ -195,13 +280,18 @@ describe('PasswordInput', () => {
     });
 
     it('should respect size prop', () => {
-      render(
+      const { container } = render(
         <PasswordInput id="input-1" labelText="PasswordInput label" size="sm" />
       );
 
       expect(screen.getByLabelText('PasswordInput label')).toHaveClass(
         `${prefix}--text-input--sm`
       );
+
+      const fieldWrapper = container.querySelector(
+        `.${prefix}--text-input__field-wrapper`
+      );
+      expect(fieldWrapper).toHaveClass(`${prefix}--layout--size-sm`);
     });
 
     it('should respect type prop', () => {
@@ -312,7 +402,7 @@ describe('PasswordInput', () => {
       );
     });
 
-    it('should call onTogglePasswordVisibility when visiblity button is clicked', async () => {
+    it('should call onTogglePasswordVisibility when visibility button is clicked', async () => {
       render(<PasswordInput id="input-1" labelText="PasswordInput label" />);
 
       expect(screen.getByText('Show password')).toBeInTheDocument();
@@ -362,6 +452,64 @@ describe('PasswordInput', () => {
       expect(ref).toHaveBeenCalledWith(
         screen.getByLabelText('PasswordInput label')
       );
+    });
+
+    it('should render input as read-only when readOnly is true', () => {
+      const { getByPlaceholderText } = render(
+        <PasswordInput
+          id="input-1"
+          labelText="PasswordInput label"
+          placeholder="Enter password"
+          readOnly
+        />
+      );
+      const inputElement = getByPlaceholderText('Enter password');
+      expect(inputElement).toHaveAttribute('readonly');
+    });
+
+    it('should not disable hide toggle button when readOnly is true', () => {
+      const { getByRole } = render(
+        <PasswordInput
+          id="input-1"
+          labelText="PasswordInput label"
+          placeholder="Enter password"
+          readOnly
+        />
+      );
+      const toggleButton = getByRole('button');
+      expect(toggleButton).not.toBeDisabled();
+    });
+
+    it('should allow toggling password visibility when readOnly is true', async () => {
+      render(
+        <PasswordInput
+          id="input-1"
+          labelText="TextInput label"
+          hidePasswordLabel="Hide Password"
+          showPasswordLabel="Show Password"
+          readOnly
+        />
+      );
+
+      await userEvent.click(screen.getByRole('button'));
+      expect(screen.getByText('Hide Password')).toBeInTheDocument();
+
+      await userEvent.click(screen.getByRole('button'));
+      expect(screen.getByText('Show Password')).toBeInTheDocument();
+    });
+
+    it('should not allow input change when readOnly is true', () => {
+      const { getByPlaceholderText } = render(
+        <PasswordInput
+          id="input-1"
+          labelText="PasswordInput label"
+          placeholder="Enter password"
+          readOnly
+        />
+      );
+      const inputElement = getByPlaceholderText('Enter password');
+      userEvent.type(inputElement, 'newpassword');
+      expect(inputElement.value).toBe('');
     });
   });
 });

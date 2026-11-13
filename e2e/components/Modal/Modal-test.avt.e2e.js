@@ -34,8 +34,6 @@ test.describe('@avt Modal', () => {
     const button = page.getByRole('button', { name: 'Launch modal' });
 
     // Open the modal via keyboard navigation
-    await page.keyboard.press('Tab');
-    await expect(button).toBeFocused();
     button.press('Enter');
 
     // The first interactive item in the modal should be focused once the modal is open
@@ -65,7 +63,7 @@ test.describe('@avt Modal', () => {
     // Press the close button on Enter or Space
     await page.keyboard.press('Enter');
 
-    // The modal should no longer be open/visisble
+    // The modal should no longer be open/visible
     await expect(page.getByRole('dialog')).toBeHidden();
     // Focus moves to the button that opened the Modal
     await expect(button).toBeFocused();
@@ -116,5 +114,53 @@ test.describe('@avt Modal', () => {
     await expect(page.getByRole('button', { name: 'close' })).toBeFocused();
     await page.keyboard.press('Tab');
     await expect(page.getByRole('button', { name: 'close' })).toBeFocused();
+  });
+
+  test('@avt-keyboard-nav should only scrollIntoView interactive elements if necessary', async ({
+    page,
+  }) => {
+    await visitStory(page, {
+      component: 'Modal',
+      id: 'components-modal--with-scrolling-content',
+      globals: {
+        theme: 'white',
+      },
+    });
+
+    const primaryInput = page.getByRole('textbox', { name: 'Domain name' });
+    await expect(primaryInput).toBeFocused();
+
+    const modalContent = page.locator('.cds--modal-content');
+    await expect(modalContent).toHaveClass(/cds--modal-scroll-content/);
+
+    const isScrollable = await modalContent.evaluate(
+      (node) => node.scrollHeight > node.clientHeight
+    );
+    expect(isScrollable).toBe(true);
+
+    const initialScrollTop = await modalContent.evaluate(
+      (node) => node.scrollTop
+    );
+
+    await page.keyboard.press('Tab');
+    await expect(page.getByRole('combobox', { name: 'Region' })).toBeFocused();
+
+    // scrollIntoView should only run when needed, not on every tab stop.
+    const scrollTopAfterFirstTab = await modalContent.evaluate(
+      (node) => node.scrollTop
+    );
+    expect(scrollTopAfterFirstTab).toBe(initialScrollTop);
+
+    await page.keyboard.press('Tab');
+    await expect(
+      page.getByRole('combobox', {
+        name: 'Permissions (Example of Floating UI)',
+      })
+    ).toBeFocused();
+
+    const scrollTopAfterSecondTab = await modalContent.evaluate(
+      (node) => node.scrollTop
+    );
+    expect(scrollTopAfterSecondTab).toBe(initialScrollTop);
   });
 });

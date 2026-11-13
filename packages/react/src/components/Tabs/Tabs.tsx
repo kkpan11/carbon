@@ -1,47 +1,59 @@
 /**
- * Copyright IBM Corp. 2016, 2023
+ * Copyright IBM Corp. 2016, 2026
  *
  * This source code is licensed under the Apache-2.0 license found in the
  * LICENSE file in the root directory of this source tree.
  */
 
-import { ChevronLeft, ChevronRight } from '@carbon/icons-react';
+import {
+  ChevronLeft,
+  ChevronRight,
+  type CarbonIconType,
+} from '@carbon/icons-react';
 import { breakpoints } from '@carbon/layout';
 import cx from 'classnames';
-import debounce from 'lodash.debounce';
+import { debounce } from 'es-toolkit/compat';
 import PropTypes from 'prop-types';
 import React, {
-  useCallback,
-  useState,
-  useRef,
-  useEffect,
+  Children,
+  cloneElement,
+  createContext,
   forwardRef,
-  type ReactNode,
-  type MouseEvent,
-  type KeyboardEvent,
-  type SyntheticEvent,
-  type HTMLAttributes,
-  type RefObject,
+  isValidElement,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ComponentProps,
   type ComponentType,
-  type ReactHTML,
   type ElementType,
+  type HTMLAttributes,
+  type HTMLElementType,
+  type KeyboardEvent,
+  type MouseEvent,
+  type ReactNode,
+  type RefObject,
 } from 'react';
-import { isElement } from 'react-is';
+import { Grid } from '../Grid';
 import { Tooltip } from '../Tooltip';
 import { useControllableState } from '../../internal/useControllableState';
-import { useEffectOnce } from '../../internal/useEffectOnce';
 import { useId } from '../../internal/useId';
 import useIsomorphicEffect from '../../internal/useIsomorphicEffect';
 import { useMergedRefs } from '../../internal/useMergedRefs';
-import { getInteractiveContent } from '../../internal/useNoInteractiveChildren';
 import { usePrefix } from '../../internal/usePrefix';
 import { keys, match, matches } from '../../internal/keyboard';
 import { usePressable } from './usePressable';
-import deprecate from '../../prop-types/deprecate';
+import { deprecate } from '../../prop-types/deprecate';
 import { Close } from '@carbon/icons-react';
 import { useEvent } from '../../internal/useEvent';
 import { useMatchMedia } from '../../internal/useMatchMedia';
 import { Text } from '../Text';
+import BadgeIndicator from '../BadgeIndicator';
+import { isComponentElement } from '../../internal';
+
+const buttonWidth = 44;
+const verticalTabHeight = 64;
 
 // Used to manage the overall state of the Tabs
 type TabsContextType = {
@@ -76,6 +88,7 @@ const TabContext = React.createContext<{
 });
 
 const lgMediaQuery = `(min-width: ${breakpoints.lg.width})`;
+const smMediaQuery = `(max-width: ${breakpoints.md.width})`;
 
 // Used to keep track of position in a list of tab panels
 const TabPanelContext = React.createContext<number>(0);
@@ -132,6 +145,12 @@ function Tabs({
   onTabCloseRequest,
 }: TabsProps) {
   const baseId = useId('ccs');
+  if (dismissable && !onTabCloseRequest) {
+    // eslint-disable-next-line no-console
+    console.error(
+      'dismissable property specified without also providing an onTabCloseRequest property.'
+    );
+  }
   // The active index is used to track the element which has focus in our tablist
   const [activeIndex, setActiveIndex] = useState(defaultSelectedIndex);
   // The selected index is used for the tab/panel pairing which is "visible"
@@ -199,12 +218,106 @@ Tabs.propTypes = {
   selectedIndex: PropTypes.number,
 };
 
+export interface TabsVerticalProps {
+  /**
+   * Provide child elements to be rendered inside the `TabsVertical`.
+   * These elements should render either `TabsListVertical` or `TabsPanels`
+   */
+  children?: ReactNode;
+
+  /**
+   * Specify which content tab should be initially selected when the component
+   * is first rendered
+   */
+  defaultSelectedIndex?: number;
+
+  /**
+   * Option to set a height style only if using vertical variation
+   */
+  height?: string;
+
+  /**
+   * Provide an optional function which is called
+   * whenever the state of the `Tabs` changes
+   */
+  onChange?(state: { selectedIndex: number }): void;
+
+  /**
+   * Control which content panel is currently selected. This puts the component
+   * in a controlled mode and should be used along with `onChange`
+   */
+  selectedIndex?: number;
+}
+
+function TabsVertical({
+  children,
+  height,
+  defaultSelectedIndex = 0,
+  onChange,
+  selectedIndex: controlledSelectedIndex,
+  ...rest
+}: TabsVerticalProps) {
+  const [selectedIndex, setSelectedIndex] = useControllableState({
+    value: controlledSelectedIndex,
+    defaultValue: defaultSelectedIndex,
+    onChange: (value) => onChange?.({ selectedIndex: value }),
+  });
+
+  const props = {
+    ...rest,
+    selectedIndex,
+    onChange: ({ selectedIndex }) => setSelectedIndex(selectedIndex),
+  };
+
+  const isSm = useMatchMedia(smMediaQuery);
+
+  if (!isSm) {
+    return (
+      <Grid style={{ height: height }}>
+        <Tabs {...props}>{children}</Tabs>
+      </Grid>
+    );
+  }
+  return <Tabs {...props}>{children}</Tabs>;
+}
+
+TabsVertical.propTypes = {
+  /**
+   * Provide child elements to be rendered inside the `TabsVertical`.
+   * These elements should render either `TabsListVertical` or `TabsPanels`
+   */
+  children: PropTypes.node,
+
+  /**
+   * Specify which content tab should be initially selected when the component
+   * is first rendered
+   */
+  defaultSelectedIndex: PropTypes.number,
+
+  /**
+   * Option to set a height style only if using vertical variation
+   */
+  height: PropTypes.string,
+
+  /**
+   * Provide an optional function which is called whenever the state of the
+   * `Tabs` changes
+   */
+  onChange: PropTypes.func,
+
+  /**
+   * Control which content panel is currently selected. This puts the component
+   * in a controlled mode and should be used along with `onChange`
+   */
+  selectedIndex: PropTypes.number,
+};
+
 /**
  * Get the next index for a given keyboard event
  * given a count of the total items and the current index
  */
 function getNextIndex(
-  event: SyntheticEvent,
+  event: KeyboardEvent,
   total: number,
   index: number
 ): number {
@@ -213,6 +326,33 @@ function getNextIndex(
       return (index + 1) % total;
 
     case match(event, keys.ArrowLeft):
+      return (total + index - 1) % total;
+
+    case match(event, keys.Home):
+      return 0;
+
+    case match(event, keys.End):
+      return total - 1;
+
+    default:
+      return index;
+  }
+}
+
+/**
+ * Get the next index for a given keyboard event
+ * given a count of the total items and the current index
+ */
+function getNextIndexVertical(
+  event: KeyboardEvent,
+  total: number,
+  index: number
+): number {
+  switch (true) {
+    case match(event, keys.ArrowDown):
+      return (index + 1) % total;
+
+    case match(event, keys.ArrowUp):
       return (total + index - 1) % total;
 
     case match(event, keys.Home):
@@ -241,7 +381,7 @@ export interface TabListProps extends DivAttributes {
    * Provide an accessible label to be read when a user interacts with this
    * component
    */
-  'aria-label': string;
+  'aria-label'?: string;
 
   /**
    * Provide child elements to be rendered inside `ContentTabs`.
@@ -296,6 +436,14 @@ export interface TabListProps extends DivAttributes {
    * on component rerender
    */
   scrollIntoView?: boolean;
+
+  /**
+   * Specify the size of the tabs.
+   *
+   * Supports `sm` and `md` for line tabs.
+   * Supports `sm`, `md`, and `lg` for contained tabs.
+   */
+  size?: 'sm' | 'md' | 'lg';
 }
 type TabElement = HTMLElement & { disabled?: boolean };
 
@@ -312,6 +460,7 @@ function TabList({
   rightOverflowButtonProps,
   scrollDebounceWait = 200,
   scrollIntoView,
+  size,
   ...rest
 }: TabListProps) {
   const {
@@ -322,18 +471,28 @@ function TabList({
     dismissable,
   } = React.useContext(TabsContext);
   const prefix = usePrefix();
+  const containerRef = useRef<HTMLDivElement>(null);
   const ref = useRef<HTMLDivElement>(null);
   const previousButton = useRef<HTMLButtonElement>(null);
   const nextButton = useRef<HTMLButtonElement>(null);
+  const resizeAnimationFrame = useRef<number>(null);
   const [isScrollable, setIsScrollable] = useState(false);
   const [scrollLeft, setScrollLeft] = useState<number>(0);
 
-  let hasSecondaryLabelTabs = false;
-  if (contained) {
-    hasSecondaryLabelTabs = React.Children.toArray(children).some((child) => {
-      return isElement(child) && !!child.props.secondaryLabel;
-    });
-  }
+  // In RTL mode, browsers report scrollLeft as 0 at the visual right edge
+  // and negative as content scrolls left.
+  const isRTL = useCallback(() => {
+    if (!containerRef.current) return false;
+    return getComputedStyle(containerRef.current).direction === 'rtl';
+  }, []);
+
+  const hasSecondaryLabelTabs =
+    contained &&
+    Children.toArray(children).some(
+      (child) =>
+        isComponentElement(child, Tab) &&
+        typeof child.props.secondaryLabel !== 'undefined'
+    );
 
   const isLg = useMatchMedia(lgMediaQuery);
 
@@ -351,6 +510,10 @@ function TabList({
       [`${prefix}--tabs__icon--default`]: iconSize === 'default',
       [`${prefix}--tabs__icon--lg`]: iconSize === 'lg', // TODO: V12 - Remove this class
       [`${prefix}--layout--size-lg`]: iconSize === 'lg',
+      [`${prefix}--layout--size-${size}`]:
+        size &&
+        !hasSecondaryLabelTabs &&
+        (contained || size === 'sm' || size === 'md'),
       [`${prefix}--tabs--tall`]: hasSecondaryLabelTabs,
       [`${prefix}--tabs--full-width`]: distributeWidth,
       [`${prefix}--tabs--dismissable`]: dismissable,
@@ -358,25 +521,35 @@ function TabList({
     customClassName
   );
 
-  // Previous Button
-  // VISIBLE IF:
-  //   SCROLLABLE
-  //   AND SCROLL_LEFT > 0
-  const buttonWidth = 44;
-  // Next Button
-  // VISIBLE IF:
-  //   SCROLLABLE
-  //   AND SCROLL_LEFT + CLIENT_WIDTH < SCROLL_WIDTH
   const [isNextButtonVisible, setIsNextButtonVisible] = useState(
     ref.current
-      ? scrollLeft + buttonWidth + ref.current.clientWidth <
-          ref.current.scrollWidth
+      ? scrollLeft + ref.current.clientWidth < ref.current.scrollWidth
       : false
   );
+  const [isPreviousButtonVisible, setIsPreviousButtonVisible] = useState(false);
 
-  const isPreviousButtonVisible = ref.current
-    ? isScrollable && scrollLeft > 0
-    : false;
+  const updateOverflowState = useCallback(() => {
+    if (!containerRef.current || !ref.current) {
+      return;
+    }
+
+    // adding 1 in calculations for Firefox support
+    const hasOverflow =
+      ref.current.scrollWidth > containerRef.current.clientWidth + 1;
+
+    // In RTL scrollLeft is negative; normalise to a non-negative distance
+    // from start. In LTR keep the raw value (always ≥ 0 in real browsers).
+    const normalizedScroll = isRTL()
+      ? Math.abs(ref.current.scrollLeft)
+      : ref.current.scrollLeft;
+    setIsPreviousButtonVisible(hasOverflow && normalizedScroll > 0);
+    setIsNextButtonVisible(
+      hasOverflow &&
+        normalizedScroll + ref.current.clientWidth + 1 < ref.current.scrollWidth
+    );
+    setIsScrollable(hasOverflow);
+  }, [isRTL]);
+
   const previousButtonClasses = cx(
     `${prefix}--tab--overflow-nav-button`,
     `${prefix}--tab--overflow-nav-button--previous`,
@@ -393,11 +566,28 @@ function TabList({
   );
 
   const tabs = useRef<TabElement[]>([]);
-  const debouncedOnScroll = useCallback(() => {
-    return debounce((event) => {
-      setScrollLeft(event.target.scrollLeft);
-    }, scrollDebounceWait);
-  }, [scrollDebounceWait]);
+  const debouncedUpdateScroll = useMemo(
+    () =>
+      debounce(() => {
+        if (ref.current) {
+          setScrollLeft(ref.current.scrollLeft);
+        }
+      }, scrollDebounceWait),
+    [scrollDebounceWait]
+  );
+
+  useEffect(() => {
+    return () => {
+      debouncedUpdateScroll.cancel();
+    };
+  }, [debouncedUpdateScroll]);
+
+  const handleScroll = useCallback(() => {
+    // Keep the overflow controls in sync with smooth scrolling while the
+    // scroll position state continues to respect scrollDebounceWait.
+    updateOverflowState();
+    debouncedUpdateScroll();
+  }, [debouncedUpdateScroll, updateOverflowState]);
 
   function onKeyDown(event: KeyboardEvent) {
     if (
@@ -405,9 +595,9 @@ function TabList({
     ) {
       event.preventDefault();
 
-      const filtredTabs = tabs.current.filter((tab) => tab !== null);
+      const filteredTabs = tabs.current.filter((tab) => tab !== null);
 
-      const activeTabs: TabElement[] = filtredTabs.filter(
+      const activeTabs: TabElement[] = filteredTabs.filter(
         (tab) => !tab.disabled
       );
 
@@ -427,87 +617,32 @@ function TabList({
     }
   }
 
-  useEffectOnce(() => {
-    const tab = tabs.current[selectedIndex];
-    if (scrollIntoView && tab) {
-      tab.scrollIntoView({
-        block: 'nearest',
-        inline: 'nearest',
-      });
+  function handleBlur({
+    relatedTarget: currentActiveNode,
+  }: React.FocusEvent<HTMLDivElement>) {
+    if (ref.current?.contains(currentActiveNode)) {
+      return;
     }
-  });
-
-  useEffect(() => {
-    //adding 1 in calculation for firefox support
-    setIsNextButtonVisible(
-      ref.current
-        ? scrollLeft + buttonWidth + ref.current.clientWidth + 1 <
-            ref.current.scrollWidth
-        : false
-    );
-
-    if (dismissable) {
-      if (ref.current) {
-        setIsScrollable(ref.current.scrollWidth > ref.current.clientWidth);
-      }
+    // reset active index to selected tab index for manual activation
+    if (activation === 'manual') {
+      setActiveIndex(selectedIndex);
     }
-  }, [scrollLeft, children, dismissable, isScrollable]);
+  }
 
-  useEffectOnce(() => {
-    if (tabs.current[selectedIndex]?.disabled) {
-      const activeTabs = tabs.current.filter((tab) => {
-        return !tab.disabled;
-      });
-
-      if (activeTabs.length > 0) {
-        const tab = activeTabs[0];
-        setSelectedIndex(tabs.current.indexOf(tab));
-      }
-    }
-  });
-
-  useIsomorphicEffect(() => {
-    if (ref.current) {
-      //adding 1 in calculation for firefox support
-      setIsScrollable(ref.current.scrollWidth > ref.current.clientWidth + 1);
-    }
-
-    function handler() {
-      if (ref.current) {
-        //adding 1 in calculation for firefox support
-        setIsScrollable(ref.current.scrollWidth > ref.current.clientWidth + 1);
-      }
-    }
-
-    const debouncedHandler = debounce(handler, 200);
-    window.addEventListener('resize', debouncedHandler);
-    return () => {
-      debouncedHandler.cancel();
-      window.removeEventListener('resize', debouncedHandler);
-    };
-  }, []);
-
-  // updates scroll location for all scroll behavior.
-  useIsomorphicEffect(() => {
-    if (scrollLeft !== null && ref.current) {
-      ref.current.scrollLeft = scrollLeft;
-    }
-  }, [scrollLeft]);
-
-  useIsomorphicEffect(() => {
+  /**
+   * Scroll the tab into view if it is not already visible
+   * @param tab - The tab to scroll into view
+   * @returns {void}
+   */
+  function scrollTabIntoView(tab) {
     if (!isScrollable || !ref.current) {
       return;
     }
-
-    const tab =
-      activation === 'manual'
-        ? tabs.current[activeIndex]
-        : tabs.current[selectedIndex];
     if (tab) {
       // The width of the "scroll buttons"
+      const { width: tabWidth } = tab.getBoundingClientRect();
 
       // The start and end position of the selected tab
-      const { width: tabWidth } = tab.getBoundingClientRect();
       const start = tab.offsetLeft;
       const end = tab.offsetLeft + tabWidth;
 
@@ -526,51 +661,151 @@ function TabList({
         setScrollLeft(end + buttonWidth - ref.current.clientWidth);
       }
     }
-  }, [activation, activeIndex, selectedIndex, isScrollable, children]);
+  }
+
+  useEffect(() => {
+    const tab = tabs.current[selectedIndex];
+    if (scrollIntoView && tab) {
+      tab.scrollIntoView({
+        block: 'nearest',
+        inline: 'nearest',
+      });
+    }
+    // eslint-disable-next-line  react-hooks/exhaustive-deps -- https://github.com/carbon-design-system/carbon/issues/20452
+  }, []);
+
+  useEffect(() => {
+    updateOverflowState();
+  }, [children, scrollLeft, updateOverflowState]);
+
+  useEffect(() => {
+    if (tabs.current[selectedIndex]?.disabled) {
+      const activeTabs = tabs.current.filter((tab) => {
+        return !tab.disabled;
+      });
+
+      if (activeTabs.length > 0) {
+        const tab = activeTabs[0];
+        setSelectedIndex(tabs.current.indexOf(tab));
+      }
+    }
+    // eslint-disable-next-line  react-hooks/exhaustive-deps -- https://github.com/carbon-design-system/carbon/issues/20452
+  }, []);
+
+  useIsomorphicEffect(() => {
+    const element = containerRef.current;
+    if (!element) {
+      return;
+    }
+
+    updateOverflowState();
+
+    const resizeObserver = new ResizeObserver(() => {
+      if (resizeAnimationFrame.current !== null) {
+        cancelAnimationFrame(resizeAnimationFrame.current);
+      }
+
+      resizeAnimationFrame.current = requestAnimationFrame(() => {
+        resizeAnimationFrame.current = null;
+
+        updateOverflowState();
+      });
+    });
+
+    resizeObserver.observe(element);
+
+    return () => {
+      if (resizeAnimationFrame.current !== null) {
+        cancelAnimationFrame(resizeAnimationFrame.current);
+
+        resizeAnimationFrame.current = null;
+      }
+
+      resizeObserver.disconnect();
+    };
+  }, [updateOverflowState]);
+
+  // updates scroll location for all scroll behavior.
+  useIsomorphicEffect(() => {
+    if (scrollLeft !== null && ref.current) {
+      ref.current.scrollLeft = scrollLeft;
+    }
+  }, [scrollLeft]);
+
+  // scroll manual tabs when active index changes (focus outline movement)
+  useIsomorphicEffect(() => {
+    const tab =
+      activation === 'manual'
+        ? tabs.current[activeIndex]
+        : tabs.current[selectedIndex];
+
+    scrollTabIntoView(tab);
+  }, [activation, activeIndex]);
+
+  // scroll tabs when selected index changes
+  useIsomorphicEffect(() => {
+    const tab = tabs.current[selectedIndex];
+    scrollTabIntoView(tab);
+  }, [selectedIndex, isScrollable, children]);
 
   usePressable(previousButton, {
     onPress({ longPress }) {
       if (!longPress && ref.current) {
-        setScrollLeft(
-          Math.max(
-            scrollLeft - (ref.current.scrollWidth / tabs.current.length) * 1.5,
-            0
-          )
-        );
+        const step = (ref.current.scrollWidth / tabs.current.length) * 1.5;
+        if (isRTL()) {
+          setScrollLeft(Math.min(scrollLeft + step, 0));
+        } else {
+          setScrollLeft(Math.max(scrollLeft - step, 0));
+        }
       }
     },
     onLongPress() {
-      return createLongPressBehavior(ref, 'backward', setScrollLeft);
+      return createLongPressBehavior(
+        ref,
+        isRTL() ? 'forward' : 'backward',
+        setScrollLeft
+      );
     },
   });
 
   usePressable(nextButton, {
     onPress({ longPress }) {
       if (!longPress && ref.current) {
-        setScrollLeft(
-          Math.min(
-            scrollLeft + (ref.current.scrollWidth / tabs.current.length) * 1.5,
-            ref.current.scrollWidth - ref.current.clientWidth
-          )
-        );
+        const step = (ref.current.scrollWidth / tabs.current.length) * 1.5;
+        const maxScroll = ref.current.scrollWidth - ref.current.clientWidth;
+        if (isRTL()) {
+          setScrollLeft(Math.max(scrollLeft - step, -maxScroll));
+        } else {
+          setScrollLeft(Math.min(scrollLeft + step, maxScroll));
+        }
       }
     },
     onLongPress() {
-      return createLongPressBehavior(ref, 'forward', setScrollLeft);
+      return createLongPressBehavior(
+        ref,
+        isRTL() ? 'backward' : 'forward',
+        setScrollLeft
+      );
     },
   });
 
+  // In RTL, CSS swaps the buttons to opposite sides. Pick icons that always
+  // point outward from the tab list regardless of direction.
+  const rtl = isRTL();
+  const PreviousIcon = rtl ? ChevronRight : ChevronLeft;
+  const NextIcon = rtl ? ChevronLeft : ChevronRight;
+
   return (
-    <div className={className}>
+    <div ref={containerRef} className={className}>
       <button
         aria-hidden="true"
         tabIndex={-1}
-        aria-label="Scroll left"
+        aria-label={rtl ? 'Scroll right' : 'Scroll left'}
         ref={previousButton}
         className={previousButtonClasses}
         type="button"
         {...leftOverflowButtonProps}>
-        <ChevronLeft />
+        <PreviousIcon />
       </button>
       {/* eslint-disable-next-line jsx-a11y/interactive-supports-focus */}
       <div
@@ -579,18 +814,21 @@ function TabList({
         ref={ref}
         role="tablist"
         className={`${prefix}--tab--list`}
-        onScroll={debouncedOnScroll}
-        onKeyDown={onKeyDown}>
-        {React.Children.map(children, (child, index) => {
-          return !isElement(child) ? null : (
+        onScroll={handleScroll}
+        onKeyDown={onKeyDown}
+        onBlur={handleBlur}>
+        {Children.map(children, (child, index) => {
+          return !isValidElement<ComponentProps<typeof Tab>>(child) ? null : (
             <TabContext.Provider
               value={{
                 index,
                 hasSecondaryLabel: hasSecondaryLabelTabs,
                 contained,
               }}>
-              {React.cloneElement(child, {
+              {cloneElement(child, {
                 ref: (node) => {
+                  if (!node) return;
+
                   tabs.current[index] = node;
                 },
               })}
@@ -601,12 +839,12 @@ function TabList({
       <button
         aria-hidden="true"
         tabIndex={-1}
-        aria-label="Scroll right"
+        aria-label={rtl ? 'Scroll left' : 'Scroll right'}
         ref={nextButton}
         className={nextButtonClasses}
         type="button"
         {...rightOverflowButtonProps}>
-        <ChevronRight />
+        <NextIcon />
       </button>
     </div>
   );
@@ -623,7 +861,7 @@ TabList.propTypes = {
    * Provide an accessible label to be read when a user interacts with this
    * component
    */
-  'aria-label': PropTypes.string.isRequired,
+  'aria-label': PropTypes.string,
 
   /**
    * Provide child elements to be rendered inside `ContentTabs`.
@@ -682,6 +920,278 @@ TabList.propTypes = {
    * to newly selected tabs on component rerender
    */
   scrollIntoView: PropTypes.bool,
+
+  /**
+   * Specify the size of the tabs.
+   *
+   * Supports `sm` and `md` for line tabs.
+   * Supports `sm`, `md`, and `lg` for contained tabs.
+   */
+  size: PropTypes.oneOf(['sm', 'md', 'lg']),
+};
+
+/**
+ * TabListVertical
+ */
+
+export interface TabListVerticalProps extends DivAttributes {
+  /**
+   * Specify whether the content tab should be activated automatically or
+   * manually
+   */
+  activation?: 'automatic' | 'manual';
+
+  /**
+   * Provide an accessible label to be read when a user interacts with this
+   * component
+   */
+  'aria-label'?: string;
+
+  /**
+   * Provide child elements to be rendered inside `ContentTabs`.
+   * These elements should render a `ContentTab`
+   */
+  children?: ReactNode;
+
+  /**
+   * Specify an optional className to be added to the container node
+   */
+  className?: string;
+
+  /**
+   * Choose whether to automatically scroll to newly selected tabs
+   * on component rerender
+   */
+  scrollIntoView?: boolean;
+
+  /**
+   * Specify the size of the tabs.
+   */
+  size?: 'sm' | 'md' | 'lg' | 'xl';
+}
+// type TabElement = HTMLElement & { disabled?: boolean };
+
+function TabListVertical({
+  activation = 'automatic',
+  'aria-label': label,
+  children,
+  className: customClassName,
+  scrollIntoView,
+  size,
+  ...rest
+}: TabListVerticalProps) {
+  const { activeIndex, selectedIndex, setSelectedIndex, setActiveIndex } =
+    React.useContext(TabsContext);
+  const prefix = usePrefix();
+  const ref = useRef<HTMLDivElement>(null);
+  const [isOverflowingBottom, setIsOverflowingBottom] = useState(false);
+  const [isOverflowingTop, setIsOverflowingTop] = useState(false);
+
+  const isSm = useMatchMedia(smMediaQuery);
+
+  const className = cx(
+    `${prefix}--tabs`,
+    `${prefix}--tabs--vertical`,
+    `${prefix}--tabs--contained`,
+    {
+      [`${prefix}--layout--size-${size}`]: size,
+    },
+    customClassName
+  );
+
+  const tabs = useRef<TabElement[]>([]);
+
+  function onKeyDown(event: KeyboardEvent) {
+    if (matches(event, [keys.ArrowDown, keys.ArrowUp, keys.Home, keys.End])) {
+      event.preventDefault();
+
+      const filteredTabs = tabs.current.filter((tab) => tab !== null);
+
+      const activeTabs: TabElement[] = filteredTabs.filter(
+        (tab) => !tab.disabled
+      );
+
+      const currentIndex = activeTabs.indexOf(
+        tabs.current[activation === 'automatic' ? selectedIndex : activeIndex]
+      );
+      const nextIndex = tabs.current.indexOf(
+        activeTabs[getNextIndexVertical(event, activeTabs.length, currentIndex)]
+      );
+
+      if (activation === 'automatic') {
+        setSelectedIndex(nextIndex);
+      } else if (activation === 'manual') {
+        setActiveIndex(nextIndex);
+      }
+      tabs.current[nextIndex]?.focus();
+    }
+  }
+
+  function handleBlur({
+    relatedTarget: currentActiveNode,
+  }: React.FocusEvent<HTMLDivElement>) {
+    if (ref.current?.contains(currentActiveNode)) {
+      return;
+    }
+    // reset active index to selected tab index for manual activation
+    if (activation === 'manual') {
+      setActiveIndex(selectedIndex);
+    }
+  }
+
+  useEffect(() => {
+    if (tabs.current[selectedIndex]?.disabled) {
+      const activeTabs = tabs.current.filter((tab) => {
+        return !tab.disabled;
+      });
+
+      if (activeTabs.length > 0) {
+        const tab = activeTabs[0];
+        setSelectedIndex(tabs.current.indexOf(tab));
+      }
+    }
+    // eslint-disable-next-line  react-hooks/exhaustive-deps -- https://github.com/carbon-design-system/carbon/issues/20452
+  }, []);
+
+  useEffect(() => {
+    function handler() {
+      const containerHeight = ref.current?.offsetHeight;
+      const containerTop = ref.current?.getBoundingClientRect().top;
+      const selectedPositionTop =
+        tabs.current[selectedIndex]?.getBoundingClientRect().top;
+
+      const halfTabHeight = verticalTabHeight / 2;
+      if (containerTop && containerHeight) {
+        // scrolls so selected tab is in view
+        if (
+          selectedPositionTop - halfTabHeight < containerTop ||
+          selectedPositionTop -
+            containerTop +
+            verticalTabHeight +
+            halfTabHeight >
+            containerHeight
+        ) {
+          ref.current?.scrollTo({
+            top: (selectedIndex - 1) * verticalTabHeight,
+            behavior: 'smooth',
+          });
+        }
+      }
+    }
+
+    window.addEventListener('resize', handler);
+
+    handler();
+
+    return () => {
+      window.removeEventListener('resize', handler);
+    };
+  }, [selectedIndex, scrollIntoView]);
+
+  useEffect(() => {
+    const element = ref.current;
+    if (!element) {
+      return;
+    }
+
+    const handler = () => {
+      const halfTabHeight = verticalTabHeight / 2;
+      setIsOverflowingBottom(
+        element.scrollTop + element.clientHeight + halfTabHeight <=
+          element.scrollHeight
+      );
+      setIsOverflowingTop(element.scrollTop > halfTabHeight);
+    };
+
+    const resizeObserver = new ResizeObserver(() => handler());
+    resizeObserver.observe(element);
+    element.addEventListener('scroll', handler);
+
+    return () => {
+      resizeObserver.disconnect();
+      element.removeEventListener('scroll', handler);
+    };
+  });
+
+  if (isSm) {
+    return (
+      <TabList
+        {...rest}
+        aria-label={label}
+        contained
+        size={size === 'xl' ? 'lg' : size}>
+        {children}
+      </TabList>
+    );
+  }
+
+  return (
+    <div className={className}>
+      {isOverflowingTop && (
+        <div className={`${prefix}--tab--list-gradient_top`}></div>
+      )}
+      {/* eslint-disable-next-line jsx-a11y/interactive-supports-focus */}
+      <div
+        {...rest}
+        aria-label={label}
+        ref={ref}
+        role="tablist"
+        className={`${prefix}--tab--list`}
+        onKeyDown={onKeyDown}
+        onBlur={handleBlur}>
+        {Children.map(children, (child, index) => {
+          return !isValidElement<ComponentProps<typeof Tab>>(child) ? null : (
+            <TabContext.Provider
+              value={{
+                index,
+                hasSecondaryLabel: false,
+              }}>
+              {cloneElement(child, {
+                ref: (node) => {
+                  if (!node) return;
+
+                  tabs.current[index] = node;
+                },
+              })}
+            </TabContext.Provider>
+          );
+        })}
+      </div>
+      {isOverflowingBottom && (
+        <div className={`${prefix}--tab--list-gradient_bottom`}></div>
+      )}
+    </div>
+  );
+}
+
+TabListVertical.propTypes = {
+  /**
+   * Specify whether the content tab should be activated automatically or
+   * manually
+   */
+  activation: PropTypes.oneOf(['automatic', 'manual']),
+
+  /**
+   * Provide an accessible label to be read when a user interacts with this
+   * component
+   */
+  'aria-label': PropTypes.string,
+
+  /**
+   * Provide child elements to be rendered inside `ContentTabs`.
+   * These elements should render a `ContentTab`
+   */
+  children: PropTypes.node,
+
+  /**
+   * Specify an optional className to be added to the container node
+   */
+  className: PropTypes.string,
+
+  /**
+   * Specify the size of the tabs.
+   */
+  size: PropTypes.oneOf(['sm', 'md', 'lg', 'xl']),
 };
 
 /**
@@ -693,7 +1203,7 @@ TabList.propTypes = {
  * when the long press is deactivated
  */
 function createLongPressBehavior(
-  ref: RefObject<HTMLElement>,
+  ref: RefObject<HTMLElement | null>,
   direction: 'forward' | 'backward',
   setScrollLeft
 ) {
@@ -743,7 +1253,7 @@ export interface TabProps extends HTMLAttributes<HTMLElement> {
   /**
    * Provide a custom element to render instead of the default button
    */
-  as?: keyof ReactHTML | ComponentType;
+  as?: HTMLElementType | ComponentType;
 
   /**
    * Provide child elements to be rendered inside `Tab`.
@@ -778,209 +1288,297 @@ export interface TabProps extends HTMLAttributes<HTMLElement> {
   renderButton?(): ReactNode;
 
   /**
-   * Optional prop to render an icon next to the label.
-   * Can be a React component class
+   * A component used to render an icon.
    */
-  renderIcon?: ComponentType<{ size: number }>;
+  renderIcon?: React.ElementType;
 
   /**
    * An optional label to render under the primary tab label.
-   * Only useful for conained tabs.
+   * Only useful for contained tabs.
    */
   secondaryLabel?: string;
 }
 
-const Tab = forwardRef<HTMLElement, TabProps>(function Tab(
-  {
-    as = 'button',
-    children,
-    className: customClassName,
-    disabled,
-    onClick,
-    onKeyDown,
-    secondaryLabel,
-    renderIcon: Icon,
-    ...rest
-  },
-  forwardRef
-) {
-  const prefix = usePrefix();
-  const {
-    selectedIndex,
-    setSelectedIndex,
-    baseId,
-    dismissable,
-    onTabCloseRequest,
-  } = React.useContext(TabsContext);
-  const { index, hasSecondaryLabel, contained } = React.useContext(TabContext);
-  const dismissIconRef = useRef<HTMLButtonElement>(null);
-  const tabRef = useRef<HTMLElement>(null);
-  const ref = useMergedRefs([forwardRef, tabRef]);
-  const [ignoreHover, setIgnoreHover] = useState(false);
-  const id = `${baseId}-tab-${index}`;
-  const panelId = `${baseId}-tabpanel-${index}`;
-  const className = cx(
-    `${prefix}--tabs__nav-item`,
-    `${prefix}--tabs__nav-link`,
+const Tab = forwardRef<HTMLElement, TabProps>(
+  (
     {
-      [`${prefix}--tabs__nav-item--selected`]: selectedIndex === index,
-      [`${prefix}--tabs__nav-item--disabled`]: disabled,
-      [`${prefix}--tabs__nav-item--hover-off`]: ignoreHover,
+      as = 'button',
+      children,
+      className: customClassName,
+      disabled,
+      onClick,
+      onKeyDown,
+      secondaryLabel,
+      renderIcon: Icon,
+      ...rest
     },
-    customClassName
-  );
+    forwardRef
+  ) => {
+    const prefix = usePrefix();
+    const {
+      selectedIndex,
+      setSelectedIndex,
+      baseId,
+      dismissable,
+      onTabCloseRequest,
+    } = React.useContext(TabsContext);
+    const { index, hasSecondaryLabel, contained } =
+      React.useContext(TabContext);
+    const { badgeIndicator } = React.useContext(IconTabContext) || {};
+    const dismissIconRef = useRef<HTMLButtonElement>(null);
+    const tabRef = useRef<HTMLElement>(null);
+    const ref = useMergedRefs([forwardRef, tabRef]);
+    const [ignoreHover, setIgnoreHover] = useState(false);
+    const id = `${baseId}-tab-${index}`;
+    const panelId = `${baseId}-tabpanel-${index}`;
+    const [isEllipsisApplied, setIsEllipsisApplied] = useState(false);
 
-  const BaseComponent = as as ElementType;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- https://github.com/carbon-design-system/carbon/issues/20452
+    const isEllipsisActive = (element: any) => {
+      setIsEllipsisApplied(element.offsetHeight < element.scrollHeight);
+      return element.offsetHeight < element.scrollHeight;
+    };
 
-  const onDismissIconMouseEnter = (evt) => {
-    if (contained && tabRef.current) {
+    const className = cx(
+      `${prefix}--tabs__nav-item`,
+      `${prefix}--tabs__nav-link`,
+      {
+        [`${prefix}--tabs__nav-item--selected`]: selectedIndex === index,
+        [`${prefix}--tabs__nav-item--disabled`]: disabled,
+        [`${prefix}--tabs__nav-item--hover-off`]: ignoreHover,
+      },
+      customClassName
+    );
+
+    const BaseComponent: ElementType = as;
+
+    const onDismissIconMouseEnter = (evt) => {
+      if (contained && tabRef.current) {
+        evt.stopPropagation();
+        setIgnoreHover(true);
+        tabRef.current.classList.add(`${prefix}--tabs__nav-item--hover-off`);
+      }
+    };
+
+    const onDismissIconMouseLeave = () => {
+      if (contained && tabRef.current) {
+        tabRef.current.classList.remove(`${prefix}--tabs__nav-item--hover-off`);
+        setIgnoreHover(false);
+      }
+    };
+
+    useEvent(dismissIconRef, 'mouseover', onDismissIconMouseEnter);
+    useEvent(dismissIconRef, 'mouseleave', onDismissIconMouseLeave);
+
+    useIsomorphicEffect(() => {
+      function handler() {
+        const elementTabId = document.getElementById(`${id}`) || tabRef.current;
+        if (elementTabId?.closest(`.${prefix}--tabs--vertical`)) {
+          const newElement = elementTabId?.getElementsByClassName(
+            `${prefix}--tabs__nav-item-label`
+          )[0];
+          isEllipsisActive(newElement);
+        }
+      }
+      handler();
+      window.addEventListener('resize', handler);
+      return () => {
+        window.removeEventListener('resize', handler);
+      };
+    }, [prefix, id]);
+
+    const handleClose = (evt) => {
       evt.stopPropagation();
-      setIgnoreHover(true);
-      tabRef.current.classList.add(`${prefix}--tabs__nav-item--hover-off`);
-    }
-  };
+      onTabCloseRequest?.(index);
 
-  const onDismissIconMouseLeave = () => {
-    if (contained && tabRef.current) {
-      tabRef.current.classList.remove(`${prefix}--tabs__nav-item--hover-off`);
-      setIgnoreHover(false);
-    }
-  };
+      // set focus after removing tab
+      if (tabRef.current && tabRef.current.parentElement) {
+        // determine number of tabs, excluding disabled
+        const tabCount = Array.from(
+          tabRef.current.parentElement.childNodes
+        ).filter((node) => {
+          if (!(node instanceof HTMLElement)) return false;
 
-  useEvent(dismissIconRef, 'mouseover', onDismissIconMouseEnter);
-  useEvent(dismissIconRef, 'mouseleave', onDismissIconMouseLeave);
+          return (
+            node.classList.contains(`${prefix}--tabs__nav-link`) &&
+            !node.classList.contains(`${prefix}--tabs__nav-item--disabled`)
+          );
+        }).length;
 
-  const handleClose = (evt) => {
-    evt.stopPropagation();
-    onTabCloseRequest?.(index);
+        // if not removing last tab focus on next tab
+        if (tabRef.current && index + 1 !== tabCount) {
+          tabRef.current.focus();
+        }
+        // if removing last tab focus on previous tab
+        else {
+          const prevTabIndex = (tabCount - 2) * 2;
+          const previousTab =
+            tabRef.current.parentElement.childNodes[prevTabIndex];
 
-    // set focus after removing tab
-    if (tabRef.current && tabRef.current.parentElement) {
-      // determine number of tabs, excluding disabled
-      const tabCount = Array.from(
-        tabRef.current.parentElement.childNodes
-      ).filter((node) => {
-        const element = node as HTMLElement;
-        return (
-          element.classList.contains('cds--tabs__nav-link') &&
-          !element.classList.contains('cds--tabs__nav-item--disabled')
-        );
-      }).length;
-
-      // if not removing last tab focus on next tab
-      if (tabRef.current && index + 1 !== tabCount) {
-        tabRef.current.focus();
+          if (previousTab instanceof HTMLElement) {
+            previousTab.focus();
+          }
+        }
       }
-      // if removing last tab focus on previous tab
-      else {
-        const prevTabIndex = (tabCount - 2) * 2;
-        (
-          tabRef.current.parentElement.childNodes[prevTabIndex] as HTMLElement
-        )?.focus();
+    };
+
+    const handleKeyDown = (event) => {
+      if (dismissable && match(event, keys.Delete)) {
+        handleClose(event);
       }
-    }
-  };
+      onKeyDown?.(event);
+    };
 
-  const handleKeyDown = (event) => {
-    if (dismissable && match(event, keys.Delete)) {
-      handleClose(event);
-    }
-    onKeyDown?.(event);
-  };
-
-  const DismissIcon = (
-    <div
-      className={cx({
-        [`${prefix}--tabs__nav-item--close`]: dismissable,
-        [`${prefix}--tabs__nav-item--close--hidden`]: !dismissable,
-      })}>
-      <button
-        type="button"
-        tabIndex={selectedIndex === index && dismissable ? 0 : -1}
-        aria-disabled={disabled}
-        aria-hidden={selectedIndex === index && dismissable ? 'false' : 'true'}
-        disabled={disabled}
+    const DismissIcon = (
+      <div
         className={cx({
-          [`${prefix}--tabs__nav-item--close-icon`]: dismissable,
-          [`${prefix}--visually-hidden`]: !dismissable,
-          [`${prefix}--tabs__nav-item--close-icon--selected`]:
-            selectedIndex === index,
-          [`${prefix}--tabs__nav-item--close-icon--disabled`]: disabled,
-        })}
-        onClick={handleClose}
-        title={`Remove ${typeof children === 'string' ? children : ''} tab`}
-        ref={dismissIconRef}>
-        <Close
+          [`${prefix}--tabs__nav-item--close`]: dismissable,
+          [`${prefix}--tabs__nav-item--close--hidden`]: !dismissable,
+        })}>
+        <button
+          type="button"
+          tabIndex={-1}
+          aria-disabled={disabled}
           aria-hidden={
             selectedIndex === index && dismissable ? 'false' : 'true'
           }
-          aria-label={`Press delete to remove ${
-            typeof children === 'string' ? children : ''
-          } tab`}
-        />
-      </button>
-    </div>
-  );
+          disabled={disabled}
+          className={cx({
+            [`${prefix}--tabs__nav-item--close-icon`]: dismissable,
+            [`${prefix}--visually-hidden`]: !dismissable,
+            [`${prefix}--tabs__nav-item--close-icon--selected`]:
+              selectedIndex === index,
+            [`${prefix}--tabs__nav-item--close-icon--disabled`]: disabled,
+          })}
+          onClick={handleClose}
+          title={`Remove ${typeof children === 'string' ? children : ''} tab`}
+          ref={dismissIconRef}>
+          <Close
+            aria-hidden={
+              selectedIndex === index && dismissable ? 'false' : 'true'
+            }
+            aria-label={`Press delete to remove ${
+              typeof children === 'string' ? children : ''
+            } tab`}
+          />
+        </button>
+      </div>
+    );
 
-  const hasIcon = Icon ?? dismissable;
+    const hasIcon = Icon ?? dismissable;
 
-  return (
-    <>
-      <BaseComponent
-        {...rest}
-        aria-controls={panelId}
-        aria-disabled={disabled}
-        aria-selected={selectedIndex === index}
-        ref={ref}
-        id={id}
-        role="tab"
-        className={className}
-        disabled={disabled}
-        onClick={(evt) => {
-          if (disabled) {
-            return;
-          }
-          setSelectedIndex(index);
-          onClick?.(evt);
-        }}
-        onKeyDown={handleKeyDown}
-        tabIndex={selectedIndex === index ? '0' : '-1'}
-        type="button">
-        <div className={`${prefix}--tabs__nav-item-label-wrapper`}>
-          {dismissable && Icon && (
-            <div className={`${prefix}--tabs__nav-item--icon-left`}>
-              {<Icon size={16} />}
+    // should only happen for vertical variation, so no dismissable icon is needed here
+    if (isEllipsisApplied) {
+      return (
+        <Tooltip
+          label={children}
+          align="top"
+          leaveDelayMs={0}
+          autoAlign
+          onMouseEnter={() => false}
+          closeOnActivation>
+          <BaseComponent
+            {...rest}
+            aria-controls={panelId}
+            aria-disabled={disabled}
+            aria-selected={selectedIndex === index}
+            ref={ref}
+            id={id}
+            role="tab"
+            className={className}
+            disabled={disabled}
+            title={children}
+            onClick={(evt) => {
+              if (disabled) {
+                return;
+              }
+              setSelectedIndex(index);
+              onClick?.(evt);
+            }}
+            onKeyDown={handleKeyDown}
+            tabIndex={selectedIndex === index ? '0' : '-1'}
+            type="button">
+            <div className={`${prefix}--tabs__nav-item-label-wrapper`}>
+              <Text className={`${prefix}--tabs__nav-item-label`}>
+                {children}
+              </Text>
             </div>
+            {hasSecondaryLabel && secondaryLabel && (
+              <Text
+                as="div"
+                className={`${prefix}--tabs__nav-item-secondary-label`}
+                title={secondaryLabel}>
+                {secondaryLabel}
+              </Text>
+            )}
+          </BaseComponent>
+        </Tooltip>
+      );
+    }
+
+    return (
+      <>
+        <BaseComponent
+          {...rest}
+          aria-controls={panelId}
+          aria-disabled={disabled}
+          aria-selected={selectedIndex === index}
+          ref={ref}
+          id={id}
+          role="tab"
+          className={className}
+          disabled={disabled}
+          onClick={(evt) => {
+            if (disabled) {
+              return;
+            }
+            setSelectedIndex(index);
+            onClick?.(evt);
+          }}
+          onKeyDown={handleKeyDown}
+          tabIndex={selectedIndex === index ? '0' : '-1'}
+          type="button">
+          <div className={`${prefix}--tabs__nav-item-label-wrapper`}>
+            {dismissable && Icon && (
+              <div className={`${prefix}--tabs__nav-item--icon-left`}>
+                {<Icon size={16} />}
+              </div>
+            )}
+            <Text className={`${prefix}--tabs__nav-item-label`}>
+              {children}
+            </Text>
+            {!dismissable && Icon && (
+              <div
+                className={cx(`${prefix}--tabs__nav-item--icon`, {
+                  [`${prefix}--visually-hidden`]: !hasIcon,
+                })}>
+                {!dismissable && Icon && <Icon size={16} />}
+              </div>
+            )}
+          </div>
+          {hasSecondaryLabel && secondaryLabel && (
+            <Text
+              as="div"
+              className={`${prefix}--tabs__nav-item-secondary-label`}
+              title={secondaryLabel}>
+              {secondaryLabel}
+            </Text>
           )}
-          <Text className={`${prefix}--tabs__nav-item-label`}>{children}</Text>
-          {!dismissable && Icon && (
-            <div
-              className={cx(`${prefix}--tabs__nav-item--icon`, {
-                [`${prefix}--visually-hidden`]: !hasIcon,
-              })}>
-              {!dismissable && Icon && <Icon size={16} />}
-            </div>
-          )}
-        </div>
-        {hasSecondaryLabel && secondaryLabel && (
-          <Text
-            as="div"
-            className={`${prefix}--tabs__nav-item-secondary-label`}
-            title={secondaryLabel}>
-            {secondaryLabel}
-          </Text>
-        )}
-      </BaseComponent>
-      {/* always rendering dismissIcon so we don't lose reference to it, otherwise events do not work when switching from/to dismissable state */}
-      {DismissIcon}
-    </>
-  );
-});
+          {!disabled && badgeIndicator && <BadgeIndicator />}
+        </BaseComponent>
+        {/* always rendering dismissIcon so we don't lose reference to it, otherwise events do not work when switching from/to dismissable state */}
+        {DismissIcon}
+      </>
+    );
+  }
+);
+
+Tab.displayName = 'Tab';
+
 Tab.propTypes = {
   /**
    * Provide a custom element to render instead of the default button
    */
-  // @ts-expect-error: Invalid prop type derivation
   as: PropTypes.oneOfType([PropTypes.string, PropTypes.elementType]),
 
   /**
@@ -1008,24 +1606,22 @@ Tab.propTypes = {
    */
   onKeyDown: PropTypes.func,
 
-  /*
+  /**
    * An optional parameter to allow overriding the anchor rendering.
    * Useful for using Tab along with react-router or other client
    * side router libraries.
-   **/
+   */
   renderButton: PropTypes.func,
 
   /**
-   * Optional prop to render an icon next to the label.
-   * Can be a React component class
+   * A component used to render an icon.
    */
-  // @ts-expect-error: Invalid prop type derivation
   renderIcon: PropTypes.oneOfType([PropTypes.func, PropTypes.object]),
 
-  /*
+  /**
    * An optional label to render under the primary tab label.
-  /* This prop is only useful for conained tabs
-   **/
+   * Only useful for contained tabs.
+   */
   secondaryLabel: PropTypes.string,
 };
 
@@ -1033,7 +1629,15 @@ Tab.propTypes = {
  * IconTab
  */
 
+const IconTabContext = createContext<{ badgeIndicator?: boolean } | false>(
+  false
+);
+
 export interface IconTabProps extends DivAttributes {
+  /**
+   * **Experimental**: Display an empty dot badge on the Tab.
+   */
+  badgeIndicator?: boolean;
   /**
    * Provide an icon to be rendered inside `IconTab` as the visual label for Tab.
    */
@@ -1050,6 +1654,11 @@ export interface IconTabProps extends DivAttributes {
   defaultOpen?: boolean;
 
   /**
+   *  Specify whether your IconTab is disabled.
+   */
+  disabled?: boolean;
+
+  /**
    * Specify the duration in milliseconds to delay before displaying the tooltip for the icon.
    */
   enterDelayMs?: number;
@@ -1058,7 +1667,8 @@ export interface IconTabProps extends DivAttributes {
    * Provide the label to be rendered inside the Tooltip. The label will use
    * `aria-labelledby` and will fully describe the child node that is provided.
    * This means that if you have text in the child node it will not be
-   * announced to the screen reader.
+   * announced to the screen reader. If using the badgeIndicator then provide a
+   * label with describing that there is a new notification.
    */
   label: ReactNode;
 
@@ -1067,41 +1677,57 @@ export interface IconTabProps extends DivAttributes {
    */
   leaveDelayMs?: number;
 }
+const IconTab = React.forwardRef<HTMLDivElement, IconTabProps>(
+  (
+    {
+      badgeIndicator,
+      children,
+      className: customClassName,
+      defaultOpen = false,
+      enterDelayMs,
+      leaveDelayMs,
+      label,
+      ...rest
+    },
+    ref
+  ) => {
+    const prefix = usePrefix();
+    const value = useMemo(() => ({ badgeIndicator }), [badgeIndicator]);
 
-const IconTab = React.forwardRef<HTMLDivElement, IconTabProps>(function IconTab(
-  {
-    children,
-    className: customClassName,
-    defaultOpen = false,
-    enterDelayMs,
-    leaveDelayMs,
-    label,
-    ...rest
-  },
-  ref
-) {
-  const prefix = usePrefix();
+    const hasSize20 =
+      isValidElement<ComponentProps<CarbonIconType>>(children) &&
+      (children.props.size === 20 || children.props.size === '20');
 
-  const classNames = cx(
-    `${prefix}--tabs__nav-item--icon-only`,
-    customClassName
-  );
-  return (
-    <Tooltip
-      align="bottom"
-      defaultOpen={defaultOpen}
-      className={`${prefix}--icon-tooltip`}
-      enterDelayMs={enterDelayMs}
-      label={label}
-      leaveDelayMs={leaveDelayMs}>
-      <Tab className={classNames} ref={ref} {...rest}>
-        {children}
-      </Tab>
-    </Tooltip>
-  );
-});
+    const classNames = cx(
+      `${prefix}--tabs__nav-item--icon-only`,
+      customClassName,
+      { [`${prefix}--tabs__nav-item--icon-only__20`]: hasSize20 }
+    );
+    return (
+      <IconTabContext.Provider value={value}>
+        <Tooltip
+          align="bottom"
+          defaultOpen={defaultOpen}
+          className={`${prefix}--icon-tooltip`}
+          enterDelayMs={enterDelayMs}
+          label={label}
+          leaveDelayMs={leaveDelayMs ?? 0}>
+          <Tab className={classNames} ref={ref} {...rest}>
+            {children}
+          </Tab>
+        </Tooltip>
+      </IconTabContext.Provider>
+    );
+  }
+);
+
+IconTab.displayName = 'IconTab';
 
 IconTab.propTypes = {
+  /**
+   * **Experimental**: Display an empty dot badge on the Tab.
+   */
+  badgeIndicator: PropTypes.bool,
   /**
    * Provide an icon to be rendered inside `IconTab` as the visual label for Tab.
    */
@@ -1126,7 +1752,8 @@ IconTab.propTypes = {
    * Provide the label to be rendered inside the Tooltip. The label will use
    * `aria-labelledby` and will fully describe the child node that is provided.
    * This means that if you have text in the child node it will not be
-   * announced to the screen reader.
+   * announced to the screen reader. If using the badgeIndicator then provide a
+   * label with describing that there is a new notification.
    */
   label: PropTypes.node.isRequired,
 
@@ -1153,61 +1780,14 @@ export interface TabPanelProps extends DivAttributes {
 }
 
 const TabPanel = React.forwardRef<HTMLDivElement, TabPanelProps>(
-  function TabPanel(
-    { children, className: customClassName, ...rest },
-    forwardRef
-  ) {
+  ({ children, className: customClassName, ...rest }, forwardRef) => {
     const prefix = usePrefix();
-    const panel = useRef<HTMLDivElement>(null);
-    const ref = useMergedRefs([forwardRef, panel]);
 
-    const [tabIndex, setTabIndex] = useState(0);
-    const [interactiveContent, setInteractiveContent] = useState(false);
     const { selectedIndex, baseId } = React.useContext(TabsContext);
     const index = React.useContext(TabPanelContext);
     const id = `${baseId}-tabpanel-${index}`;
     const tabId = `${baseId}-tab-${index}`;
-    const className = cx(`${prefix}--tab-content`, customClassName, {
-      [`${prefix}--tab-content--interactive`]: interactiveContent,
-    });
-
-    useEffectOnce(() => {
-      if (!panel.current) {
-        return;
-      }
-
-      const content = getInteractiveContent(panel.current);
-      if (content) {
-        setInteractiveContent(true);
-        setTabIndex(-1);
-      }
-    });
-
-    // tabindex should only be 0 if no interactive content in children
-    useEffect(() => {
-      const node = panel.current;
-      if (!node) {
-        return;
-      }
-
-      function callback() {
-        const content = getInteractiveContent(node as HTMLElement);
-        if (content) {
-          setInteractiveContent(true);
-          setTabIndex(-1);
-        } else {
-          setInteractiveContent(false);
-          setTabIndex(0);
-        }
-      }
-      const observer = new MutationObserver(callback);
-
-      observer.observe(node, {
-        childList: true,
-        subtree: true,
-      });
-      return () => observer.disconnect();
-    }, []);
+    const className = cx(`${prefix}--tab-content`, customClassName);
 
     return (
       <div
@@ -1215,15 +1795,16 @@ const TabPanel = React.forwardRef<HTMLDivElement, TabPanelProps>(
         aria-labelledby={tabId}
         id={id}
         className={className}
-        ref={ref}
+        ref={forwardRef}
         role="tabpanel"
-        tabIndex={tabIndex}
         hidden={selectedIndex !== index}>
         {children}
       </div>
     );
   }
 );
+
+TabPanel.displayName = 'TabPanel';
 
 TabPanel.propTypes = {
   /**
@@ -1249,12 +1830,58 @@ export interface TabPanelsProps {
 }
 
 function TabPanels({ children }: TabPanelsProps) {
+  const prefix = usePrefix();
+  const refs = useRef<(HTMLDivElement | null)[]>([]);
+  const hiddenStates = useRef<boolean[]>([]);
+
+  useIsomorphicEffect(() => {
+    const tabContainer = refs.current[0]?.previousElementSibling;
+    const isVertical = tabContainer?.classList.contains(
+      `${prefix}--tabs--vertical`
+    );
+    const parentHasHeight = tabContainer?.parentElement?.style.height;
+
+    // Should only apply same height to vertical Tab Panels without a given height
+    if (isVertical && !parentHasHeight) {
+      hiddenStates.current = refs.current.map(
+        (ref) => ref?.hasAttribute('hidden') || false
+      );
+
+      // un-hide hidden Tab Panels to get heights
+      refs.current.forEach((ref) => {
+        if (ref) {
+          ref.hidden = false;
+        }
+      });
+
+      // set max height to TabList
+      const heights = refs.current.map((ref) => ref?.offsetHeight || 0);
+      const max = Math.max(...heights);
+      if (tabContainer instanceof HTMLElement) {
+        tabContainer.style.height = max + 'px';
+      }
+
+      // re-hide hidden Tab Panels
+      refs.current.forEach((ref, index) => {
+        if (ref) {
+          ref.hidden = hiddenStates.current[index];
+        }
+      });
+    }
+  });
+
   return (
     <>
-      {React.Children.map(children, (child, index) => {
-        return (
+      {Children.map(children, (child, index) => {
+        return !isValidElement<ComponentProps<typeof TabPanel>>(
+          child
+        ) ? null : (
           <TabPanelContext.Provider value={index}>
-            {child}
+            {cloneElement(child, {
+              ref: (element) => {
+                refs.current[index] = element;
+              },
+            })}
           </TabPanelContext.Provider>
         );
       })}
@@ -1269,4 +1896,13 @@ TabPanels.propTypes = {
   children: PropTypes.node,
 };
 
-export { Tabs, Tab, IconTab, TabPanel, TabPanels, TabList };
+export {
+  Tabs,
+  TabsVertical,
+  Tab,
+  IconTab,
+  TabPanel,
+  TabPanels,
+  TabList,
+  TabListVertical,
+};

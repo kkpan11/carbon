@@ -1,5 +1,5 @@
 /**
- * Copyright IBM Corp. 2016, 2023
+ * Copyright IBM Corp. 2016, 2026
  *
  * This source code is licensed under the Apache-2.0 license found in the
  * LICENSE file in the root directory of this source tree.
@@ -10,17 +10,16 @@ import React, {
   PropsWithChildren,
   useRef,
   useCallback,
-  useState,
 } from 'react';
 import PropTypes from 'prop-types';
 import cx from 'classnames';
-import debounce from 'lodash.debounce';
+import { debounce } from 'es-toolkit/compat';
 import { usePrefix } from '../../internal/usePrefix';
 import { TableContext } from './TableContext';
 import { useWindowEvent } from '../../internal/useEvent';
 import useIsomorphicEffect from '../../internal/useIsomorphicEffect';
 
-interface TableProps {
+export interface TableProps {
   experimentalAutoAlign?: boolean;
 
   className?: string;
@@ -46,7 +45,7 @@ interface TableProps {
   stickyHeader?: boolean;
 
   /**
-   * `false` If true, will use a width of 'auto' instead of 100%
+   * If `true`, sets the table width to `auto` instead of `100%`.
    */
   useStaticWidth?: boolean;
 
@@ -54,6 +53,11 @@ interface TableProps {
    * `true` to add useZebraStyles striping.
    */
   useZebraStyles?: boolean;
+
+  /**
+   * Specify the table tabIndex
+   */
+  tabIndex?: number;
 }
 
 const isElementWrappingContent = (
@@ -112,7 +116,6 @@ export const Table = ({
 }: PropsWithChildren<TableProps>) => {
   const { titleId, descriptionId } = useContext(TableContext);
   const prefix = usePrefix();
-  const [isScrollable, setIsScrollable] = useState(false);
   const tableRef = useRef<HTMLTableElement>(null);
   const componentClass = cx(`${prefix}--data-table`, className, {
     [`${prefix}--data-table--${size}`]: size,
@@ -125,26 +128,30 @@ export const Table = ({
 
   const toggleTableBodyAlignmentClass = useCallback(
     (alignTop = false) => {
-      alignTop
-        ? tableRef.current?.classList.add(
-            `${prefix}--data-table--top-aligned-body`
-          )
-        : tableRef.current?.classList.remove(
-            `${prefix}--data-table--top-aligned-body`
-          );
+      if (alignTop) {
+        tableRef.current?.classList.add(
+          `${prefix}--data-table--top-aligned-body`
+        );
+      } else {
+        tableRef.current?.classList.remove(
+          `${prefix}--data-table--top-aligned-body`
+        );
+      }
     },
     [prefix]
   );
 
   const toggleTableHeaderAlignmentClass = useCallback(
     (alignTop = false) => {
-      alignTop
-        ? tableRef.current?.classList.add(
-            `${prefix}--data-table--top-aligned-header`
-          )
-        : tableRef.current?.classList.remove(
-            `${prefix}--data-table--top-aligned-header`
-          );
+      if (alignTop) {
+        tableRef.current?.classList.add(
+          `${prefix}--data-table--top-aligned-header`
+        );
+      } else {
+        tableRef.current?.classList.remove(
+          `${prefix}--data-table--top-aligned-header`
+        );
+      }
     },
     [prefix]
   );
@@ -165,7 +172,8 @@ export const Table = ({
           const label = th.querySelector(`.${prefix}--table-header-label`);
 
           return (
-            label && isElementWrappingContent(label as HTMLElement, context)
+            label instanceof HTMLElement &&
+            isElementWrappingContent(label, context)
           );
         });
 
@@ -187,26 +195,6 @@ export const Table = ({
 
   useWindowEvent('resize', debouncedSetTableAlignment);
 
-  // Used to set a tabIndex when the Table is horizontally scrollable
-  const setTabIndex = useCallback(() => {
-    const tableContainer = tableRef?.current?.parentNode as HTMLElement;
-    const tableHeader = tableRef?.current?.firstChild as HTMLElement;
-
-    if (tableHeader?.scrollWidth > tableContainer?.clientWidth) {
-      setIsScrollable(true);
-    } else {
-      setIsScrollable(false);
-    }
-  }, []);
-
-  const debouncedSetTabIndex = debounce(setTabIndex, 100);
-
-  useWindowEvent('resize', debouncedSetTabIndex);
-
-  useIsomorphicEffect(() => {
-    setTabIndex();
-  }, [setTabIndex]);
-
   // recalculate table alignment once fonts have loaded
   if (
     typeof document !== 'undefined' &&
@@ -223,10 +211,7 @@ export const Table = ({
   }, [setTableAlignment, size]);
 
   const table = (
-    <div
-      className={`${prefix}--data-table-content`}
-      // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex
-      tabIndex={isScrollable ? 0 : undefined}>
+    <div className={`${prefix}--data-table-content`}>
       <table
         aria-labelledby={titleId}
         aria-describedby={descriptionId}
@@ -279,7 +264,7 @@ Table.propTypes = {
   stickyHeader: PropTypes.bool,
 
   /**
-   * `false` If true, will use a width of 'auto' instead of 100%
+   * If `true`, sets the table width to `auto` instead of `100%`.
    */
   useStaticWidth: PropTypes.bool,
 
@@ -287,6 +272,11 @@ Table.propTypes = {
    * `true` to add useZebraStyles striping.
    */
   useZebraStyles: PropTypes.bool,
+
+  /**
+   * Specify the table tabIndex
+   */
+  tabIndex: PropTypes.number,
 };
 
 export default Table;

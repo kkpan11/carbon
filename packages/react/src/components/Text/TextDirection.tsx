@@ -1,5 +1,5 @@
 /**
- * Copyright IBM Corp. 2016, 2023
+ * Copyright IBM Corp. 2016, 2026
  *
  * This source code is licensed under the Apache-2.0 license found in the
  * LICENSE file in the root directory of this source tree.
@@ -7,24 +7,26 @@
 
 import PropTypes from 'prop-types';
 import React, { ReactNode, useEffect, useMemo, useRef } from 'react';
-import { TextDirectionContext } from './TextDirectionContext';
-
-export type TextDir = 'ltr' | 'rtl' | 'auto' | string;
-export type GetTextDirection = (text: string | string[] | undefined) => TextDir;
+import {
+  TextDirectionContext,
+  type GetTextDirection,
+  type TextDir,
+  type TextDirectionContextType,
+} from './TextDirectionContext';
 
 export interface TextDirectionProps {
-  children: ReactNode | undefined;
+  children: ReactNode;
   dir?: TextDir;
   getTextDirection?: GetTextDirection;
 }
 
-function TextDirection({
+export const TextDirection = ({
   children,
   dir = 'auto',
   getTextDirection,
-}: TextDirectionProps) {
+}: TextDirectionProps) => {
   const savedCallback = useRef(getTextDirection);
-  const value = useMemo(() => {
+  const value = useMemo<TextDirectionContextType>(() => {
     return {
       direction: dir,
       getTextDirection: savedCallback,
@@ -33,14 +35,14 @@ function TextDirection({
 
   useEffect(() => {
     savedCallback.current = getTextDirection;
-  });
+  }, [getTextDirection]);
 
   return (
     <TextDirectionContext.Provider value={value}>
       {children}
     </TextDirectionContext.Provider>
   );
-}
+};
 
 TextDirection.propTypes = {
   /**
@@ -60,5 +62,3 @@ TextDirection.propTypes = {
    */
   getTextDirection: PropTypes.func,
 };
-
-export { TextDirection };

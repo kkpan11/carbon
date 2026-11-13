@@ -1,5 +1,5 @@
 /**
- * Copyright IBM Corp. 2016, 2023
+ * Copyright IBM Corp. 2016, 2026
  *
  * This source code is licensed under the Apache-2.0 license found in the
  * LICENSE file in the root directory of this source tree.
@@ -16,16 +16,17 @@ import React, {
   ReactElement,
   ReactNode,
   useContext,
+  useEffect,
+  useRef,
   useState,
 } from 'react';
 import { Text } from '../Text';
-import { match, keys } from '../../internal/keyboard';
 import { useId } from '../../internal/useId';
-import deprecate from '../../prop-types/deprecate';
+import { deprecate } from '../../prop-types/deprecate';
 import { usePrefix } from '../../internal/usePrefix';
 import { AccordionContext } from './AccordionProvider';
 
-interface AccordionItemProps {
+export interface AccordionItemProps {
   /**
    * Specify an optional className to be
    * applied to the container node.
@@ -38,6 +39,12 @@ interface AccordionItemProps {
    * this value will be managed by the parent Accordion.
    */
   disabled?: boolean;
+
+  /**
+   * Specify a custom label for the accordion button.
+   * This is important for accessibility when the accordion has no visible title.
+   */
+  'aria-label'?: AriaAttributes['aria-label'];
 
   /**
    * The handler of the massaged `click` event.
@@ -90,13 +97,19 @@ interface AccordionItemProps {
   handleAnimationEnd?: AnimationEventHandler<HTMLElement>;
 }
 
-interface AccordionToggleProps {
+export interface AccordionToggleProps {
   'aria-controls'?: AriaAttributes['aria-controls'];
   'aria-expanded'?: AriaAttributes['aria-expanded'];
+  'aria-label'?: AriaAttributes['aria-label'];
   className?: string;
   disabled?: boolean;
   onClick?: MouseEventHandler<HTMLButtonElement>;
-  onKeyDown?: (event: KeyboardEvent<HTMLButtonElement>) => void;
+  /**
+   * @deprecated `AccordionItem` no longer passes an `onKeyDown` handler to
+   * the toggle. This prop is kept only so custom `renderToggle`
+   * implementations that reference it don't hit a breaking type change.
+   */
+  onKeyDown?: (event: KeyboardEvent<HTMLButtonElement>) => void; // TODO: V12 - Remove this prop
   type?: 'button';
 }
 
@@ -114,10 +127,11 @@ function AccordionItem({
   title = 'title',
   disabled: controlledDisabled,
   handleAnimationEnd,
+  'aria-label': ariaLabel,
   ...rest
 }: PropsWithChildren<AccordionItemProps>) {
   const [isOpen, setIsOpen] = useState(open);
-  const [prevIsOpen, setPrevIsOpen] = useState(open);
+  const prevOpenRef = useRef(open);
   const accordionState = useContext(AccordionContext);
 
   const disabledIsControlled = typeof controlledDisabled === 'boolean';
@@ -149,10 +163,12 @@ function AccordionItem({
     [isOpen]
   );
 
-  if (open !== prevIsOpen) {
-    setIsOpen(open);
-    setPrevIsOpen(open);
-  }
+  useEffect(() => {
+    if (open !== prevOpenRef.current) {
+      setIsOpen(open);
+      prevOpenRef.current = open;
+    }
+  }, [open]);
 
   // When the AccordionItem heading is clicked, toggle the open state of the
   // panel
@@ -163,13 +179,6 @@ function AccordionItem({
       // TODO: normalize signature, potentially:
       // onHeadingClick :: (event: Event, state: { isOpen: Boolean }) => any
       onHeadingClick({ isOpen: nextValue, event });
-    }
-  }
-
-  // If the AccordionItem is open, and the user hits the ESC key, then close it
-  function onKeyDown(event) {
-    if (isOpen && match(event, keys.Escape)) {
-      setIsOpen(false);
     }
   }
 
@@ -185,9 +194,9 @@ function AccordionItem({
         disabled={disabled}
         aria-controls={id}
         aria-expanded={isOpen}
+        aria-label={ariaLabel}
         className={`${prefix}--accordion__heading`}
         onClick={onClick}
-        onKeyDown={onKeyDown}
         type="button">
         <ChevronRight className={`${prefix}--accordion__arrow`} />
         <Text as="div" className={`${prefix}--accordion__title`}>
@@ -221,6 +230,12 @@ AccordionItem.propTypes = {
    * Specify whether an individual AccordionItem should be disabled
    */
   disabled: PropTypes.bool,
+
+  /**
+   * Specify a custom label for the accordion button.
+   * This is important for accessibility when the accordion has no visible title.
+   */
+  'aria-label': PropTypes.string,
 
   /**
    * The handler of the massaged `click` event.

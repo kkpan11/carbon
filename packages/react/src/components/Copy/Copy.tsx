@@ -1,5 +1,5 @@
 /**
- * Copyright IBM Corp. 2016, 2023
+ * Copyright IBM Corp. 2016, 2025
  *
  * This source code is licensed under the Apache-2.0 license found in the
  * LICENSE file in the root directory of this source tree.
@@ -14,26 +14,38 @@ import React, {
   MouseEventHandler,
   PropsWithChildren,
 } from 'react';
-import debounce from 'lodash.debounce';
+import { debounce } from 'es-toolkit/compat';
 import classnames from 'classnames';
 import { composeEventHandlers } from '../../tools/events';
 import { usePrefix } from '../../internal/usePrefix';
 import { IconButton } from '../IconButton';
 import { noopFn } from '../../internal/noopFn';
+import { deprecateValuesWithin } from '../../prop-types/deprecateValuesWithin';
+import { mapPopoverAlign } from '../../tools/mapPopoverAlign';
+import type {
+  DeprecatedPopoverAlignment,
+  NewPopoverAlignment,
+  PopoverAlignment,
+} from '../Popover';
 
-interface CopyProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+export type DeprecatedCopyAlignment = DeprecatedPopoverAlignment;
+
+export type NewCopyAlignment = NewPopoverAlignment;
+
+export type CopyAlignment = PopoverAlignment;
+
+export interface CopyProps
+  extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   /**
    * Specify how the trigger should align with the tooltip
    */
-  align?:
-    | 'top'
-    | 'top-left'
-    | 'top-right'
-    | 'bottom'
-    | 'bottom-left'
-    | 'bottom-right'
-    | 'left'
-    | 'right';
+  align?: CopyAlignment;
+
+  /**
+   * **Experimental**: Will attempt to automatically align the tooltip. Requires React v17+
+   * @see https://github.com/carbon-design-system/carbon/issues/18714
+   */
+  autoAlign?: boolean;
 
   /**
    * Specify an optional className to be applied to the underlying `<button>`
@@ -66,6 +78,7 @@ interface CopyProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
 
 export default function Copy({
   align = 'bottom',
+  autoAlign,
   children,
   className,
   feedback = 'Copied!',
@@ -112,8 +125,10 @@ export default function Copy({
     <IconButton
       closeOnActivation={false}
       align={align}
+      autoAlign={autoAlign}
       className={classNames}
       label={animation ? feedback : initialLabel}
+      leaveDelayMs={animation ? feedbackTimeout : undefined}
       onClick={composeEventHandlers([onClick, handleClick])}
       onAnimationEnd={composeEventHandlers([
         onAnimationEnd,
@@ -132,16 +147,57 @@ Copy.propTypes = {
   /**
    * Specify how the trigger should align with the tooltip
    */
-  align: PropTypes.oneOf([
-    'top',
-    'top-left',
-    'top-right',
-    'bottom',
-    'bottom-left',
-    'bottom-right',
-    'left',
-    'right',
-  ]),
+  align: deprecateValuesWithin(
+    PropTypes.oneOf([
+      'top',
+      'top-left', // deprecated use top-start instead
+      'top-right', // deprecated use top-end instead
+
+      'bottom',
+      'bottom-left', // deprecated use bottom-start instead
+      'bottom-right', // deprecated use bottom-end instead
+
+      'left',
+      'left-bottom', // deprecated use left-end instead
+      'left-top', // deprecated use left-start instead
+
+      'right',
+      'right-bottom', // deprecated use right-end instead
+      'right-top', // deprecated use right-start instead
+
+      // new values to match floating-ui
+      'top-start',
+      'top-end',
+      'bottom-start',
+      'bottom-end',
+      'left-end',
+      'left-start',
+      'right-end',
+      'right-start',
+    ]),
+    [
+      'top',
+      'top-start',
+      'top-end',
+      'bottom',
+      'bottom-start',
+      'bottom-end',
+      'left',
+      'left-start',
+      'left-end',
+      'right',
+      'right-start',
+      'right-end',
+    ],
+    mapPopoverAlign
+  ),
+
+  /**
+   * **Experimental**: Will attempt to automatically align the tooltip. Requires
+   * React v17+
+   * @see https://github.com/carbon-design-system/carbon/issues/18714
+   */
+  autoAlign: PropTypes.bool,
 
   /**
    * Pass in content to be rendered in the underlying `<button>`

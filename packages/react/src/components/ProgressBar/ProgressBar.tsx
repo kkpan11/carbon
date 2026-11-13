@@ -1,17 +1,18 @@
 /**
- * Copyright IBM Corp. 2021
+ * Copyright IBM Corp. 2021, 2026
  *
  * This source code is licensed under the Apache-2.0 license found in the
  * LICENSE file in the root directory of this source tree.
  */
 
-import React, { ReactSVGElement, useRef } from 'react';
+import React, { useRef } from 'react';
 import PropTypes from 'prop-types';
 import classNames from 'classnames';
 import { CheckmarkFilled, ErrorFilled } from '@carbon/icons-react';
 import { useId } from '../../internal/useId';
 import { usePrefix } from '../../internal/usePrefix';
 import useIsomorphicEffect from '../../internal/useIsomorphicEffect';
+import { useFeatureFlag } from '../FeatureFlags';
 
 export interface ProgressBarProps {
   /**
@@ -114,35 +115,44 @@ function ProgressBar({
   });
 
   let StatusIcon: React.ForwardRefExoticComponent<
-    React.RefAttributes<ReactSVGElement> & { className?: string }
+    React.RefAttributes<SVGSVGElement> & { className?: string }
   > | null = null;
 
   if (isError) {
-    StatusIcon = React.forwardRef(function ErrorFilled16(
+    StatusIcon = React.forwardRef(function ProgressBarErrorIcon(
       props,
-      ref: React.Ref<ReactSVGElement>
+      ref: React.Ref<SVGSVGElement>
     ) {
       return <ErrorFilled ref={ref} size={16} {...props} />;
     });
   } else if (isFinished) {
-    StatusIcon = React.forwardRef(function CheckmarkFilled16(
+    StatusIcon = React.forwardRef(function ProgressBarCheckmarkIcon(
       props,
-      ref: React.Ref<ReactSVGElement>
+      ref: React.Ref<SVGSVGElement>
     ) {
       return <CheckmarkFilled ref={ref} size={16} {...props} />;
     });
   }
 
+  const enableV12Release = useFeatureFlag('enable-v12-release');
+
   const ref = useRef<HTMLDivElement>(null);
   useIsomorphicEffect(() => {
     if (ref.current) {
       if (!isFinished && !isError) {
-        ref.current.style.transform = `scaleX(${percentage})`;
+        // v12: size the bar instead of scaling it, so its border-radius is not
+        // squashed along with the box
+        if (enableV12Release) {
+          ref.current.style.inlineSize = `${percentage * 100}%`;
+        } else {
+          ref.current.style.transform = `scaleX(${percentage})`;
+        }
       } else {
         ref.current.style.transform = '';
+        ref.current.style.inlineSize = '';
       }
     }
-  }, [percentage, isFinished, isError]);
+  }, [percentage, isFinished, isError, enableV12Release]);
 
   return (
     <div className={wrapperClasses}>
@@ -156,7 +166,7 @@ function ProgressBar({
       <div
         className={`${prefix}--progress-bar__track`}
         role="progressbar"
-        aria-busy={!isFinished}
+        aria-busy={!isFinished && !isError}
         aria-invalid={isError}
         aria-labelledby={labelId}
         aria-describedby={helperText ? helperTextId : undefined}

@@ -1,5 +1,5 @@
 /**
- * Copyright IBM Corp. 2016, 2023
+ * Copyright IBM Corp. 2016, 2026
  *
  * This source code is licensed under the Apache-2.0 license found in the
  * LICENSE file in the root directory of this source tree.
@@ -8,21 +8,21 @@
 import PropTypes from 'prop-types';
 import React, {
   MouseEventHandler,
-  useLayoutEffect,
   useState,
-  ReactNode,
   useRef,
+  forwardRef,
+  ForwardedRef,
 } from 'react';
 import classNames from 'classnames';
-import setupGetInstanceId from '../../tools/setupGetInstanceId';
+import { useId } from '../../internal/useId';
 import { usePrefix } from '../../internal/usePrefix';
 import { PolymorphicProps } from '../../types/common';
 import Tag, { SIZES } from './Tag';
 import { Tooltip } from '../Tooltip';
 import { Text } from '../Text';
 import { isEllipsisActive } from './isEllipsisActive';
-
-const getInstanceId = setupGetInstanceId();
+import { mergeRefs } from '../../tools/mergeRefs';
+import useIsomorphicEffect from '../../internal/useIsomorphicEffect';
 
 const TYPES = {
   red: 'Red',
@@ -54,8 +54,7 @@ export interface OperationalTagBaseProps {
   id?: string;
 
   /**
-   * Optional prop to render a custom icon.
-   * Can be a React component class
+   * A component used to render an icon.
    */
   renderIcon?: React.ElementType;
   onClick?: MouseEventHandler;
@@ -65,11 +64,6 @@ export interface OperationalTagBaseProps {
    * `md` (default) or `lg` sizes.
    */
   size?: keyof typeof SIZES;
-
-  /**
-   * **Experimental:** Provide a `Slug` component to be rendered inside the `OperationalTag` component
-   */
-  slug?: ReactNode;
 
   /**
    * Provide text to be rendered inside of a the tag.
@@ -87,89 +81,90 @@ export type OperationalTagProps<T extends React.ElementType> = PolymorphicProps<
   OperationalTagBaseProps
 >;
 
-const OperationalTag = <T extends React.ElementType>({
-  className,
-  disabled,
-  id,
-  renderIcon,
-  slug,
-  size,
-  text,
-  type = 'gray',
-  ...other
-}: OperationalTagProps<T>) => {
-  const prefix = usePrefix();
-  const tagRef = useRef<HTMLElement>();
-  const tagId = id || `tag-${getInstanceId()}`;
-  const tagClasses = classNames(`${prefix}--tag--operational`, className);
-  const [isEllipsisApplied, setIsEllipsisApplied] = useState(false);
+const OperationalTag = forwardRef(
+  <T extends React.ElementType>(
+    {
+      className,
+      disabled,
+      id,
+      renderIcon,
+      size,
+      text,
+      type = 'gray',
+      ...other
+    }: OperationalTagProps<T>,
+    forwardRef: ForwardedRef<HTMLButtonElement>
+  ) => {
+    const prefix = usePrefix();
+    const tagRef = useRef<HTMLButtonElement>(null);
+    const generatedTagId = useId();
+    const tagId = id ?? `tag-${generatedTagId}`;
+    const tagClasses = classNames(`${prefix}--tag--operational`, className);
+    const [isEllipsisApplied, setIsEllipsisApplied] = useState(false);
 
-  useLayoutEffect(() => {
-    const newElement = tagRef.current?.getElementsByClassName(
-      `${prefix}--tag__label`
-    )[0];
+    useIsomorphicEffect(() => {
+      const newElement = tagRef.current?.getElementsByClassName(
+        `${prefix}--tag__label`
+      )[0];
+      // React 19: setIsEllipsisApplied called synchronously inside
+      // useIsomorphicEffect (= useLayoutEffect) causes setState during commit
+      // → crash. Read the DOM value eagerly (must be synchronous), then defer
+      // only the setState call past the commit boundary via queueMicrotask.
+      const result = isEllipsisActive(newElement);
+      queueMicrotask(() => setIsEllipsisApplied(result));
+    }, [prefix, tagRef]);
 
-    setIsEllipsisApplied(isEllipsisActive(newElement));
-  }, [prefix, tagRef]);
+    const tooltipClasses = classNames(
+      `${prefix}--icon-tooltip`,
+      `${prefix}--tag-label-tooltip`
+    );
+    const combinedRef = mergeRefs(tagRef, forwardRef);
 
-  let normalizedSlug;
-  if (slug && slug['type']?.displayName === 'Slug') {
-    normalizedSlug = React.cloneElement(slug as React.ReactElement<any>, {
-      size: 'sm',
-      kind: 'inline',
-    });
-  }
+    if (isEllipsisApplied) {
+      return (
+        <Tooltip
+          label={text}
+          align="bottom"
+          className={tooltipClasses}
+          leaveDelayMs={0}
+          onMouseEnter={() => false}
+          closeOnActivation>
+          <Tag
+            ref={combinedRef}
+            type={type}
+            size={size}
+            renderIcon={renderIcon}
+            disabled={disabled}
+            className={tagClasses}
+            id={tagId}
+            {...other}>
+            <Text title={text} className={`${prefix}--tag__label`}>
+              {text}
+            </Text>
+          </Tag>
+        </Tooltip>
+      );
+    }
 
-  const tooltipClasses = classNames(
-    `${prefix}--icon-tooltip`,
-    `${prefix}--tag-label-tooltip`
-  );
-
-  if (isEllipsisApplied) {
     return (
-      <Tooltip
-        label={text}
-        align="bottom"
-        className={tooltipClasses}
-        leaveDelayMs={0}
-        onMouseEnter={() => false}
-        closeOnActivation>
-        <Tag
-          ref={tagRef}
-          type={type}
-          size={size}
-          renderIcon={renderIcon}
-          disabled={disabled}
-          className={tagClasses}
-          id={tagId}
-          {...other}>
-          <Text title={text} className={`${prefix}--tag__label`}>
-            {text}
-          </Text>
-          {normalizedSlug}
-        </Tag>
-      </Tooltip>
+      <Tag
+        ref={combinedRef}
+        type={type}
+        size={size}
+        renderIcon={renderIcon}
+        disabled={disabled}
+        className={tagClasses}
+        id={tagId}
+        {...other}>
+        <Text title={text} className={`${prefix}--tag__label`}>
+          {text}
+        </Text>
+      </Tag>
     );
   }
+);
 
-  return (
-    <Tag
-      ref={tagRef}
-      type={type}
-      size={size}
-      renderIcon={renderIcon}
-      disabled={disabled}
-      className={tagClasses}
-      id={tagId}
-      {...other}>
-      {normalizedSlug}
-      <Text title={text} className={`${prefix}--tag__label`}>
-        {text}
-      </Text>
-    </Tag>
-  );
-};
-
+OperationalTag.displayName = 'OperationalTag';
 OperationalTag.propTypes = {
   /**
    * Provide a custom className that is applied to the containing <span>
@@ -187,8 +182,7 @@ OperationalTag.propTypes = {
   id: PropTypes.string,
 
   /**
-   * Optional prop to render a custom icon.
-   * Can be a React component class
+   * A component used to render an icon.
    */
   renderIcon: PropTypes.oneOfType([PropTypes.func, PropTypes.object]),
 
@@ -197,11 +191,6 @@ OperationalTag.propTypes = {
    * `md` (default) or `lg` sizes.
    */
   size: PropTypes.oneOf(Object.keys(SIZES)),
-
-  /**
-   * **Experimental:** Provide a `Slug` component to be rendered inside the `OperationalTag` component
-   */
-  slug: PropTypes.node,
 
   /**
    * Provide text to be rendered inside of a the tag.

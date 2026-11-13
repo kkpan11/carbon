@@ -1,5 +1,5 @@
 /**
- * Copyright IBM Corp. 2016, 2023
+ * Copyright IBM Corp. 2016, 2026
  *
  * This source code is licensed under the Apache-2.0 license found in the
  * LICENSE file in the root directory of this source tree.
@@ -16,6 +16,7 @@ const files = [
   'index.scss',
 
   // Sass entrypoints
+  'scss/_border-radius.scss',
   'scss/_breakpoint.scss',
   'scss/_colors.scss',
   'scss/_config.scss',
@@ -29,7 +30,7 @@ const files = [
   'scss/_themes.scss',
   'scss/_zone.scss',
 
-  // Compatability with previous versions
+  // Compatibility with previous versions
   'scss/compat/_theme.scss',
   'scss/compat/_themes.scss',
 
@@ -37,8 +38,12 @@ const files = [
   'scss/components/_index.scss',
   'scss/components/accordion/_accordion.scss',
   'scss/components/accordion/_index.scss',
+  'scss/components/ai-label/_ai-label.scss',
+  'scss/components/ai-label/_index.scss',
   'scss/components/aspect-ratio/_aspect-ratio.scss',
   'scss/components/aspect-ratio/_index.scss',
+  'scss/components/badge-indicator/_badge-indicator.scss',
+  'scss/components/badge-indicator/_index.scss',
   'scss/components/breadcrumb/_breadcrumb.scss',
   'scss/components/breadcrumb/_index.scss',
   'scss/components/button/_button.scss',
@@ -56,6 +61,7 @@ const files = [
   'scss/components/contained-list/_index.scss',
   'scss/components/content-switcher/_content-switcher.scss',
   'scss/components/content-switcher/_index.scss',
+  'scss/components/content-switcher/_tokens.scss',
   'scss/components/copy-button/_copy-button.scss',
   'scss/components/copy-button/_index.scss',
   'scss/components/data-table/_data-table.scss',
@@ -98,6 +104,8 @@ const files = [
   'scss/components/fluid-text-input/_index.scss',
   'scss/components/fluid-time-picker/_fluid-time-picker.scss',
   'scss/components/fluid-time-picker/_index.scss',
+  'scss/components/icon-indicator/_icon-indicator.scss',
+  'scss/components/icon-indicator/_index.scss',
   'scss/components/inline-loading/_index.scss',
   'scss/components/inline-loading/_inline-loading.scss',
   'scss/components/link/_index.scss',
@@ -228,6 +236,9 @@ const files = [
   'scss/utilities/_text-truncate.scss',
   'scss/utilities/_visually-hidden.scss',
   'scss/utilities/_z-index.scss',
+
+  // carbon utilities
+  'scss/_carbon-utilities.scss',
 ];
 
 module.exports = {
@@ -238,8 +249,11 @@ module.exports = {
 
     // If we have an `_index.scss` entrypoint, we can re-export from the
     // directory itself
+    // Sass import specifiers are always `/`-separated, so these are built with
+    // `path.posix` — plain `path.join` emits `\` on Windows and every generated
+    // `@forward` fails to resolve.
     if (basename === '_index.scss') {
-      importPath = path.dirname(filepath);
+      importPath = path.posix.dirname(filepath);
     } else if (filepath !== 'index.scss') {
       // Otherwise, let's drop the leading `_` and trailing `.scss` from the
       // file name to get the import
@@ -247,13 +261,13 @@ module.exports = {
         .basename(filepath)
         .replace(/^_/, '')
         .replace(/\.scss$/, '');
-      importPath = path.join(path.dirname(filepath), basename);
+      importPath = path.posix.join(path.posix.dirname(filepath), basename);
     }
 
     return {
       filepath,
       relativePath: importPath,
-      importPath: path.join('@carbon/styles', importPath),
+      importPath: path.posix.join('@carbon/styles', importPath),
     };
   }),
 };

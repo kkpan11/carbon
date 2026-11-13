@@ -26,8 +26,7 @@ are pre-defined for a specific theme. Currently, we offer the following color
 themes: white, gray 10, gray 90, gray 100 .
 
 You can preview all of the token values for this on the
-[Carbon Design System website](https://www.carbondesignsystem.com/guidelines/color/usage)
-.
+[Carbon Design System website](https://carbondesignsystem.com/elements/color/usage/).
 
 ### Sass
 
@@ -83,10 +82,50 @@ import {
   g100,
 
   // Specific token values
-  interactive01,
-  interactive02,
+  background,
+  interactive,
+  textPrimary,
 } from '@carbon/themes';
 ```
+
+### Component tokens
+
+The DTCG migration introduced per-component token sets. They are exported as
+named objects:
+
+> **Breaking change (11.78.0):** Prior to 11.78.0 these objects were
+> double-nested (e.g. `buttonTokens.buttonTokens`). The repeated property is now
+> `undefined` — drop it to get the flat object directly.
+
+```js
+import {
+  buttonTokens,
+  tagTokens,
+  notificationTokens,
+  statusTokens,
+  contentSwitcherTokens,
+} from '@carbon/themes';
+```
+
+Each object contains the token values for all four themes. The corresponding
+Sass output is available via `@use '@carbon/themes/scss/component-tokens'`.
+
+### Modifying token values
+
+Token values are defined in [`tokens/themes/`](./tokens/themes/) using the
+[DTCG 2025.10 token format](https://www.designtokens.org/tr/2025.10/format/).
+Each theme has a folder with a `theme.tokens.json` file (theme tokens) and one
+`<component>.tokens.json` file per component (component tokens). These are the
+single source of truth — **do not edit generated files directly**. See
+[`tokens/README.md`](./tokens/README.md) for the format.
+
+To add or update a token:
+
+1. Edit the token in `tokens/themes/<theme>/theme.tokens.json` (or the relevant
+   `<component>.tokens.json` file for component tokens) for every theme
+2. Run `yarn build` in this package to regenerate all outputs
+3. Run `yarn test --testPathPatterns=packages/themes` from the repo root to
+   confirm nothing regressed
 
 ## 📖 API Documentation
 
@@ -114,9 +153,9 @@ Licensed under the [Apache 2.0 License](/LICENSE).
 
 ## <picture><source height="20" width="20" media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/ibm-telemetry/telemetry-js/main/docs/images/ibm-telemetry-dark.svg"><source height="20" width="20" media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/ibm-telemetry/telemetry-js/main/docs/images/ibm-telemetry-light.svg"><img height="20" width="20" alt="IBM Telemetry" src="https://raw.githubusercontent.com/ibm-telemetry/telemetry-js/main/docs/images/ibm-telemetry-light.svg"></picture> IBM Telemetry
 
-This package uses IBM Telemetry to collect metrics data. By installing this
-package as a dependency you are agreeing to telemetry collection. To opt out,
-see
+This package uses IBM Telemetry to collect de-identified and anonymized metrics
+data. By installing this package as a dependency you are agreeing to telemetry
+collection. To opt out, see
 [Opting out of IBM Telemetry data collection](https://github.com/ibm-telemetry/telemetry-js/tree/main#opting-out-of-ibm-telemetry-data-collection).
 For more information on the data being collected, please see the
 [IBM Telemetry documentation](https://github.com/ibm-telemetry/telemetry-js/tree/main#ibm-telemetry-collection-basics).

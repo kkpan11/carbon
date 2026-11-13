@@ -1,21 +1,24 @@
-import React, { useRef } from 'react';
+/**
+ * Copyright IBM Corp. 2023, 2026
+ *
+ * This source code is licensed under the Apache-2.0 license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
+
+import React, { forwardRef, useRef, type HTMLAttributes } from 'react';
 import classNames from 'classnames';
 import PropTypes from 'prop-types';
 import { View, ViewOff, WarningFilled } from '@carbon/icons-react';
-import { textInputProps } from './util';
-import { warning } from '../../internal/warning';
-import deprecate from '../../prop-types/deprecate';
+import { getTextInputProps } from './util';
+import { deprecate } from '../../prop-types/deprecate';
 import { usePrefix } from '../../internal/usePrefix';
-import setupGetInstanceId from '../../tools/setupGetInstanceId';
-import { ReactAttr } from '../../types/common';
+import { useId } from '../../internal/useId';
+import { hasHelperText } from '../../internal/hasHelperText';
 import { noopFn } from '../../internal/noopFn';
-
-const getInstanceId = setupGetInstanceId();
-
-let didWarnAboutDeprecation = false;
+import { useNoInteractiveChildrenForLabel } from '../FeatureFlags/useNoInteractiveChildrenForLabel';
 
 export interface ControlledPasswordInputProps
-  extends ReactAttr<HTMLInputElement> {
+  extends HTMLAttributes<HTMLInputElement> {
   /**
    * Provide a custom className that is applied directly to the underlying
    * `<input>` node
@@ -120,8 +123,11 @@ export interface ControlledPasswordInputProps
   type?: string;
 }
 
-const ControlledPasswordInput = React.forwardRef(
-  function ControlledPasswordInput(
+const ControlledPasswordInput = forwardRef<
+  unknown,
+  ControlledPasswordInputProps
+>(
+  (
     {
       labelText,
       className,
@@ -133,11 +139,9 @@ const ControlledPasswordInput = React.forwardRef(
       hideLabel,
       invalid = false,
       invalidText = '',
-      helperText = '',
+      helperText,
       light,
-      // eslint-disable-next-line react/prop-types
       type = 'password',
-      // eslint-disable-next-line react/prop-types
       togglePasswordVisibility,
       tooltipPosition = 'bottom',
       tooltipAlignment = 'center',
@@ -145,19 +149,12 @@ const ControlledPasswordInput = React.forwardRef(
       showPasswordLabel = 'Show password',
       size = undefined,
       ...other
-    }: ControlledPasswordInputProps,
+    },
     ref
-  ) {
+  ) => {
     const prefix = usePrefix();
-    const { current: controlledPasswordInstanceId } = useRef(getInstanceId());
-
-    if (__DEV__) {
-      warning(
-        didWarnAboutDeprecation,
-        '`<TextInput.ControlledPasswordInput>` has been deprecated in favor of `<TextInput.PasswordInput />` and will be removed in the next major release of `carbon-components-react`'
-      );
-      didWarnAboutDeprecation = true;
-    }
+    const controlledPasswordInstanceId = useId();
+    const labelRef = useRef<HTMLLabelElement>(null);
 
     const errorId = id + '-error-msg';
     const textInputClasses = classNames(
@@ -195,11 +192,15 @@ const ControlledPasswordInput = React.forwardRef(
     const helperTextClasses = classNames(`${prefix}--form__helper-text`, {
       [`${prefix}--form__helper-text--disabled`]: disabled,
     });
-    const label = labelText ? (
-      <label htmlFor={id} className={labelClasses}>
+    const label = typeof labelText !== 'undefined' && labelText !== null && (
+      <label htmlFor={id} className={labelClasses} ref={labelRef}>
         {labelText}
       </label>
-    ) : null;
+    );
+    useNoInteractiveChildrenForLabel(
+      labelRef,
+      'The ControlledPasswordInput component `labelText` prop must have no interactive content'
+    );
     const error = invalid ? (
       <div className={`${prefix}--form-requirement`} id={errorId}>
         {invalidText}
@@ -223,18 +224,19 @@ const ControlledPasswordInput = React.forwardRef(
       }
     );
 
-    const helperId = !helperText
+    const hasHelper = hasHelperText(helperText);
+    const helperId = !hasHelper
       ? undefined
       : `controlled-password-helper-text-${controlledPasswordInstanceId}`;
 
     const input = (
       <>
         <input
-          {...textInputProps({
+          {...getTextInputProps({
             invalid,
             sharedTextInputProps,
             invalidId: errorId,
-            hasHelper: !error && helperText ? true : false,
+            hasHelper: !error && hasHelper,
             helperId,
           })}
           data-toggle-password-visibility={type === 'password'}
@@ -251,11 +253,11 @@ const ControlledPasswordInput = React.forwardRef(
       </>
     );
 
-    const helper = helperText ? (
+    const helper = hasHelper && (
       <div id={helperId} className={helperTextClasses}>
         {helperText}
       </div>
-    ) : null;
+    );
 
     return (
       <div

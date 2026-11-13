@@ -1,28 +1,29 @@
 /**
- * Copyright IBM Corp. 2016, 2023
+ * Copyright IBM Corp. 2016, 2026
  *
  * This source code is licensed under the Apache-2.0 license found in the
  * LICENSE file in the root directory of this source tree.
  */
 
 import PropTypes from 'prop-types';
-import React, {
-  PropsWithChildren,
-  useState,
-  useRef,
-  useEffect,
-  useCallback,
-} from 'react';
+import React, { PropsWithChildren, useState, useRef, useCallback } from 'react';
 import classNames from 'classnames';
-import useResizeObserver from 'use-resize-observer/polyfilled';
+import { useResizeObserver } from '../../internal/useResizeObserver';
 import { ChevronDown } from '@carbon/icons-react';
 import Copy from '../Copy';
 import Button from '../Button';
 import CopyButton from '../CopyButton';
-import getUniqueId from '../../tools/uniqueId';
+import { useId } from '../../internal/useId';
 import copy from 'copy-to-clipboard';
-import deprecate from '../../prop-types/deprecate';
+import { deprecate } from '../../prop-types/deprecate';
 import { usePrefix } from '../../internal/usePrefix';
+import { deprecateValuesWithin } from '../../prop-types/deprecateValuesWithin';
+import type {
+  DeprecatedPopoverAlignment,
+  NewPopoverAlignment,
+  PopoverAlignment,
+} from '../Popover';
+import { mapPopoverAlign } from '../../tools/mapPopoverAlign';
 
 const rowHeightInPixels = 16;
 const defaultMaxCollapsedNumberOfRows = 15;
@@ -30,19 +31,23 @@ const defaultMaxExpandedNumberOfRows = 0;
 const defaultMinCollapsedNumberOfRows = 3;
 const defaultMinExpandedNumberOfRows = 16;
 
+export type DeprecatedCodeSnippetAlignment = DeprecatedPopoverAlignment;
+
+export type NewCodeSnippetAlignment = NewPopoverAlignment;
+
+export type CodeSnippetAlignment = PopoverAlignment;
+
 export interface CodeSnippetProps {
   /**
    * Specify how the trigger should align with the tooltip
    */
-  align?:
-    | 'top'
-    | 'top-left'
-    | 'top-right'
-    | 'bottom'
-    | 'bottom-left'
-    | 'bottom-right'
-    | 'left'
-    | 'right';
+  align?: CodeSnippetAlignment;
+
+  /**
+   * **Experimental**: Will attempt to automatically align the tooltip. Requires React v17+
+   * @see https://github.com/carbon-design-system/carbon/issues/18714
+   */
+  autoAlign?: boolean;
 
   /**
    * Specify a label to be read by screen readers on the containing textbox
@@ -150,6 +155,7 @@ export interface CodeSnippetProps {
 
 function CodeSnippet({
   align = 'bottom',
+  autoAlign,
   className,
   type = 'single',
   children,
@@ -174,12 +180,10 @@ function CodeSnippet({
 }: PropsWithChildren<CodeSnippetProps>) {
   const [expandedCode, setExpandedCode] = useState(false);
   const [shouldShowMoreLessBtn, setShouldShowMoreLessBtn] = useState(false);
-  const { current: uid } = useRef(getUniqueId());
+  const { current: uid } = useRef(useId());
   const codeContentRef = useRef<HTMLPreElement>(null);
   const codeContainerRef = useRef<HTMLDivElement>(null);
   const innerCodeRef = useRef<HTMLElement>(null);
-  const [hasLeftOverflow, setHasLeftOverflow] = useState(false);
-  const [hasRightOverflow, setHasRightOverflow] = useState(false);
   const getCodeRef = useCallback(() => {
     if (type === 'single') {
       return codeContainerRef;
@@ -192,48 +196,11 @@ function CodeSnippet({
   }, [type]);
   const prefix = usePrefix();
 
-  const getCodeRefDimensions = useCallback(() => {
-    const {
-      clientWidth: codeClientWidth = 0,
-      scrollLeft: codeScrollLeft = 0,
-      scrollWidth: codeScrollWidth = 0,
-    } = getCodeRef().current || {};
-
-    return {
-      horizontalOverflow: codeScrollWidth > codeClientWidth,
-      codeClientWidth,
-      codeScrollWidth,
-      codeScrollLeft,
-    };
-  }, [getCodeRef]);
-
-  const handleScroll = useCallback(() => {
-    if (
-      type === 'inline' ||
-      (type === 'single' && !codeContainerRef?.current) ||
-      (type === 'multi' && !codeContentRef?.current)
-    ) {
-      return;
-    }
-
-    const {
-      horizontalOverflow,
-      codeClientWidth,
-      codeScrollWidth,
-      codeScrollLeft,
-    } = getCodeRefDimensions();
-
-    setHasLeftOverflow(horizontalOverflow && !!codeScrollLeft);
-    setHasRightOverflow(
-      horizontalOverflow && codeScrollLeft + codeClientWidth !== codeScrollWidth
-    );
-  }, [type, getCodeRefDimensions]);
-
   useResizeObserver({
     ref: getCodeRef(),
     onResize: () => {
-      if (codeContentRef?.current && type === 'multi') {
-        const { height } = codeContentRef.current.getBoundingClientRect();
+      if (innerCodeRef?.current && type === 'multi') {
+        const { height } = innerCodeRef.current.getBoundingClientRect();
 
         if (
           maxCollapsedNumberOfRows > 0 &&
@@ -253,18 +220,8 @@ function CodeSnippet({
           setExpandedCode(false);
         }
       }
-      if (
-        (codeContentRef?.current && type === 'multi') ||
-        (codeContainerRef?.current && type === 'single')
-      ) {
-        handleScroll();
-      }
     },
   });
-
-  useEffect(() => {
-    handleScroll();
-  }, [handleScroll]);
 
   const handleCopyClick = (evt) => {
     if (copyText || innerCodeRef?.current) {
@@ -283,8 +240,6 @@ function CodeSnippet({
     [`${prefix}--snippet--light`]: light,
     [`${prefix}--snippet--no-copy`]: hideCopyButton,
     [`${prefix}--snippet--wraptext`]: wrapText,
-    [`${prefix}--snippet--has-right-overflow`]:
-      type == 'multi' && hasRightOverflow,
   });
 
   const expandCodeBtnText = expandedCode ? showLessText : showMoreText;
@@ -304,10 +259,12 @@ function CodeSnippet({
       <Copy
         {...rest}
         align={align}
+        autoAlign={autoAlign}
         onClick={handleCopyClick}
         aria-label={deprecatedAriaLabel || ariaLabel}
         aria-describedby={uid}
         className={codeSnippetClasses}
+        disabled={disabled}
         feedback={feedback}
         feedbackTimeout={feedbackTimeout}>
         <code id={uid} ref={innerCodeRef}>
@@ -344,39 +301,35 @@ function CodeSnippet({
     }
   }
 
+  const isSingle = type === 'single';
+  const isMulti = type === 'multi';
+  const label = deprecatedAriaLabel || ariaLabel || 'code-snippet';
+
   return (
     <div {...rest} className={codeSnippetClasses}>
       <div
         ref={codeContainerRef}
-        role={type === 'single' || type === 'multi' ? 'textbox' : undefined}
-        tabIndex={
-          (type === 'single' || type === 'multi') && !disabled ? 0 : undefined
-        }
+        role={isSingle ? 'textbox' : undefined}
+        tabIndex={isSingle && !disabled ? 0 : undefined}
         className={`${prefix}--snippet-container`}
-        aria-label={deprecatedAriaLabel || ariaLabel || 'code-snippet'}
-        aria-readonly={type === 'single' || type === 'multi' ? true : undefined}
-        aria-multiline={type === 'multi' ? true : undefined}
-        onScroll={(type === 'single' && handleScroll) || undefined}
+        aria-label={!isMulti ? label : undefined}
+        aria-readonly={isSingle ? true : undefined}
         {...containerStyle}>
         <pre
+          role={isMulti ? 'textbox' : undefined}
+          tabIndex={isMulti && !disabled ? 0 : undefined}
+          aria-label={isMulti ? label : undefined}
+          aria-readonly={isMulti ? true : undefined}
+          aria-multiline={isMulti ? true : undefined}
           ref={codeContentRef}
-          onScroll={(type === 'multi' && handleScroll) || undefined}>
+          {...containerStyle}>
           <code ref={innerCodeRef}>{children}</code>
         </pre>
       </div>
-      {/**
-       * left overflow indicator must come after the snippet due to z-index and
-       * snippet focus border overlap
-       */}
-      {hasLeftOverflow && (
-        <div className={`${prefix}--snippet__overflow-indicator--left`} />
-      )}
-      {hasRightOverflow && type !== 'multi' && (
-        <div className={`${prefix}--snippet__overflow-indicator--right`} />
-      )}
       {!hideCopyButton && (
         <CopyButton
           align={align}
+          autoAlign={autoAlign}
           size={type === 'multi' ? 'sm' : 'md'}
           disabled={disabled}
           onClick={handleCopyClick}
@@ -410,16 +363,50 @@ CodeSnippet.propTypes = {
   /**
    * Specify how the trigger should align with the tooltip
    */
-  align: PropTypes.oneOf([
-    'top',
-    'top-left',
-    'top-right',
-    'bottom',
-    'bottom-left',
-    'bottom-right',
-    'left',
-    'right',
-  ]),
+  align: deprecateValuesWithin(
+    PropTypes.oneOf([
+      'top',
+      'top-left', // deprecated use top-start instead
+      'top-right', // deprecated use top-end instead
+
+      'bottom',
+      'bottom-left', // deprecated use bottom-start instead
+      'bottom-right', // deprecated use bottom-end instead
+
+      'left',
+      'left-bottom', // deprecated use left-end instead
+      'left-top', // deprecated use left-start instead
+
+      'right',
+      'right-bottom', // deprecated use right-end instead
+      'right-top', // deprecated use right-start instead
+
+      // new values to match floating-ui
+      'top-start',
+      'top-end',
+      'bottom-start',
+      'bottom-end',
+      'left-end',
+      'left-start',
+      'right-end',
+      'right-start',
+    ]),
+    [
+      'top',
+      'top-start',
+      'top-end',
+      'bottom',
+      'bottom-start',
+      'bottom-end',
+      'left',
+      'left-start',
+      'left-end',
+      'right',
+      'right-start',
+      'right-end',
+    ],
+    mapPopoverAlign
+  ),
 
   /**
    * Specify a label to be read by screen readers on the containing textbox
@@ -436,6 +423,13 @@ CodeSnippet.propTypes = {
     PropTypes.string,
     'This prop syntax has been deprecated. Please use the new `aria-label`.'
   ),
+
+  /**
+   * **Experimental**: Will attempt to automatically align the tooltip. Requires
+   * React v17+
+   * @see https://github.com/carbon-design-system/carbon/issues/18714
+   */
+  autoAlign: PropTypes.bool,
 
   /**
    * Provide the content of your CodeSnippet as a node or string

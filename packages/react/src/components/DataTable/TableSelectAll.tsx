@@ -1,5 +1,5 @@
 /**
- * Copyright IBM Corp. 2016, 2023
+ * Copyright IBM Corp. 2016, 2025
  *
  * This source code is licensed under the Apache-2.0 license found in the
  * LICENSE file in the root directory of this source tree.
@@ -10,17 +10,25 @@ import React from 'react';
 import InlineCheckbox from '../InlineCheckbox';
 import cx from 'classnames';
 import { usePrefix } from '../../internal/usePrefix';
+import { deprecate } from '../../prop-types/deprecate';
 
-interface TableSelectAllProps {
+export interface TableSelectAllProps {
   /**
    * Specify the aria label for the underlying input control
+   * node
    */
-  ariaLabel: string;
+  ['aria-label']?: string;
+
+  /**
+   * @deprecated please use `aria-label` instead.
+   * Specify the aria label for the underlying input control
+   */
+  ariaLabel?: string;
 
   /**
    * Specify whether all items are selected, or not
    */
-  checked: boolean;
+  checked?: boolean;
 
   /**
    * The CSS class names of the cell that wraps the underlying input control
@@ -54,7 +62,8 @@ interface TableSelectAllProps {
 }
 
 const TableSelectAll = ({
-  ariaLabel = 'Select all rows in the table',
+  ariaLabel: deprecatedAriaLabel = 'Select all rows in the table',
+  ['aria-label']: ariaLabel,
   checked,
   id,
   indeterminate,
@@ -70,7 +79,7 @@ const TableSelectAll = ({
       scope="col"
       className={cx(`${prefix}--table-column-checkbox`, className)}>
       <InlineCheckbox
-        aria-label={ariaLabel}
+        aria-label={ariaLabel || deprecatedAriaLabel}
         checked={checked}
         id={id}
         indeterminate={indeterminate}
@@ -86,12 +95,19 @@ TableSelectAll.propTypes = {
   /**
    * Specify the aria label for the underlying input control
    */
-  ariaLabel: PropTypes.string.isRequired,
-
+  ['aria-label']: PropTypes.string,
+  /**
+   * Deprecated, please use `aria-label` instead.
+   * Specify the aria label for the underlying input control
+   */
+  ariaLabel: deprecate(
+    PropTypes.string,
+    'This prop syntax has been deprecated. Please use the new `aria-label`.'
+  ),
   /**
    * Specify whether all items are selected, or not
    */
-  checked: PropTypes.bool.isRequired,
+  checked: PropTypes.bool,
 
   /**
    * The CSS class names of the cell that wraps the underlying input control

@@ -1,5 +1,5 @@
 /**
- * Copyright IBM Corp. 2016, 2023
+ * Copyright IBM Corp. 2016, 2026
  *
  * This source code is licensed under the Apache-2.0 license found in the
  * LICENSE file in the root directory of this source tree.
@@ -10,60 +10,61 @@ import cx from 'classnames';
 import PropTypes from 'prop-types';
 import React from 'react';
 import { usePrefix } from '../../internal/usePrefix';
+import { useFeatureFlag } from '../FeatureFlags';
 import OverflowMenu from '../OverflowMenu';
+import { type OverflowMenuProps as OverflowMenuV11Props } from '../OverflowMenu/OverflowMenu';
+import { useTableToolbar } from './TableToolbar';
 
 const defaultIconDescription = 'Settings';
 
-export interface TableToolbarMenuProps
-  extends React.HTMLAttributes<HTMLDivElement> {
-  children: React.ReactNode;
+// Intentionally pinned to v11 since TableToolbarMenu only supports
+// v11-specific props like `iconDescription` (tracked in #23375).
+export type TableToolbarMenuProps = OverflowMenuV11Props;
 
-  /**
-   * Provide an optional class name for the toolbar menu trigger button
-   */
-  className?: string;
-
-  /**
-   * The description of the menu icon.
-   */
-  iconDescription?: string;
-
-  /**
-   * Provide an optional class name for the toolbar menu
-   */
-  menuOptionsClass?: string;
-
-  /**
-   * Optional prop to allow overriding the default menu icon
-   */
-  renderIcon?: any;
-}
-
-const TableToolbarMenu: React.FC<TableToolbarMenuProps> = ({
+const TableToolbarMenu = ({
   className,
   renderIcon = Settings,
   iconDescription = defaultIconDescription,
   children,
   menuOptionsClass,
+  size: sizeProp,
   ...rest
-}) => {
+}: TableToolbarMenuProps) => {
+  const enableV12OverflowMenu = useFeatureFlag('enable-v12-overflowmenu');
+  const toolbarContext = useTableToolbar();
+  const size = sizeProp ?? toolbarContext.size;
   const prefix = usePrefix();
   const toolbarActionClasses = cx(
     className,
     `${prefix}--toolbar-action ${prefix}--overflow-menu`
   );
+
+  if (enableV12OverflowMenu) {
+    return (
+      <OverflowMenu
+        renderIcon={renderIcon}
+        className={toolbarActionClasses}
+        label={iconDescription}
+        size={size}
+        menuAlignment="bottom-end"
+        {...rest}>
+        {children}
+      </OverflowMenu>
+    );
+  }
+
   const menuOptionsClasses = cx(
     menuOptionsClass,
     `${prefix}--toolbar-action__menu`
   );
+
   return (
     <OverflowMenu
-      aria-label={iconDescription}
       renderIcon={renderIcon}
       className={toolbarActionClasses}
-      title={iconDescription}
       iconDescription={iconDescription}
       menuOptionsClass={menuOptionsClasses}
+      size={size}
       flipped
       {...rest}>
       {children}
@@ -90,9 +91,14 @@ TableToolbarMenu.propTypes = {
   menuOptionsClass: PropTypes.string,
 
   /**
-   * Optional prop to allow overriding the default menu icon
+   * A component used to render an icon.
    */
   renderIcon: PropTypes.oneOfType([PropTypes.func, PropTypes.object]),
+
+  /**
+   * Specify the size of the ToolbarMenu.
+   */
+  size: PropTypes.oneOf(['xs', 'sm', 'md', 'lg']),
 };
 
 export default TableToolbarMenu;

@@ -1,15 +1,27 @@
-import { Story, Canvas, ArgsTable } from '@storybook/blocks';
+import { Canvas, ArgTypes, Meta } from '@storybook/addon-docs/blocks';
 import * as FlexGridStories from './FlexGrid.stories';
+import { stackblitzPrefillConfig } from '../../../previewer/codePreviewer';
 
-# Grid
+export const demoContentDef = `function DemoContent({ children }) {
+  return (
+    <div className="outside">
+      <div className="inside">{children}</div>
+    </div>
+  );
+}`;
+
+<Meta isTemplate />
+
+# FlexGrid
 
 [Source code](https://github.com/carbon-design-system/carbon/tree/main/packages/react/src/components/Grid)
 &nbsp;|&nbsp;
-[Usage guidelines](https://www.carbondesignsystem.com/guidelines/2x-grid/overview)
+[Usage guidelines](https://carbondesignsystem.com/elements/2x-grid/overview/)
 
-{/* <!-- prettier-ignore-start -->
-<!-- START doctoc generated TOC please keep comment here to allow auto update -->
-<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE --> */}
+{/* prettier-ignore-start */}
+
+{/* <!-- START doctoc generated TOC please keep comment here to allow auto update --> <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE --> */}
+
 ## Table of Contents
 
 - [Overview](#overview)
@@ -20,18 +32,21 @@ import * as FlexGridStories from './FlexGrid.stories';
   - [Mix-and-match](#mix-and-match)
 - [Auto columns](#auto-columns)
 - [Offset columns](#offset-columns)
+- [Row gap](#row-gap)
 - [Component API](#component-api)
   - [Using the `as` prop](#using-the-as-prop)
 - [FAQ](#faq)
   - [How can I hide columns at a certain breakpoint?](#how-can-i-hide-columns-at-a-certain-breakpoint)
-  - [Can I nest grid components?](#can-i-nest-grid-components)
+  - [Can I nest FlexGrid components?](#can-i-nest-flexgrid-components)
+  - [Why are the FlexGrid styles not working?](#why-are-the-flexgrid-styles-not-working)
 - [Feedback](#feedback)
 
-{/* <!-- END doctoc generated TOC please keep comment here to allow auto update -->
-<!-- prettier-ignore-end --> */}
+{/* <!-- END doctoc generated TOC please keep comment here to allow auto update --> */}
+
+{/* prettier-ignore-end */}
 
 Carbon's grid components help developers use the
-[2x Grid](https://www.carbondesignsystem.com/guidelines/2x-grid/overview). The
+[2x Grid](https://carbondesignsystem.com/elements/2x-grid/overview/). The
 project provides `FlexGrid`, `Row`, and `Column` components which can be used to
 build a variety of layouts. You can import these components from
 `@carbon/react`:
@@ -48,9 +63,19 @@ import { FlexGrid, Row, Column } from '@carbon/react';
 );
 ```
 
-<Canvas>
-  <Story of={FlexGridStories.ResponsiveGrid} />
-</Canvas>
+<Canvas
+  of={FlexGridStories.ResponsiveGrid}
+  additionalActions={[
+    {
+      title: 'Open in Stackblitz',
+      onClick: () =>
+        stackblitzPrefillConfig({
+          story: FlexGridStories.ResponsiveGrid,
+          customFunctionDefs: [demoContentDef],
+        }),
+    },
+  ]}
+/>
 
 ## Overview
 
@@ -66,7 +91,7 @@ they don't span more columns than the total number of columns in the grid.
 To specify how many columns the `Column` component should span, you can use the
 `sm`, `md`, `lg`, `xlg`, or `max` props. These props are shorthand versions of
 the names given to each of the breakpoints defined by the
-[2x Grid](https://www.carbondesignsystem.com/guidelines/2x-grid/implementation/#responsive-options).
+[2x Grid](https://carbondesignsystem.com/elements/2x-grid/overview/#breakpoints).
 In the example below, we will use the `lg` prop for the large breakpoint and the
 number `4` to specify that each `Column` component should span 4 columns at that
 breakpoint.
@@ -93,47 +118,97 @@ You can pair up multiple breakpoint props to specify how many columns the
 we will use the `sm`, `md`, and `lg` prop to specify how many columns the
 `Column` components should span at the small, medium, and large breakpoints.
 
-<Canvas>
-  <Story of={FlexGridStories.ResponsiveGrid} />
-</Canvas>
+<Canvas
+  of={FlexGridStories.ResponsiveGrid}
+  additionalActions={[
+    {
+      title: 'Open in Stackblitz',
+      onClick: () =>
+        stackblitzPrefillConfig({
+          story: FlexGridStories.ResponsiveGrid,
+          customFunctionDefs: [demoContentDef],
+        }),
+    },
+  ]}
+/>
 
 ## Gutter modes
 
 There are several
-[gutter modes](https://www.carbondesignsystem.com/guidelines/2x-grid/implementation/#gutter-modes)
+[gutter modes](https://carbondesignsystem.com/elements/2x-grid/overview/#gutters)
 that you can use depending on the layout effect you're looking to achieve. By
-default, `FlexGrid` uses the wide gutter mode with a 32px gutter. However, you can
-use the `narrow` or `condensed` props to enable the narrow and condensed grid
-modes, respectively.
+default, `FlexGrid` uses the wide gutter mode with a 32px gutter. However, you
+can use the `narrow` or `condensed` props to enable the narrow and condensed
+grid modes, respectively.
 
 The same way that you can pass in `narrow` or `condensed` to the `FlexGrid`
 component, you can also pass in `narrow` or `condensed` to a `Row` component to
-enable a certain gutter mode but only for a row. This can be useful when you need
-to mix-and-match certain gutter modes to achieve a particular layout.
+enable a certain gutter mode but only for a row. This can be useful when you
+need to mix-and-match certain gutter modes to achieve a particular layout.
 
 ### Wide grid
 
-<Canvas>
-  <Story of={FlexGridStories.FullWidth} />
-</Canvas>
+<Canvas
+  of={FlexGridStories.FullWidth}
+  additionalActions={[
+    {
+      title: 'Open in Stackblitz',
+      onClick: () =>
+        stackblitzPrefillConfig({
+          story: FlexGridStories.FullWidth,
+          customFunctionDefs: [demoContentDef],
+        }),
+    },
+  ]}
+/>
 
 ### Narrow grid
 
-<Canvas>
-  <Story of={FlexGridStories.Narrow} />
-</Canvas>
+<Canvas
+  of={FlexGridStories.Narrow}
+  additionalActions={[
+    {
+      title: 'Open in Stackblitz',
+      onClick: () =>
+        stackblitzPrefillConfig({
+          story: FlexGridStories.Narrow,
+          customFunctionDefs: [demoContentDef],
+        }),
+    },
+  ]}
+/>
 
 ### Condensed grid
 
-<Canvas>
-  <Story of={FlexGridStories.Condensed} />
-</Canvas>
+<Canvas
+  of={FlexGridStories.Condensed}
+  additionalActions={[
+    {
+      title: 'Open in Stackblitz',
+      onClick: () =>
+        stackblitzPrefillConfig({
+          story: FlexGridStories.Condensed,
+          customFunctionDefs: [demoContentDef],
+        }),
+    },
+  ]}
+/>
 
 ### Mix-and-match
 
-<Canvas>
-  <Story of={FlexGridStories.MixedGutterModes} />
-</Canvas>
+<Canvas
+  of={FlexGridStories.MixedGutterModes}
+  additionalActions={[
+    {
+      title: 'Open in Stackblitz',
+      onClick: () =>
+        stackblitzPrefillConfig({
+          story: FlexGridStories.MixedGutterModes,
+          customFunctionDefs: [demoContentDef],
+        }),
+    },
+  ]}
+/>
 
 ## Auto columns
 
@@ -151,9 +226,19 @@ For example, if you have on `Column` component it would span 100%, two `Column`
 components would span 50% each, four `Column` components would span 25% each,
 and so on.
 
-<Canvas>
-  <Story of={FlexGridStories.AutoColumns} />
-</Canvas>
+<Canvas
+  of={FlexGridStories.AutoColumns}
+  additionalActions={[
+    {
+      title: 'Open in Stackblitz',
+      onClick: () =>
+        stackblitzPrefillConfig({
+          story: FlexGridStories.AutoColumns,
+          customFunctionDefs: [demoContentDef],
+        }),
+    },
+  ]}
+/>
 
 ## Offset columns
 
@@ -172,13 +257,99 @@ breakpoint. At the medium breakpoint, it will be offset by two columns.
 <Column sm={2} md={{ span: 4, offset: 2 }} />
 ```
 
-<Canvas>
-  <Story of={FlexGridStories.Offset} />
-</Canvas>
+<Canvas
+  of={FlexGridStories.Offset}
+  additionalActions={[
+    {
+      title: 'Open in Stackblitz',
+      onClick: () =>
+        stackblitzPrefillConfig({
+          story: FlexGridStories.Offset,
+          customFunctionDefs: [demoContentDef],
+        }),
+    },
+  ]}
+/>
+
+## Row gap
+
+The `FlexGrid` component supports an optional `withRowGap` prop that adds
+vertical spacing between rows. When enabled, the row gap automatically matches
+the current gutter mode:
+
+- Default (wide): 32px row gap
+- Narrow: 16px row gap
+- Condensed: 1px row gap
+
+This feature is useful when you want consistent vertical spacing between rows
+that matches your horizontal gutter spacing.
+
+```jsx
+import { FlexGrid, Row, Column } from '@carbon/react';
+
+function MyComponent() {
+  return (
+    <FlexGrid withRowGap>
+      <Row>
+        <Column lg={4}>Row 1, Column 1</Column>
+        <Column lg={4}>Row 1, Column 2</Column>
+        <Column lg={4}>Row 1, Column 3</Column>
+      </Row>
+      <Row>
+        <Column lg={4}>Row 2, Column 1</Column>
+        <Column lg={4}>Row 2, Column 2</Column>
+        <Column lg={4}>Row 2, Column 3</Column>
+      </Row>
+    </FlexGrid>
+  );
+}
+```
+
+You can combine `withRowGap` with different gutter modes:
+
+```jsx
+{
+  /* Narrow grid with row gap */
+}
+<FlexGrid narrow withRowGap>
+  <Row>
+    <Column>Content</Column>
+  </Row>
+  <Row>
+    <Column>Content</Column>
+  </Row>
+</FlexGrid>;
+
+{
+  /* Condensed grid with row gap */
+}
+<FlexGrid condensed withRowGap>
+  <Row>
+    <Column>Content</Column>
+  </Row>
+  <Row>
+    <Column>Content</Column>
+  </Row>
+</FlexGrid>;
+```
+
+<Canvas
+  of={FlexGridStories.WithRowGap}
+  additionalActions={[
+    {
+      title: 'Open in Stackblitz',
+      onClick: () =>
+        stackblitzPrefillConfig({
+          story: FlexGridStories.WithRowGap,
+          customFunctionDefs: [demoContentDef],
+        }),
+    },
+  ]}
+/>
 
 ## Component API
 
-<ArgsTable />
+<ArgTypes />
 
 ### Using the `as` prop
 

@@ -1,32 +1,51 @@
 /**
- * Copyright IBM Corp. 2016, 2023
+ * Copyright IBM Corp. 2016, 2026
  *
  * This source code is licensed under the Apache-2.0 license found in the
  * LICENSE file in the root directory of this source tree.
  */
 
 import PropTypes from 'prop-types';
-import React, { ReactNode, useContext } from 'react';
-import { PolymorphicProps } from '../../types/common';
-import { TextDir } from './TextDirection';
-import { TextDirectionContext } from './TextDirectionContext';
+import React, {
+  Children,
+  forwardRef,
+  useContext,
+  type ElementType,
+  type HTMLAttributes,
+  type ReactElement,
+  type ReactNode,
+} from 'react';
+import {
+  PolymorphicComponentPropWithRef,
+  PolymorphicRef,
+} from '../../internal/PolymorphicProps';
+import { TextDirectionContext, type TextDir } from './TextDirectionContext';
 
 export interface TextBaseProps {
-  dir?: TextDir | undefined;
+  dir?: TextDir;
+  children?: ReactNode;
 }
 
-export type TextProps<T extends React.ElementType> = PolymorphicProps<
+export type TextProps<T extends ElementType> = PolymorphicComponentPropWithRef<
   T,
   TextBaseProps
 >;
-function Text<T extends React.ElementType>({
-  as,
-  children,
-  dir = 'auto',
-  ...rest
-}: TextProps<T>) {
-  // TODO: Update with context typing once its been converted to TS
-  const context = useContext<any>(TextDirectionContext);
+
+type TextComponent = {
+  <T extends ElementType = 'span'>(
+    props: TextProps<T> & { ref?: PolymorphicRef<T> }
+  ): ReactElement | null;
+  displayName?: string;
+};
+
+export const Text = forwardRef<
+  HTMLSpanElement,
+  TextBaseProps & {
+    as?: ElementType;
+    dir?: 'auto' | 'ltr' | 'rtl';
+  } & HTMLAttributes<HTMLSpanElement>
+>(({ as, children, dir = 'auto', ...rest }, ref) => {
+  const context = useContext(TextDirectionContext);
   const textProps: { dir?: TextDir } = {};
   const BaseComponent = as ?? 'span';
   const value = {
@@ -59,13 +78,16 @@ function Text<T extends React.ElementType>({
 
   return (
     <TextDirectionContext.Provider value={value}>
-      <BaseComponent {...rest} {...textProps}>
+      <BaseComponent ref={ref} {...rest} {...textProps}>
         {children}
       </BaseComponent>
     </TextDirectionContext.Provider>
   );
-}
+}) as TextComponent;
 
+Text.displayName = 'Text';
+
+// @ts-expect-error - `propTypes` isn't typed.
 Text.propTypes = {
   /**
    * Provide a custom element type used to render the outermost node
@@ -79,7 +101,7 @@ Text.propTypes = {
   /**
    * Provide child elements or text to be rendered inside of this component
    */
-  children: PropTypes.node.isRequired,
+  children: PropTypes.node,
 
   /**
    * Specify the text direction to be used for this component and any of its
@@ -88,12 +110,12 @@ Text.propTypes = {
   dir: PropTypes.oneOf(['ltr', 'rtl', 'auto']),
 };
 
-function getTextFromChildren(children: ReactNode) {
+const getTextFromChildren = (children: ReactNode) => {
   if (typeof children === 'string') {
     return children;
   }
 
-  const text = React.Children.map(children, (child) => {
+  const text = Children.map(children, (child) => {
     if (typeof child === 'string') {
       return child;
     }
@@ -107,6 +129,4 @@ function getTextFromChildren(children: ReactNode) {
   }
 
   return text;
-}
-
-export { Text };
+};

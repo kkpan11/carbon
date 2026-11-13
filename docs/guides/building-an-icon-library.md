@@ -77,14 +77,7 @@ After following our [contribution guidelines](/.github/CONTRIBUTING.md), you
 should have a local version of Carbon Elements on your own machine. In order to
 add a new package to the project, you add a folder in the `packages` directory
 and run `yarn init -y` to generate the `package.json` file. Make sure to edit
-the `name` field in the `package.json` file and then run the following task:
-
-```bash
-yarn sync
-```
-
-This should populate your `package.json` with all the necessary information in
-order to be published correctly.
+the `name` field in the `package.json` file.
 
 Each icon library package ends up taking on the following folder structure when
 everything is built:
@@ -139,7 +132,7 @@ build({ cwd: path.resolve(__dirname, '../') }).catch((error) => {
 });
 ```
 
-The path to the `build` command is dependant on your implementation. The `build`
+The path to the `build` command is dependent on your implementation. The `build`
 command itself should take on the following shape:
 
 ```js
@@ -154,23 +147,20 @@ const meta = require('@carbon/icons/meta.json');
 
 const fs = require('fs-extra');
 const path = require('path');
-const rollup = require('rollup');
 
 async function build({ cwd }) {
-  // Define our bundle entrypoints for ESM, CJS, and UMD
+  const { build: tsdown } = await import('tsdown');
+
+  // Define our bundle entrypoints for ESM and CJS
   const ESM_DIR = path.join(cwd, 'es');
-  const BUNDLE_FORMATS = [
+  const BUNDLE_TARGETS = [
     {
-      format: 'cjs',
+      format: 'commonjs',
       directory: 'lib',
-    },
-    {
-      format: 'umd',
-      directory: 'umd',
     },
   ];
 
-  reporter.info('Building ESM and bundle sources...');
+  reporter.info('Building ESM and CJS sources...');
 
   // Use the fan-out pattern with Promise.all to try and make these tasks run in
   // parallel
@@ -186,25 +176,19 @@ async function build({ cwd }) {
       await fs.ensureDir(path.dirname(jsFilepath));
       await fs.writeFile(jsFilepath, source);
 
-      // Afterwards, use BUNDLE_FORMATS and rollup to compile the ESM module to
-      // CJS and UMD
+      // Afterwards, compile the ESM module to CJS with tsdown
       await Promise.all(
-        BUNDLE_FORMATS.map(async ({ format, directory }) => {
-          const bundle = await rollup({
-            input: jsFilepath,
+        BUNDLE_TARGETS.map(async ({ format, directory }) => {
+          await tsdown({
+            entry: [jsFilepath],
+            format: [format],
+            outDir: path.dirname(
+              jsFilepath.replace(/\/es\//, `/${directory}/`)
+            ),
+            clean: false,
+            dts: false,
             external: ['@carbon/icon-helpers', 'prop-types', 'react'],
           });
-          const outputOptions = {
-            format,
-            file: jsFilepath.replace(/\/es\//, `/${directory}/`),
-          };
-          if (format === 'umd') {
-            outputOptions.name = info.moduleName;
-            outputOptions.globals = {
-              '@carbon/icon-helpers': 'CarbonIconHelpers',
-            };
-          }
-          await bundle.write(outputOptions);
         })
       );
     })
@@ -213,9 +197,9 @@ async function build({ cwd }) {
   // Afterwards, you should try and construct an entrypoint of all icons for
   // your library under `es/index.js`. It's important that this entrypoint is
   // tree-shakeable given the size of our library
-  reporter.info('Building ESM and bundle entrypoints...');
+  reporter.info('Building ESM and CJS entrypoints...');
 
-  // You can then use `BUNDLE_FORMATS` again to generate CJS and UMD entrypoints
+  // You can then use `BUNDLE_TARGETS` again to generate CJS entrypoints
 
   // After constructing all the necessary module files, feel free to use this to
   // generate example information in the `examples` directory

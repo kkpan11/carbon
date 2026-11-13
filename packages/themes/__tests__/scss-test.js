@@ -11,15 +11,14 @@
 
 const { SassRenderer } = require('@carbon/test-utils/scss');
 const { themes } = require('../src');
-const { group } = require('../src/tokens');
+const { tokens } = require('../js/generated/metadata.js');
 
 const { render } = SassRenderer.create(__dirname);
-const tokens = group.getTokens();
 
 describe('@carbon/themes/scss', () => {
   test('index.scss', async () => {
     const tokenVariables = tokens.map((token) => {
-      const variable = `themes.$${token.name}`;
+      const variable = `themes.$${token}`;
       return `$_: get('${variable}', ${variable});`;
     });
 
@@ -49,13 +48,14 @@ describe('@carbon/themes/scss', () => {
 
     // All tokens should be available as variables
     for (const token of tokens) {
-      const variable = `themes.$${token.name}`;
+      const variable = `themes.$${token}`;
       expect(unwrap(variable)).toBeDefined();
     }
   });
 
   test('scss/_themes.scss', async () => {
     const { unwrap } = await render(`
+      @use 'sass:map';
       @use '../scss/themes';
 
       // Themes
@@ -63,12 +63,22 @@ describe('@carbon/themes/scss', () => {
       $_: get('themes.$g10', themes.$g10);
       $_: get('themes.$g90', themes.$g90);
       $_: get('themes.$g100', themes.$g100);
+
+      $_: get('color-scheme.white', map.get(themes.$white, 'color-scheme'));
+      $_: get('color-scheme.g10', map.get(themes.$g10, 'color-scheme'));
+      $_: get('color-scheme.g90', map.get(themes.$g90, 'color-scheme'));
+      $_: get('color-scheme.g100', map.get(themes.$g100, 'color-scheme'));
     `);
 
     // Themes should be available
     for (const theme of Object.keys(themes)) {
       expect(unwrap(`themes.$${theme}`)).toBeDefined();
     }
+
+    expect(unwrap('color-scheme.white')).toBe('light');
+    expect(unwrap('color-scheme.g10')).toBe('light');
+    expect(unwrap('color-scheme.g90')).toBe('dark');
+    expect(unwrap('color-scheme.g100')).toBe('dark');
   });
 
   describe('configuration', () => {

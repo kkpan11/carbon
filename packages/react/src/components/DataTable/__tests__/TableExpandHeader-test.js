@@ -1,5 +1,5 @@
 /**
- * Copyright IBM Corp. 2016, 2023
+ * Copyright IBM Corp. 2016, 2026
  *
  * This source code is licensed under the Apache-2.0 license found in the
  * LICENSE file in the root directory of this source tree.
@@ -31,7 +31,7 @@ describe('TableExpandHeader', () => {
           <TableHead>
             <TableRow>
               <TableExpandHeader
-                ariaLabel="test-label"
+                aria-label="test-label"
                 isExpanded={false}
                 onExpand={jest.fn()}
                 className="custom-class"
@@ -43,12 +43,12 @@ describe('TableExpandHeader', () => {
       expect(container).toMatchSnapshot();
     });
 
-    it('should respect ariaLabel prop', () => {
+    it('should respect aria-label prop', () => {
       render(
         <Table>
           <TableHead>
             <TableRow>
-              <TableExpandHeader isExpanded enableToggle ariaLabel="Expand" />
+              <TableExpandHeader isExpanded aria-label="Expand" enableToggle />
             </TableRow>
           </TableHead>
         </Table>
@@ -150,8 +150,8 @@ describe('TableExpandHeader', () => {
                       enableToggle={true}
                       {...getExpandHeaderProps({ onExpand })}
                     />
-                    {headers.map((header, i) => (
-                      <TableHeader key={i} {...getHeaderProps({ header })}>
+                    {headers.map((header) => (
+                      <TableHeader {...getHeaderProps({ header })}>
                         {header.header}
                       </TableHeader>
                     ))}
@@ -190,7 +190,7 @@ describe('TableExpandHeader', () => {
           },
           {
             id: 'd0d95500fccef68dd1e7cb36f381984d340e9a81657b00e578ef175b195d4983',
-            value: 'Sewcond',
+            value: 'Second',
             timestamp: '2022-06-06T12:57:27',
           },
           {
@@ -236,6 +236,7 @@ describe('TableExpandHeader', () => {
                 getRowProps,
                 getExpandedRowProps,
                 getExpandHeaderProps,
+                getCellProps,
               }) => (
                 <Table {...getTableProps()}>
                   <TableHead>
@@ -245,20 +246,20 @@ describe('TableExpandHeader', () => {
                         {...getExpandHeaderProps()}
                       />
                       {headers.map((header) => (
-                        <TableHeader
-                          key={header.key}
-                          {...getHeaderProps({ header })}>
+                        <TableHeader {...getHeaderProps({ header })}>
                           {header.header}
                         </TableHeader>
                       ))}
                     </TableRow>
                   </TableHead>
                   <TableBody>
-                    {rows.map((row, index) => (
+                    {rows.map((row) => (
                       <React.Fragment key={row.id}>
-                        <TableExpandRow key={index} {...getRowProps({ row })}>
+                        <TableExpandRow {...getRowProps({ row })}>
                           {row.cells.map((cell) => (
-                            <TableCell key={cell.id}>{cell.value}</TableCell>
+                            <TableCell {...getCellProps({ cell })}>
+                              {cell.value}
+                            </TableCell>
                           ))}
                         </TableExpandRow>
                         <TableExpandedRow

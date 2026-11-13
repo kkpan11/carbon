@@ -1,5 +1,5 @@
 /**
- * Copyright IBM Corp. 2016, 2023
+ * Copyright IBM Corp. 2016, 2026
  *
  * This source code is licensed under the Apache-2.0 license found in the
  * LICENSE file in the root directory of this source tree.
@@ -9,9 +9,19 @@ import React from 'react';
 import CheckboxGroup from '../CheckboxGroup';
 import Checkbox from '../Checkbox/Checkbox';
 import { render, screen } from '@testing-library/react';
-import { Slug } from '../Slug';
+import { AILabel } from '../AILabel';
 
 const prefix = 'cds';
+
+/**
+ * @param element {Element}
+ * @returns {Record<string, string>}
+ */
+const getElementAttributes = ({ attributes }) =>
+  Array.from(attributes).reduce(
+    (acc, { name, value }) => ({ ...acc, [name]: value }),
+    {}
+  );
 
 describe('CheckboxGroup', () => {
   it('should support a custom `className` prop on the outermost element', () => {
@@ -19,6 +29,44 @@ describe('CheckboxGroup', () => {
       <CheckboxGroup className="test" legendText="Checkbox heading" />
     );
     expect(container.firstChild).toHaveClass('test');
+  });
+
+  it('should warn without throwing for interactive content in legendText', () => {
+    const spy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+
+    expect(() => {
+      render(
+        <CheckboxGroup
+          legendText={
+            <>
+              Checkbox heading <button type="button">Help</button>
+            </>
+          }
+        />
+      );
+    }).not.toThrow();
+
+    expect(spy).toHaveBeenCalledWith(
+      expect.stringContaining(
+        'Warning: The CheckboxGroup component `legendText` prop must have no interactive content'
+      )
+    );
+
+    spy.mockRestore();
+  });
+
+  it('should allow non-interactive content in legendText', () => {
+    expect(() => {
+      render(
+        <CheckboxGroup
+          legendText={
+            <>
+              Checkbox heading <span>additional legend content</span>
+            </>
+          }
+        />
+      );
+    }).not.toThrow();
   });
 
   it('should render helperText', () => {
@@ -31,6 +79,22 @@ describe('CheckboxGroup', () => {
     );
 
     expect(screen.getByText('Helper text')).toBeInTheDocument();
+  });
+
+  it('should render helperText with value 0', () => {
+    render(<CheckboxGroup legendText="heading" helperText={0} />);
+    expect(screen.getByText('0')).toBeInTheDocument();
+  });
+
+  it('should not render helperText when helperText is an empty string', () => {
+    const { container } = render(
+      <CheckboxGroup legendText="Checkbox heading" helperText="" />
+    );
+
+    expect(
+      container.querySelector(`.${prefix}--form__helper-text`)
+    ).not.toBeInTheDocument();
+    expect(container.firstChild).not.toHaveAttribute('aria-describedby');
   });
 
   it('should set data-invalid when invalid prop is true', () => {
@@ -70,6 +134,84 @@ describe('CheckboxGroup', () => {
     expect(screen.getByText('Invalid text')).toBeInTheDocument();
   });
 
+  it('should not respect invalid prop if disabled', () => {
+    const { container } = render(
+      <CheckboxGroup
+        className="some-class"
+        legendText="Checkbox heading"
+        invalid
+        invalidText="Invalid text"
+        disabled>
+        <Checkbox
+          defaultChecked
+          labelText="Checkbox label"
+          id="checkbox-label-1"
+        />
+        <Checkbox labelText={`Checkbox label`} id="checkbox-label-2" />
+      </CheckboxGroup>
+    );
+
+    // eslint-disable-next-line testing-library/no-container, testing-library/no-node-access
+    const invalidIcon = container.querySelector(
+      `svg.${prefix}--checkbox__invalid-icon`
+    );
+
+    expect(container.firstChild).not.toHaveAttribute('data-invalid');
+    expect(container.firstChild).not.toHaveClass(
+      `${prefix}--checkbox-group--invalid`
+    );
+    expect(invalidIcon).not.toBeInTheDocument();
+  });
+
+  it('should not respect invalid prop if readOnly', () => {
+    const { container } = render(
+      <CheckboxGroup
+        className="some-class"
+        legendText="Checkbox heading"
+        invalid
+        invalidText="Invalid text"
+        readOnly>
+        <Checkbox
+          defaultChecked
+          labelText="Checkbox label"
+          id="checkbox-label-1"
+        />
+        <Checkbox labelText={`Checkbox label`} id="checkbox-label-2" />
+      </CheckboxGroup>
+    );
+
+    // eslint-disable-next-line testing-library/no-container, testing-library/no-node-access
+    const invalidIcon = container.querySelector(
+      `svg.${prefix}--checkbox__invalid-icon`
+    );
+
+    expect(container.firstChild).not.toHaveAttribute('data-invalid');
+    expect(container.firstChild).not.toHaveClass(
+      `${prefix}--checkbox-group--invalid`
+    );
+    expect(invalidIcon).not.toBeInTheDocument();
+  });
+
+  it('should display helperText when invalid is true but disabled', () => {
+    render(
+      <CheckboxGroup
+        className="some-class"
+        legendText="Checkbox heading"
+        invalid
+        disabled
+        helperText="Helper text">
+        <Checkbox
+          defaultChecked
+          labelText="Checkbox label"
+          id="checkbox-label-1"
+        />
+        <Checkbox labelText={`Checkbox label`} id="checkbox-label-2" />
+      </CheckboxGroup>
+    );
+
+    expect(screen.getByText('Helper text')).toBeInTheDocument();
+  });
+
   it('should render legendText', () => {
     render(<CheckboxGroup className="test" legendText="Checkbox heading" />);
 
@@ -105,6 +247,24 @@ describe('CheckboxGroup', () => {
     );
   });
 
+  it('should pass disabled prop to fieldset', () => {
+    const { container } = render(
+      <CheckboxGroup
+        className="some-class"
+        legendText="Checkbox heading"
+        disabled>
+        <Checkbox
+          defaultChecked
+          labelText="Checkbox label"
+          id="checkbox-label-1"
+        />
+        <Checkbox labelText={`Checkbox label`} id="checkbox-label-2" />
+      </CheckboxGroup>
+    );
+
+    expect(container.firstChild).toHaveAttribute('disabled');
+  });
+
   it('should respect warn prop', () => {
     const { container } = render(
       <CheckboxGroup className="some-class" legendText="Checkbox heading" warn>
@@ -126,6 +286,60 @@ describe('CheckboxGroup', () => {
       `${prefix}--checkbox-group--warning`
     );
     expect(warnIcon).toBeInTheDocument();
+  });
+
+  it('should not respect warn prop if disabled', () => {
+    const { container } = render(
+      <CheckboxGroup
+        className="some-class"
+        legendText="Checkbox heading"
+        warn
+        disabled>
+        <Checkbox
+          defaultChecked
+          labelText="Checkbox label"
+          id="checkbox-label-1"
+        />
+        <Checkbox labelText={`Checkbox label`} id="checkbox-label-2" />
+      </CheckboxGroup>
+    );
+
+    // eslint-disable-next-line testing-library/no-container, testing-library/no-node-access
+    const warnIcon = container.querySelector(
+      `svg.${prefix}--checkbox__invalid-icon--warning`
+    );
+
+    expect(container.firstChild).not.toHaveClass(
+      `${prefix}--checkbox-group--warning`
+    );
+    expect(warnIcon).not.toBeInTheDocument();
+  });
+
+  it('should not respect warn prop if readOnly', () => {
+    const { container } = render(
+      <CheckboxGroup
+        className="some-class"
+        legendText="Checkbox heading"
+        warn
+        readOnly>
+        <Checkbox
+          defaultChecked
+          labelText="Checkbox label"
+          id="checkbox-label-1"
+        />
+        <Checkbox labelText={`Checkbox label`} id="checkbox-label-2" />
+      </CheckboxGroup>
+    );
+
+    // eslint-disable-next-line testing-library/no-container, testing-library/no-node-access
+    const warnIcon = container.querySelector(
+      `svg.${prefix}--checkbox__invalid-icon--warning`
+    );
+
+    expect(container.firstChild).not.toHaveClass(
+      `${prefix}--checkbox-group--warning`
+    );
+    expect(warnIcon).not.toBeInTheDocument();
   });
 
   it('should display warnText if warn prop is true', () => {
@@ -150,20 +364,44 @@ describe('CheckboxGroup', () => {
     );
   });
 
-  it('should respect slug prop', () => {
+  it('should respect deprecated slug prop', () => {
+    const spy = jest.spyOn(console, 'warn').mockImplementation(() => {});
     const { container } = render(
       <CheckboxGroup
         className="some-class"
         legendText="Checkbox heading"
-        slug={<Slug />}
+        slug={<AILabel />}
       />
     );
 
     expect(container.firstChild).toHaveClass(`${prefix}--checkbox-group--slug`);
+    expect(container.querySelector('legend')).not.toContainElement(
+      screen.getByRole('button')
+    );
+    spy.mockRestore();
   });
+
+  it('should respect decorator prop', () => {
+    const { container } = render(
+      <CheckboxGroup
+        className="some-class"
+        legendText="Checkbox heading"
+        decorator={<AILabel />}
+      />
+    );
+
+    expect(container.firstChild).toHaveClass(
+      `${prefix}--checkbox-group--decorator`
+    );
+    expect(screen.getAllByText('Checkbox heading')).toHaveLength(1);
+    expect(container.querySelector('legend')).not.toContainElement(
+      screen.getByRole('button')
+    );
+  });
+
   it('should render checkboxes horizontally', () => {
     const { container } = render(
-      <CheckboxGroup orientation="horizontal" legendText="test-horizental-prop">
+      <CheckboxGroup orientation="horizontal" legendText="test-horizontal-prop">
         <Checkbox labelText="Checkbox label 1" id="checkbox-label-1" />
         <Checkbox labelText="Checkbox label 2" id="checkbox-label-2" />
         <Checkbox labelText="Checkbox label 3" id="checkbox-label-3" />
@@ -173,5 +411,88 @@ describe('CheckboxGroup', () => {
     expect(container.firstChild).toHaveClass(
       `${prefix}--checkbox-group--horizontal`
     );
+  });
+
+  describe('prop inheritance', () => {
+    it('should pass props to child `Checkbox` components', () => {
+      render(
+        <CheckboxGroup legendText="Checkbox heading" invalid readOnly warn>
+          <Checkbox labelText="Checkbox 1" id="checkbox-1" />
+          <Checkbox labelText="Checkbox 2" id="checkbox-2" />
+        </CheckboxGroup>
+      );
+
+      const checkbox1 = screen.getByLabelText('Checkbox 1');
+      const checkbox2 = screen.getByLabelText('Checkbox 2');
+      const attributes1 = getElementAttributes(checkbox1);
+      const attributes2 = getElementAttributes(checkbox2);
+
+      expect(attributes1).toEqual({
+        class: `${prefix}--checkbox`,
+        id: 'checkbox-1',
+        'aria-readonly': 'true',
+        type: 'checkbox',
+      });
+      expect(attributes2).toEqual({
+        class: `${prefix}--checkbox`,
+        id: 'checkbox-2',
+        'aria-readonly': 'true',
+        type: 'checkbox',
+      });
+    });
+
+    it('should not override individual `Checkbox` props', () => {
+      render(
+        <CheckboxGroup legendText="Checkbox heading" readOnly>
+          <Checkbox labelText="Checkbox 1" id="checkbox-1" readOnly={false} />
+          <Checkbox labelText="Checkbox 2" id="checkbox-2" />
+        </CheckboxGroup>
+      );
+
+      const checkbox1 = screen.getByLabelText('Checkbox 1');
+      const checkbox2 = screen.getByLabelText('Checkbox 2');
+      const attributes1 = getElementAttributes(checkbox1);
+      const attributes2 = getElementAttributes(checkbox2);
+
+      expect(attributes1).toEqual({
+        class: `${prefix}--checkbox`,
+        id: 'checkbox-1',
+        // Should not be read-only because it explicitly sets `readOnly` to
+        // `false`.
+        'aria-readonly': 'false',
+        type: 'checkbox',
+      });
+      expect(attributes2).toEqual({
+        class: `${prefix}--checkbox`,
+        id: 'checkbox-2',
+        // Should be read-only because it inherits from the group.
+        'aria-readonly': 'true',
+        type: 'checkbox',
+      });
+    });
+
+    it('should not affect non-`Checkbox` children', () => {
+      render(
+        <CheckboxGroup legendText="Checkbox heading" readOnly>
+          <Checkbox labelText="Checkbox label" id="checkbox-1" />
+          <div data-testid="non-checkbox">Not a checkbox</div>
+        </CheckboxGroup>
+      );
+
+      const checkbox = screen.getByLabelText('Checkbox label');
+      const nonCheckbox = screen.getByTestId('non-checkbox');
+      const checkboxAttributes = getElementAttributes(checkbox);
+      const nonCheckboxAttributes = getElementAttributes(nonCheckbox);
+
+      expect(checkboxAttributes).toEqual({
+        class: `${prefix}--checkbox`,
+        id: 'checkbox-1',
+        'aria-readonly': 'true',
+        type: 'checkbox',
+      });
+      expect(nonCheckboxAttributes).toEqual({
+        'data-testid': 'non-checkbox',
+      });
+    });
   });
 });

@@ -9,7 +9,7 @@
 
 const OFF = null;
 
-module.exports = {
+export default {
   rules: {
     // Color
     'color-no-invalid-hex': true,
@@ -40,11 +40,16 @@ module.exports = {
 
     // Block
     'block-no-empty': true,
+    // TODO: re-evaluate when this issue is resolved
+    // https://github.com/carbon-design-system/carbon/issues/23136
+    'block-no-redundant-nested-style-rules': OFF,
 
     // Selector
     'selector-pseudo-class-no-unknown': true,
     'selector-pseudo-element-no-unknown': true,
-    'selector-type-no-unknown': true,
+    // custom elements are unknown to the HTML element list by definition; the
+    // rule still catches real typos, which have no hyphen
+    'selector-type-no-unknown': [true, { ignore: ['custom-elements'] }],
 
     // Media feature
     'media-feature-name-no-unknown': [
@@ -65,7 +70,7 @@ module.exports = {
     'no-duplicate-at-import-rules': true,
     'no-duplicate-selectors': true,
     'no-empty-source': true,
-    'no-extra-semicolons': true,
+    // 'no-extra-semicolons': true,
     // Doesn't trigger when using a preprocessor that allows double slash
     // comments
     'no-invalid-double-slash-comments': true,

@@ -1,5 +1,5 @@
 /**
- * Copyright IBM Corp. 2016, 2023
+ * Copyright IBM Corp. 2016, 2026
  *
  * This source code is licensed under the Apache-2.0 license found in the
  * LICENSE file in the root directory of this source tree.
@@ -22,16 +22,16 @@ describe('InlineLoading', () => {
     expect(screen.getByTitle('loading')).toBeInTheDocument();
   });
 
-  it('should render a loader if the status is inactive', () => {
+  it('should not render a loader if the status is inactive', () => {
     render(<InlineLoading status="inactive" />);
-
-    expect(screen.getByTitle('not loading')).toBeInTheDocument();
+    expect(
+      document.querySelector('.cds--inline-loading__animation')
+    ).not.toBeInTheDocument();
   });
 
   it('should render the success state if status is finished', () => {
     render(<InlineLoading status="finished" />);
 
-    // eslint-disable-next-line testing-library/no-node-access
     expect(document.querySelector('svg')).toHaveClass(
       'cds--inline-loading__checkmark-container'
     );
@@ -40,17 +40,37 @@ describe('InlineLoading', () => {
   it('should render the error state if status is error', () => {
     render(<InlineLoading status="error" />);
 
-    // eslint-disable-next-line testing-library/no-node-access
     expect(document.querySelector('svg')).toHaveClass(
       'cds--inline-loading--error'
     );
+  });
+
+  it('should expose the finished and error icons to assistive technology', () => {
+    const { rerender } = render(<InlineLoading status="finished" />);
+    expect(screen.getByRole('img', { name: 'finished' })).toBeInTheDocument();
+
+    rerender(<InlineLoading status="error" />);
+    expect(screen.getByRole('img', { name: 'error' })).toBeInTheDocument();
+  });
+
+  it('should use iconDescription as the status icon label', () => {
+    const { rerender } = render(
+      <InlineLoading status="finished" iconDescription="Upload complete" />
+    );
+    expect(
+      screen.getByRole('img', { name: 'Upload complete' })
+    ).toBeInTheDocument();
+
+    rerender(<InlineLoading status="error" iconDescription="Upload failed" />);
+    expect(
+      screen.getByRole('img', { name: 'Upload failed' })
+    ).toBeInTheDocument();
   });
 
   it('should not render any text by default', () => {
     render(<InlineLoading />);
 
     expect(
-      // eslint-disable-next-line testing-library/no-node-access
       document.querySelector('.cds--inline-loading__text')
     ).not.toBeInTheDocument();
   });
@@ -85,6 +105,27 @@ describe('InlineLoading', () => {
 
     jest.runAllTimers();
     expect(onSuccess).toHaveBeenCalled();
+    jest.useRealTimers();
+  });
+
+  it('should cancel the onSuccess timeout if the component unmounts', () => {
+    jest.useFakeTimers();
+    const onSuccess = jest.fn();
+    const { unmount } = render(
+      <InlineLoading
+        status="finished"
+        onSuccess={onSuccess}
+        successDelay={2500}
+      />
+    );
+
+    // Unmount the component before the timeout fires.
+    unmount();
+
+    // Run all timers. If the cleanup works, `onSuccess` should not be called.
+    jest.runAllTimers();
+    expect(onSuccess).not.toHaveBeenCalled();
+
     jest.useRealTimers();
   });
 });

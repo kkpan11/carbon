@@ -200,6 +200,20 @@ test.describe('@avt DataTable', () => {
         'components-datatable-expansion--batch-expansion'
       );
     });
+    test('@avt-advanced-states batch expansion with multiple tables', async ({
+      page,
+    }) => {
+      await visitStory(page, {
+        component: 'DataTable',
+        id: 'components-datatable-expansion--batch-expansion-multiple-tables',
+        globals: {
+          theme: 'white',
+        },
+      });
+      await expect(page).toHaveNoACViolations(
+        'components-datatable-expansion--batch-expansion-multiple-tables'
+      );
+    });
   });
 
   test.describe('@avt filtering', () => {
@@ -274,18 +288,6 @@ test.describe('@avt DataTable', () => {
       });
       await expect(page).toHaveNoACViolations(
         'components-datatable-selection--default'
-      );
-    });
-    test('@avt-advanced-states with-radio-expansion', async ({ page }) => {
-      await visitStory(page, {
-        component: 'DataTable',
-        id: 'components-datatable-selection--with-radio-expansion',
-        globals: {
-          theme: 'white',
-        },
-      });
-      await expect(page).toHaveNoACViolations(
-        'components-datatable-selection--with-radio-expansion'
       );
     });
     test('@avt-advanced-states with-selection-and-sorting', async ({

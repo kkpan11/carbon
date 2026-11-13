@@ -5,20 +5,20 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-import React from 'react';
+import React, { type JSX } from 'react';
 import classNames from 'classnames';
 import { usePrefix } from '../../internal/usePrefix';
 import { useId } from '../../internal/useId';
 import { ButtonBaseProps, ButtonProps } from './Button';
 
 const ButtonBase = React.forwardRef(function ButtonBase<
-  T extends React.ElementType
+  T extends React.ElementType,
 >(
   {
     as,
     children,
     className,
-    dangerDescription = 'danger',
+    dangerDescription = '',
     disabled = false,
     hasIconOnly = false,
     href,
@@ -43,16 +43,17 @@ const ButtonBase = React.forwardRef(function ButtonBase<
 
   const buttonClasses = classNames(className, {
     [`${prefix}--btn`]: true,
+    [`${prefix}--btn--xs`]: size === 'xs' && !isExpressive, // TODO: V12 - Remove this class
     [`${prefix}--btn--sm`]: size === 'sm' && !isExpressive, // TODO: V12 - Remove this class
     [`${prefix}--btn--md`]: size === 'md' && !isExpressive, // TODO: V12 - Remove this class
+    [`${prefix}--btn--lg`]: size === 'lg' && !isExpressive, // TODO: V12 - Remove this class
     [`${prefix}--btn--xl`]: size === 'xl', // TODO: V12 - Remove this class
     [`${prefix}--btn--2xl`]: size === '2xl', // TODO: V12 - Remove this class
     [`${prefix}--layout--size-${size}`]: size,
     [`${prefix}--btn--${kind}`]: kind,
     [`${prefix}--btn--disabled`]: disabled,
     [`${prefix}--btn--expressive`]: isExpressive,
-    [`${prefix}--btn--icon-only`]:
-      hasIconOnly && !className?.includes(`${prefix}--btn--icon-only`),
+    [`${prefix}--btn--icon-only`]: hasIconOnly,
     [`${prefix}--btn--selected`]: hasIconOnly && isSelected && kind === 'ghost',
   });
 
@@ -70,7 +71,14 @@ const ButtonBase = React.forwardRef(function ButtonBase<
     />
   );
 
-  const dangerButtonVariants = ['danger', 'danger--tertiary', 'danger--ghost'];
+  const dangerButtonVariants = [
+    'danger',
+    'danger--primary',
+    'danger--tertiary',
+    'danger--ghost',
+  ];
+  const hasDangerDescription =
+    dangerButtonVariants.includes(kind) && Boolean(dangerDescription);
 
   let component: React.ElementType = 'button';
   const assistiveId = useId('danger-description');
@@ -79,7 +87,7 @@ const ButtonBase = React.forwardRef(function ButtonBase<
   let otherProps: Partial<ButtonBaseProps> = {
     disabled,
     type,
-    'aria-describedby': dangerButtonVariants.includes(kind)
+    'aria-describedby': hasDangerDescription
       ? assistiveId
       : ariaDescribedBy || undefined,
     'aria-pressed':
@@ -90,7 +98,7 @@ const ButtonBase = React.forwardRef(function ButtonBase<
   };
 
   let assistiveText: JSX.Element | null = null;
-  if (dangerButtonVariants.includes(kind)) {
+  if (hasDangerDescription) {
     assistiveText = (
       <span id={assistiveId} className={`${prefix}--visually-hidden`}>
         {dangerDescription}

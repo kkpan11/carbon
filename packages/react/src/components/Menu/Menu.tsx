@@ -1,5 +1,5 @@
 /**
- * Copyright IBM Corp. 2023
+ * Copyright IBM Corp. 2023, 2026
  *
  * This source code is licensed under the Apache-2.0 license found in the
  * LICENSE file in the root directory of this source tree.
@@ -23,18 +23,30 @@ import { createPortal } from 'react-dom';
 import { keys, match } from '../../internal/keyboard';
 import { useMergedRefs } from '../../internal/useMergedRefs';
 import { usePrefix } from '../../internal/usePrefix';
-import { warning } from '../../internal/warning.js';
+import { deprecate } from '../../prop-types/deprecate';
 
 import { MenuContext, menuReducer } from './MenuContext';
 import { useLayoutDirection } from '../LayoutDirection';
+import { canUseDOM } from '../../internal/environment';
+import { useFeatureFlag } from '../FeatureFlags';
 
 const spacing = 8; // distance to keep to window edges, in px
 
-interface MenuProps extends React.HTMLAttributes<HTMLUListElement> {
+export interface MenuProps extends React.HTMLAttributes<HTMLUListElement> {
+  /**
+   * Specify the background token to use. Default is 'layer'.
+   */
+  backgroundToken?: 'layer' | 'background';
+
+  /**
+   * Specify whether a border should be rendered on the popover
+   */
+  border?: boolean;
+
   /**
    * The ref of the containing element, used for positioning and alignment of the menu
    */
-  containerRef?: RefObject<HTMLDivElement>;
+  containerRef?: RefObject<HTMLDivElement | null>;
   /**
    * A collection of MenuItems to be rendered within this Menu.
    */
@@ -56,6 +68,7 @@ interface MenuProps extends React.HTMLAttributes<HTMLUListElement> {
   menuAlignment?: string;
 
   /**
+   * @deprecated Menus now always support both icons as well as selectable items and nesting.
    * The mode of this menu. Defaults to full.
    * `full` supports nesting and selectable menu items, but no icons.
    * `basic` supports icons but no nesting or selectable menu items.
@@ -65,7 +78,9 @@ interface MenuProps extends React.HTMLAttributes<HTMLUListElement> {
   mode?: 'full' | 'basic';
 
   /**
-   * Provide an optional function to be called when the Menu should be closed.
+   * Provide an optional function to be called when the Menu should be closed,
+   * including if the Menu is blurred, the user presses escape, or the Menu is
+   * a submenu and the user presses ArrowLeft.
    */
   onClose?: () => void;
 
@@ -87,7 +102,7 @@ interface MenuProps extends React.HTMLAttributes<HTMLUListElement> {
   /**
    * Specify a DOM node where the Menu should be rendered in. Defaults to document.body.
    */
-  target?: HTMLElement;
+  target?: Element;
 
   /**
    * Specify the x position of the Menu. Either pass a single number or an array with two numbers describing your activator's boundaries ([x1, x2])
@@ -99,25 +114,27 @@ interface MenuProps extends React.HTMLAttributes<HTMLUListElement> {
    */
   y?: number | [number, number];
 
+  /**
+   * @deprecated Internal compatibility flag. Use `false` to enable auto-alignment behavior.
+   */
   legacyAutoalign?: boolean;
 }
 
 const Menu = forwardRef<HTMLUListElement, MenuProps>(function Menu(
   {
+    backgroundToken = 'layer',
+    border: borderProp = false,
     children,
     className,
     containerRef,
     label,
     menuAlignment,
-    mode = 'full',
     onClose,
     onOpen,
     open,
     size = 'sm',
-    legacyAutoalign = 'true',
-    // TODO: #16004
-    // eslint-disable-next-line ssr-friendly/no-dom-globals-in-react-fc
-    target = document.body,
+    legacyAutoalign = true,
+    target = canUseDOM && document.body,
     x = 0,
     y = 0,
     ...rest
@@ -126,25 +143,24 @@ const Menu = forwardRef<HTMLUListElement, MenuProps>(function Menu(
 ) {
   const prefix = usePrefix();
 
+  const enableV12Release = useFeatureFlag('enable-v12-release');
+
+  // In v12 the menu always renders a border.
+  const border = enableV12Release || borderProp;
+
   const focusReturn = useRef<HTMLElement | null>(null);
 
   const context = useContext(MenuContext);
 
   const isRoot = context.state.isRoot;
 
-  if (context.state.mode === 'basic' && !isRoot) {
-    warning(
-      false,
-      'Nested menus are not supported when the menu is in "basic" mode.'
-    );
-  }
-
   const menuSize = isRoot ? size : context.state.size;
 
   const [childState, childDispatch] = useReducer(menuReducer, {
     ...context.state,
     isRoot: false,
-    mode,
+    hasIcons: false,
+    hasSelectableItems: false,
     size,
     requestCloseRoot: isRoot ? handleClose : context.state.requestCloseRoot,
   });
@@ -156,11 +172,15 @@ const Menu = forwardRef<HTMLUListElement, MenuProps>(function Menu(
   }, [childState, childDispatch]);
 
   const menu = useRef<HTMLUListElement>(null);
-  const ref = useMergedRefs<HTMLUListElement>([forwardRef, menu]);
+  const ref = useMergedRefs([forwardRef, menu]);
 
   const [position, setPosition] = useState([-1, -1]);
-  const focusableItems = childContext.state.items.filter(
-    (item) => !item.disabled && item.ref.current
+  const focusableItems = useMemo(
+    () =>
+      childContext.state.items.filter(
+        (item) => !item.disabled && item.ref.current
+      ),
+    [childContext.state.items]
   );
 
   // Getting the width from the parent container element - controlled
@@ -181,11 +201,15 @@ const Menu = forwardRef<HTMLUListElement, MenuProps>(function Menu(
 
   function handleOpen() {
     if (menu.current) {
-      focusReturn.current = document.activeElement as HTMLElement;
+      const { activeElement, dir } = document;
+
+      focusReturn.current =
+        activeElement instanceof HTMLElement ? activeElement : null;
+
       if (legacyAutoalign) {
         const pos = calculatePosition();
         if (
-          (document?.dir === 'rtl' || direction === 'rtl') &&
+          (dir === 'rtl' || direction === 'rtl') &&
           !rest?.id?.includes('MenuButton')
         ) {
           menu.current.style.insetInlineStart = `initial`;
@@ -207,14 +231,8 @@ const Menu = forwardRef<HTMLUListElement, MenuProps>(function Menu(
     }
   }
 
-  function handleClose(e: Pick<React.KeyboardEvent<HTMLUListElement>, 'type'>) {
-    if (/^key/.test(e.type)) {
-      window.addEventListener('keyup', returnFocus, { once: true });
-    } else if (e.type === 'click' && menu.current) {
-      menu.current.addEventListener('focusout', returnFocus, { once: true });
-    } else {
-      returnFocus();
-    }
+  function handleClose() {
+    returnFocus();
 
     if (onClose) {
       onClose();
@@ -224,19 +242,24 @@ const Menu = forwardRef<HTMLUListElement, MenuProps>(function Menu(
   function handleKeyDown(e: React.KeyboardEvent<HTMLUListElement>) {
     e.stopPropagation();
 
-    // if the user presses escape or this is a submenu
-    // and the user presses ArrowLeft, close it
+    // If the user presses escape or tab, or this is a submenu and the user presses ArrowLeft, close it.
     if (
-      (match(e, keys.Escape) || (!isRoot && match(e, keys.ArrowLeft))) &&
+      (match(e, keys.Escape) ||
+        match(e, keys.Tab) ||
+        (!isRoot && match(e, keys.ArrowLeft))) &&
       onClose
     ) {
-      handleClose(e);
+      e.preventDefault();
+      handleClose();
     } else {
       focusItem(e);
     }
   }
 
   function focusItem(e?: React.KeyboardEvent<HTMLUListElement>) {
+    const validItems = focusableItems?.filter((item) => item?.ref?.current);
+    if (!validItems?.length) return;
+
     const currentItem = focusableItems.findIndex((item) =>
       item.ref?.current?.contains(document.activeElement)
     );
@@ -256,21 +279,22 @@ const Menu = forwardRef<HTMLUListElement, MenuProps>(function Menu(
     }
 
     if (indexToFocus < 0) {
-      indexToFocus = focusableItems.length - 1;
+      indexToFocus = validItems.length - 1;
     }
-    if (indexToFocus >= focusableItems.length) {
+    if (indexToFocus >= validItems.length) {
       indexToFocus = 0;
     }
 
     if (indexToFocus !== currentItem) {
-      const nodeToFocus = focusableItems[indexToFocus];
-      nodeToFocus.ref.current.focus();
+      const nodeToFocus = validItems[indexToFocus];
+      nodeToFocus?.ref?.current?.focus();
+      e?.preventDefault();
     }
   }
 
   function handleBlur(e: React.FocusEvent<HTMLUListElement>) {
     if (open && onClose && isRoot && !menu.current?.contains(e.relatedTarget)) {
-      handleClose(e);
+      handleClose();
     }
   }
 
@@ -299,7 +323,7 @@ const Menu = forwardRef<HTMLUListElement, MenuProps>(function Menu(
       },
     };
 
-    // Avoid that the Menu render incorrectly when the postion is set in the right side of the screen
+    // Avoid that the Menu render incorrectly when the position is set in the right side of the screen
     if (
       actionButtonWidth &&
       actionButtonWidth < axes.x.size &&
@@ -338,7 +362,7 @@ const Menu = forwardRef<HTMLUListElement, MenuProps>(function Menu(
       menuAlignment === 'top-end' ||
       menuAlignment === 'top-start';
 
-    // If the tooltip is not visible in the top, switch to the bototm
+    // If the tooltip is not visible in the top, switch to the bottom
     if (
       typeof options[0] === 'number' &&
       topAlignment &&
@@ -390,12 +414,24 @@ const Menu = forwardRef<HTMLUListElement, MenuProps>(function Menu(
     return [fitValue(ranges.x, 'x') ?? -1, fitValue(ranges.y, 'y') ?? -1];
   }
 
+  // When a menu is opened, focus the first item.
   useEffect(() => {
-    if (open && focusableItems.length > 0) {
-      focusItem();
+    if (open) {
+      const raf = requestAnimationFrame(() => {
+        const activeElement = menu.current?.ownerDocument.activeElement;
+        const menuContainsFocus =
+          activeElement instanceof Node &&
+          menu.current?.contains(activeElement);
+
+        if (focusableItems.length > 0 && (!isRoot || menuContainsFocus)) {
+          focusItem();
+        }
+      });
+
+      return () => cancelAnimationFrame(raf);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, focusableItems]);
+  }, [open, focusableItems, isRoot, position]);
 
   useEffect(() => {
     if (open) {
@@ -423,6 +459,12 @@ const Menu = forwardRef<HTMLUListElement, MenuProps>(function Menu(
       [`${prefix}--menu--shown`]:
         (open && !legacyAutoalign) || (position[0] >= 0 && position[1] >= 0),
       [`${prefix}--menu--with-icons`]: childContext.state.hasIcons,
+      [`${prefix}--menu--with-selectable-items`]:
+        childContext.state.hasSelectableItems,
+      [`${prefix}--autoalign`]: !legacyAutoalign,
+      [`${prefix}--menu--border`]: border,
+      [`${prefix}--menu--background-token__background`]:
+        backgroundToken === 'background',
     }
   );
 
@@ -442,10 +484,24 @@ const Menu = forwardRef<HTMLUListElement, MenuProps>(function Menu(
     </MenuContext.Provider>
   );
 
+  if (!target) {
+    return rendered;
+  }
+
   return isRoot ? (open && createPortal(rendered, target)) || null : rendered;
 });
 
 Menu.propTypes = {
+  /**
+   * Specify the background token to use. Default is 'layer'.
+   */
+  backgroundToken: PropTypes.oneOf(['layer', 'background']),
+
+  /**
+   * Specify whether a border should be rendered on the menu
+   */
+  border: PropTypes.bool,
+
   /**
    * A collection of MenuItems to be rendered within this Menu.
    */
@@ -459,7 +515,6 @@ Menu.propTypes = {
   /**
    * A label describing the Menu.
    */
-  // @ts-ignore-next-line -- avoid spurious (?) TS2322 error
   label: PropTypes.string,
 
   /**
@@ -468,16 +523,22 @@ Menu.propTypes = {
   menuAlignment: PropTypes.string,
 
   /**
+   * **Deprecated**: Menus now always support both icons as well as selectable items and nesting.
    * The mode of this menu. Defaults to full.
    * `full` supports nesting and selectable menu items, but no icons.
    * `basic` supports icons but no nesting or selectable menu items.
    *
    * **This prop is not intended for use and will be set by the respective implementation (like useContextMenu, MenuButton, and ComboButton).**
    */
-  mode: PropTypes.oneOf(['full', 'basic']),
+  mode: deprecate(
+    PropTypes.oneOf(['full', 'basic']),
+    'Menus now always support both icons as well as selectable items and nesting.'
+  ),
 
   /**
-   * Provide an optional function to be called when the Menu should be closed.
+   * Provide an optional function to be called when the Menu should be closed,
+   * including if the Menu is blurred, the user presses escape, or the Menu is
+   * a submenu and the user presses ArrowLeft.
    */
   onClose: PropTypes.func,
 
@@ -499,13 +560,11 @@ Menu.propTypes = {
   /**
    * Specify a DOM node where the Menu should be rendered in. Defaults to document.body.
    */
-  // @ts-ignore-next-line -- avoid spurious (?) TS2322 error
   target: PropTypes.object,
 
   /**
    * Specify the x position of the Menu. Either pass a single number or an array with two numbers describing your activator's boundaries ([x1, x2])
    */
-  // @ts-ignore-next-line -- avoid spurious (?) TS2322 error
   x: PropTypes.oneOfType([
     PropTypes.number,
     PropTypes.arrayOf(PropTypes.number),
@@ -514,11 +573,15 @@ Menu.propTypes = {
   /**
    * Specify the y position of the Menu. Either pass a single number or an array with two numbers describing your activator's boundaries ([y1, y2])
    */
-  // @ts-ignore-next-line -- avoid spurious (?) TS2322 error
   y: PropTypes.oneOfType([
     PropTypes.number,
     PropTypes.arrayOf(PropTypes.number),
   ]),
+
+  /**
+   * @deprecated Internal compatibility flag. Use `false` to enable auto-alignment behavior.
+   */
+  legacyAutoalign: PropTypes.bool,
 };
 
 export { Menu };

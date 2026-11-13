@@ -1,5 +1,5 @@
 /**
- * Copyright IBM Corp. 2016, 2023
+ * Copyright IBM Corp. 2016, 2026
  *
  * This source code is licensed under the Apache-2.0 license found in the
  * LICENSE file in the root directory of this source tree.
@@ -9,15 +9,14 @@ import PropTypes from 'prop-types';
 import React, {
   type ReactNode,
   type MouseEvent,
-  type ComponentType,
-  type FunctionComponent,
   type ButtonHTMLAttributes,
   type HTMLAttributes,
   useEffect,
   useRef,
   useState,
+  type ComponentProps,
 } from 'react';
-import deprecate from '../../prop-types/deprecate';
+import { deprecate } from '../../prop-types/deprecate';
 import cx from 'classnames';
 import {
   Close,
@@ -40,8 +39,10 @@ import { keys, matches, match } from '../../internal/keyboard';
 import { usePrefix } from '../../internal/usePrefix';
 import { useId } from '../../internal/useId';
 import { noopFn } from '../../internal/noopFn';
-import wrapFocus, { wrapFocusWithoutSentinels } from '../../internal/wrapFocus';
+import { wrapFocus, wrapFocusWithoutSentinels } from '../../internal/wrapFocus';
 import { useFeatureFlag } from '../FeatureFlags';
+import { warning } from '../../internal/warning';
+import { deprecateValuesWithin } from '../../prop-types/deprecateValuesWithin';
 
 /**
  * Conditionally call a callback when the escape key is pressed
@@ -54,7 +55,7 @@ function useEscapeToClose(ref, callback, override = true) {
     // The callback should only be called when focus is on or within the container
     const elementContainsFocus =
       (ref.current && document.activeElement === ref.current) ||
-      ref.current.contains(document.activeElement);
+      ref.current?.contains(document.activeElement);
 
     if (matches(event, [keys.Escape]) && override && elementContainsFocus) {
       callback(event);
@@ -62,10 +63,17 @@ function useEscapeToClose(ref, callback, override = true) {
   };
 
   useIsomorphicEffect(() => {
-    document.addEventListener('keydown', handleKeyDown, false);
+    if (ref.current !== null) {
+      document.addEventListener('keydown', handleKeyDown, false);
+    }
+
     return () => document.removeEventListener('keydown', handleKeyDown, false);
   });
 }
+
+type NotificationCloseHandler =
+  | ((event: MouseEvent) => boolean)
+  | ((event: MouseEvent) => void);
 
 export interface NotificationActionButtonProps extends ButtonProps<'button'> {
   /**
@@ -86,7 +94,7 @@ export interface NotificationActionButtonProps extends ButtonProps<'button'> {
   /**
    * Optionally specify a click handler for the notification action button.
    */
-  onClick?(): void;
+  onClick?: ComponentProps<typeof Button>['onClick'];
 }
 
 export function NotificationActionButton({
@@ -166,12 +174,9 @@ export interface NotificationButtonProps
   notificationType?: 'toast' | 'inline' | 'actionable';
 
   /**
-   * Optional prop to allow overriding the icon rendering.
-   * Can be a React component class
+   * A component used to render an icon.
    */
-  renderIcon?:
-    | ComponentType<{ className?: string; name?: string }>
-    | FunctionComponent<{ className?: string; name?: string }>;
+  renderIcon?: React.ElementType;
 }
 
 export function NotificationButton({
@@ -197,7 +202,6 @@ export function NotificationButton({
   return (
     <button
       {...rest}
-      // eslint-disable-next-line react/button-has-type
       type={type}
       aria-label={deprecatedAriaLabel || ariaLabel}
       title={deprecatedAriaLabel || ariaLabel}
@@ -239,8 +243,7 @@ NotificationButton.propTypes = {
   notificationType: PropTypes.oneOf(['toast', 'inline', 'actionable']),
 
   /**
-   * Optional prop to allow overriding the icon rendering.
-   * Can be a React component class
+   * A component used to render an icon.
    */
   renderIcon: PropTypes.oneOfType([PropTypes.func, PropTypes.object]),
 
@@ -288,6 +291,7 @@ function NotificationIcon({
   return (
     <IconForKind
       className={`${prefix}--${notificationType}-notification__icon`}
+      aria-label={iconDescription}
       size={20}>
       <title>{iconDescription}</title>
     </IconForKind>
@@ -357,7 +361,7 @@ export interface ToastNotificationProps extends HTMLAttributes<HTMLDivElement> {
   /**
    * Provide a function that is called when menu is closed
    */
-  onClose?(event: MouseEvent): boolean | void;
+  onClose?: NotificationCloseHandler;
 
   /**
    * Provide a function that is called when the close button is clicked
@@ -417,7 +421,7 @@ export function ToastNotification({
     [`${prefix}--toast-notification--${kind}`]: kind,
   });
 
-  const contentRef = useRef(null);
+  const contentRef = useRef<HTMLDivElement>(null);
   useNoInteractiveChildren(contentRef);
 
   const handleClose = (evt) => {
@@ -425,7 +429,7 @@ export function ToastNotification({
       setIsOpen(false);
     }
   };
-  const ref = useRef(null);
+  const ref = useRef<HTMLDivElement>(null);
 
   function handleCloseButtonClick(event: MouseEvent) {
     onCloseButtonClick(event);
@@ -489,9 +493,7 @@ export function ToastNotification({
         <NotificationButton
           notificationType="toast"
           onClick={handleCloseButtonClick}
-          aria-hidden="true"
           aria-label={deprecatedAriaLabel || ariaLabel}
-          tabIndex={-1}
         />
       )}
     </div>
@@ -633,7 +635,7 @@ export interface InlineNotificationProps
   /**
    * Provide a function that is called when menu is closed
    */
-  onClose?(event: MouseEvent): boolean | void;
+  onClose?: NotificationCloseHandler;
 
   /**
    * Provide a function that is called when the close button is clicked
@@ -686,7 +688,7 @@ export function InlineNotification({
     [`${prefix}--inline-notification--hide-close-button`]: hideCloseButton,
   });
 
-  const contentRef = useRef(null);
+  const contentRef = useRef<HTMLDivElement>(null);
   useNoInteractiveChildren(contentRef);
 
   const handleClose = (evt) => {
@@ -694,7 +696,7 @@ export function InlineNotification({
       setIsOpen(false);
     }
   };
-  const ref = useRef(null);
+  const ref = useRef<HTMLDivElement>(null);
 
   function handleCloseButtonClick(event) {
     onCloseButtonClick(event);
@@ -735,9 +737,7 @@ export function InlineNotification({
         <NotificationButton
           notificationType="inline"
           onClick={handleCloseButtonClick}
-          aria-hidden="true"
           aria-label={ariaLabel}
-          tabIndex={-1}
         />
       )}
     </div>
@@ -832,6 +832,11 @@ export interface ActionableNotificationProps
   'aria-label'?: string;
 
   /**
+   * Specify the caption
+   */
+  caption?: string;
+
+  /**
    * Specify the content
    */
   children?: ReactNode;
@@ -848,7 +853,7 @@ export interface ActionableNotificationProps
 
   /**
    * @deprecated This prop will be removed in the next major version, v12.
-   * Specify if focus should be moved to the component on render. To meet the spec for alertdialog, this must always be true. If you're setting this to false, explore using StaticNotification instead. https://github.com/carbon-design-system/carbon/pull/15532
+   * Specify if focus should be moved to the component on render. To meet the spec for alertdialog, this must always be true. If you're setting this to false, explore using Callout instead. https://github.com/carbon-design-system/carbon/pull/15532
    */
   hasFocus?: boolean;
 
@@ -881,22 +886,27 @@ export interface ActionableNotificationProps
   /**
    * Provide a function that is called when the action is clicked
    */
-  onActionButtonClick?(): void;
+  onActionButtonClick?: ComponentProps<
+    typeof NotificationActionButton
+  >['onClick'];
 
   /**
    * Provide a function that is called when menu is closed.
    * Default behavior of hiding the notification is prevented if this function returns false.
    */
-  onClose?(event: MouseEvent): boolean | void;
+  onClose?: NotificationCloseHandler;
 
   /**
    * Provide a function that is called when the close button is clicked
    */
+
   onCloseButtonClick?(event: MouseEvent): void;
 
   /**
-   * By default, this value is "alertdialog". You can also provide an alternate
-   * role if it makes sense from from an accessibility perspective.
+   * Provide an accessible role to be used. Defaults to `alertdialog`. Any other
+   * value will disable the wrapping of focus. To remain accessible, additional
+   * work is required. See the storybook docs for more info:
+   * https://react.carbondesignsystem.com/?path=/docs/components-notifications-actionable--overview#using-the-role-prop
    */
   role?: string;
 
@@ -921,6 +931,7 @@ export function ActionableNotification({
   ['aria-label']: ariaLabel,
   // @ts-expect-error: deprecated prop
   ariaLabel: deprecatedAriaLabel,
+  caption,
   children,
   role = 'alertdialog',
   onActionButtonClick,
@@ -953,14 +964,19 @@ export function ActionableNotification({
   const startTrap = useRef<HTMLElement>(null);
   const endTrap = useRef<HTMLElement>(null);
   const ref = useRef<HTMLDivElement>(null);
-  const focusTrapWithoutSentinels = useFeatureFlag(
+  const deprecatedFlag = useFeatureFlag(
     'enable-experimental-focus-wrap-without-sentinels'
   );
+  const focusTrapWithoutSentinelsFlag = useFeatureFlag(
+    'enable-focus-wrap-without-sentinels'
+  );
+  const focusTrapWithoutSentinels =
+    focusTrapWithoutSentinelsFlag || deprecatedFlag;
 
   useIsomorphicEffect(() => {
-    if (hasFocus) {
+    if (hasFocus && role === 'alertdialog') {
       const button = document.querySelector(
-        'button.cds--actionable-notification__action-button'
+        `button.${prefix}--actionable-notification__action-button`
       ) as HTMLButtonElement;
       button?.focus();
     }
@@ -970,7 +986,12 @@ export function ActionableNotification({
     target: oldActiveNode,
     relatedTarget: currentActiveNode,
   }) {
-    if (isOpen && currentActiveNode && oldActiveNode) {
+    if (
+      isOpen &&
+      currentActiveNode &&
+      oldActiveNode &&
+      role === 'alertdialog'
+    ) {
       const { current: bodyNode } = innerModal;
       const { current: startTrapNode } = startTrap;
       const { current: endTrapNode } = endTrap;
@@ -980,12 +1001,18 @@ export function ActionableNotification({
         endTrapNode,
         currentActiveNode,
         oldActiveNode,
+        prefix,
       });
     }
   }
 
   function handleKeyDown(event) {
-    if (isOpen && match(event, keys.Tab) && ref.current) {
+    if (
+      isOpen &&
+      match(event, keys.Tab) &&
+      ref.current &&
+      role === 'alertdialog'
+    ) {
       wrapFocusWithoutSentinels({
         containerNode: ref.current,
         currentActiveNode: event.target,
@@ -1028,53 +1055,61 @@ export function ActionableNotification({
           Focus sentinel
         </span>
       )}
-
-      <div className={`${prefix}--actionable-notification__details`}>
-        <NotificationIcon
-          notificationType={inline ? 'inline' : 'toast'}
-          kind={kind}
-          iconDescription={statusIconDescription || `${kind} icon`}
-        />
-        <div className={`${prefix}--actionable-notification__text-wrapper`}>
-          <div className={`${prefix}--actionable-notification__content`}>
-            {title && (
-              <Text
-                as="div"
-                className={`${prefix}--actionable-notification__title`}
-                id={id}>
-                {title}
-              </Text>
-            )}
-            {subtitle && (
-              <Text
-                as="div"
-                className={`${prefix}--actionable-notification__subtitle`}
-                id={subtitleId}>
-                {subtitle}
-              </Text>
-            )}
-            {children}
+      <div
+        ref={innerModal}
+        className={`${prefix}--actionable-notification__focus-wrapper`}>
+        <div className={`${prefix}--actionable-notification__details`}>
+          <NotificationIcon
+            notificationType={inline ? 'inline' : 'toast'}
+            kind={kind}
+            iconDescription={statusIconDescription || `${kind} icon`}
+          />
+          <div className={`${prefix}--actionable-notification__text-wrapper`}>
+            <div className={`${prefix}--actionable-notification__content`}>
+              {title && (
+                <Text
+                  as="div"
+                  className={`${prefix}--actionable-notification__title`}
+                  id={id}>
+                  {title}
+                </Text>
+              )}
+              {subtitle && (
+                <Text
+                  as="div"
+                  className={`${prefix}--actionable-notification__subtitle`}
+                  id={subtitleId}>
+                  {subtitle}
+                </Text>
+              )}
+              {caption && (
+                <Text
+                  as="div"
+                  className={`${prefix}--actionable-notification__caption`}>
+                  {caption}
+                </Text>
+              )}
+              {children}
+            </div>
           </div>
         </div>
-      </div>
-      <div
-        className={`${prefix}--actionable-notification__button-wrapper`}
-        ref={innerModal}>
-        {actionButtonLabel && (
-          <NotificationActionButton
-            onClick={onActionButtonClick}
-            inline={inline}>
-            {actionButtonLabel}
-          </NotificationActionButton>
-        )}
+        <div className={`${prefix}--actionable-notification__button-wrapper`}>
+          {actionButtonLabel && (
+            <NotificationActionButton
+              onClick={onActionButtonClick}
+              inline={inline}>
+              {actionButtonLabel}
+            </NotificationActionButton>
+          )}
 
-        {!hideCloseButton && (
-          <NotificationButton
-            aria-label={deprecatedAriaLabel || ariaLabel}
-            notificationType="actionable"
-            onClick={handleCloseButtonClick}
-          />
-        )}
+          {!hideCloseButton && (
+            <NotificationButton
+              aria-label={deprecatedAriaLabel || ariaLabel}
+              notificationType="actionable"
+              onClick={handleCloseButtonClick}
+            />
+          )}
+        </div>
       </div>
       {!focusTrapWithoutSentinels && (
         <span
@@ -1110,6 +1145,11 @@ ActionableNotification.propTypes = {
   ),
 
   /**
+   * Specify the caption
+   */
+  caption: PropTypes.string,
+
+  /**
    * Specify the content
    */
   children: PropTypes.node,
@@ -1125,10 +1165,14 @@ ActionableNotification.propTypes = {
   closeOnEscape: PropTypes.bool,
 
   /**
-   * Deprecated, please use StaticNotification once it's available. Issue #15532
    * Specify if focus should be moved to the component when the notification contains actions
    */
-  hasFocus: deprecate(PropTypes.bool),
+  hasFocus: deprecate(
+    PropTypes.bool,
+    'hasFocus is deprecated. To conform to accessibility requirements hasFocus ' +
+      'should always be `true` for ActionableNotification. If you were ' +
+      'setting this prop to `false`, consider using the Callout component instead.'
+  ),
 
   /**
    * Specify the close button should be disabled, or not
@@ -1173,8 +1217,10 @@ ActionableNotification.propTypes = {
   onCloseButtonClick: PropTypes.func,
 
   /**
-   * By default, this value is "alertdialog". You can also provide an alternate
-   * role if it makes sense from the accessibility-side.
+   * Provide an accessible role to be used. Defaults to `alertdialog`. Any other
+   * value will disable the wrapping of focus. To remain accessible, additional
+   * work is required. See the storybook docs for more info:
+   * https://react.carbondesignsystem.com/?path=/docs/components-notifications-actionable--overview#using-the-role-prop
    */
   role: PropTypes.string,
 
@@ -1195,12 +1241,36 @@ ActionableNotification.propTypes = {
 };
 
 /**
- * StaticNotification
+ * Callout
  * ==================
  */
 
-export interface StaticNotificationProps
-  extends HTMLAttributes<HTMLDivElement> {
+/**
+ * Deprecated callout kind values.
+ * @deprecated Use NewKindProps instead.
+ */
+export type DeprecatedKindProps =
+  | 'error'
+  | 'info'
+  | 'info-square'
+  | 'success'
+  | 'warning'
+  | 'warning-alt';
+
+export type NewKindProps = 'warning' | 'info';
+
+export type KindProps = DeprecatedKindProps | NewKindProps;
+
+const mapping = {
+  error: 'warning', // only redirect error -> warning
+  success: 'info', // only redirect success -> info
+};
+
+const propMappingFunction = (deprecatedValue: string) => {
+  return mapping[deprecatedValue];
+};
+
+export interface CalloutProps extends HTMLAttributes<HTMLDivElement> {
   /**
    * Pass in the action button label that will be rendered within the ActionableNotification.
    */
@@ -1219,23 +1289,19 @@ export interface StaticNotificationProps
   /**
    * Specify what state the notification represents
    */
-  kind?:
-    | 'error'
-    | 'info'
-    | 'info-square'
-    | 'success'
-    | 'warning'
-    | 'warning-alt';
+  kind?: KindProps;
 
   /**
-   * Specify whether you are using the low contrast variant of the StaticNotification.
+   * Specify whether you are using the low contrast variant of the Callout.
    */
   lowContrast?: boolean;
 
   /**
    * Provide a function that is called when the action is clicked
    */
-  onActionButtonClick?(): void;
+  onActionButtonClick?: ComponentProps<
+    typeof NotificationActionButton
+  >['onClick'];
 
   /**
    * Provide a description for "status" icon that can be read by screen readers
@@ -1258,7 +1324,7 @@ export interface StaticNotificationProps
   titleId?: string;
 }
 
-export function StaticNotification({
+export function Callout({
   actionButtonLabel,
   children,
   onActionButtonClick,
@@ -1267,33 +1333,37 @@ export function StaticNotification({
   subtitle,
   statusIconDescription,
   className,
-  kind = 'error',
+  kind = 'info',
   lowContrast,
   ...rest
-}: StaticNotificationProps) {
+}: CalloutProps) {
   const prefix = usePrefix();
+
   const containerClassName = cx(className, {
     [`${prefix}--actionable-notification`]: true,
+    [`${prefix}--actionable-notification--callout`]: true,
     [`${prefix}--actionable-notification--low-contrast`]: lowContrast,
     [`${prefix}--actionable-notification--${kind}`]: kind,
     [`${prefix}--actionable-notification--hide-close-button`]: true,
   });
 
-  const ref = useRef(null);
+  const childrenContainer = useRef<HTMLDivElement>(null);
   useInteractiveChildrenNeedDescription(
-    ref,
+    childrenContainer,
     `interactive child node(s) should have an \`aria-describedby\` property with a value matching the value of \`titleId\``
   );
 
   return (
-    <div ref={ref} {...rest} className={containerClassName}>
+    <div {...rest} className={containerClassName}>
       <div className={`${prefix}--actionable-notification__details`}>
         <NotificationIcon
           notificationType="inline"
           kind={kind}
           iconDescription={statusIconDescription || `${kind} icon`}
         />
-        <div className={`${prefix}--actionable-notification__text-wrapper`}>
+        <div
+          ref={childrenContainer}
+          className={`${prefix}--actionable-notification__text-wrapper`}>
           {title && (
             <Text
               as="div"
@@ -1326,7 +1396,7 @@ export function StaticNotification({
   );
 }
 
-StaticNotification.propTypes = {
+Callout.propTypes = {
   /**
    * Pass in the action button label that will be rendered within the ActionableNotification.
    */
@@ -1345,17 +1415,21 @@ StaticNotification.propTypes = {
   /**
    * Specify what state the notification represents
    */
-  kind: PropTypes.oneOf([
-    'error',
-    'info',
-    'info-square',
-    'success',
-    'warning',
-    'warning-alt',
-  ]),
+  kind: deprecateValuesWithin(
+    PropTypes.oneOf([
+      'error',
+      'info',
+      'info-square',
+      'success',
+      'warning',
+      'warning-alt',
+    ]),
+    ['warning', 'info'],
+    propMappingFunction
+  ),
 
   /**
-   * Specify whether you are using the low contrast variant of the StaticNotification.
+   * Specify whether you are using the low contrast variant of the Callout.
    */
   lowContrast: PropTypes.bool,
 
@@ -1383,4 +1457,29 @@ StaticNotification.propTypes = {
    * Specify the id for the element containing the title
    */
   titleId: PropTypes.string,
+};
+
+// In renaming StaticNotification to Callout, the legacy StaticNotification
+// export and it's types should remain usable until Callout is moved to stable.
+// The StaticNotification component below forwards props to Callout and inherits
+// CalloutProps to ensure consumer usage is not impacted, while providing them
+// a deprecation warning.
+// TODO: remove this when Callout moves to stable OR in v12, whichever is first
+/**
+ * @deprecated Use `CalloutProps` instead.
+ */
+export type StaticNotificationProps = CalloutProps;
+let didWarnAboutDeprecation = false;
+export const StaticNotification = (props: StaticNotificationProps) => {
+  if (process.env.NODE_ENV !== 'production') {
+    warning(
+      didWarnAboutDeprecation,
+      '`StaticNotification` has been renamed to `Callout`.' +
+        'Run the following codemod to automatically update usages in your' +
+        'project: `npx @carbon/upgrade migrate refactor-to-callout --write`'
+    );
+    didWarnAboutDeprecation = true;
+  }
+
+  return <Callout {...props} />;
 };

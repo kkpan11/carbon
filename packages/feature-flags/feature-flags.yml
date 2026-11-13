@@ -1,5 +1,5 @@
 #
-# Copyright IBM Corp. 2015, 2023
+# Copyright IBM Corp. 2015, 2026
 #
 # This source code is licensed under the Apache-2.0 license found in the
 # LICENSE file in the root directory of this source tree.
@@ -9,11 +9,6 @@ feature-flags:
   - name: enable-css-custom-properties
     description: Describe what the flag does
     enabled: false
-  - name: enable-use-controlled-state-with-value
-    description: >
-      Enable components to be created in either a controlled or uncontrolled
-      mode
-    enabled: false
   - name: enable-css-grid
     description: >
       Enable CSS Grid Layout in the Grid and Column React components
@@ -22,7 +17,15 @@ feature-flags:
     description: >
       Enable the features and functionality for the v11 Release
     enabled: true
+  - name: enable-v12-release
+    description: >
+      Enable the features and functionality for the v12 Release
+    enabled: false
   - name: enable-experimental-tile-contrast
+    description: >
+      Deprecated, use enable-tile-contrast instead
+    enabled: false
+  - name: enable-tile-contrast
     description: >
       Enable the experimental tile improved contrast styles
     enabled: false
@@ -48,5 +51,38 @@ feature-flags:
     enabled: false
   - name: enable-experimental-focus-wrap-without-sentinels
     description: >
+      Deprecated, use enable-focus-wrap-without-sentinels instead
+    enabled: false
+  - name: enable-focus-wrap-without-sentinels
+    description: >
       Enable the new focus wrap behavior that doesn't use sentinel nodes
+    enabled: false
+  - name: enable-dialog-element
+    description: >
+      Enable components to utilize the native dialog element
+    enabled: false
+  - name: enable-v12-autoalign
+    description: >
+      Enable autoAlign by default for components that support it, like Popover,
+      Tooltip, Toggletip, Dropdown, etc.
+    enabled: false
+  - name: enable-v12-dynamic-floating-styles
+    description: >
+      Enable dynamic setting of floating styles for components like Popover,
+      Tooltip, etc.
+    enabled: false
+  - name: enable-v12-toggle-reduced-label-spacing
+    description: >
+      Enable a reduced spacing between the toggle control and its label
+    enabled: false
+  - name: enable-enhanced-file-uploader
+    description: >
+      Enable enhanced functionality for the FileUploader component, including
+      richer callback data and expanded trigger events for onChange and
+      onDelete.
+    enabled: false
+  - name: enable-presence
+    description: >
+      Enable components to remain unmounted in closed state and mount in open
+      state.
     enabled: false

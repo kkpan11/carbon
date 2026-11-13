@@ -11,16 +11,52 @@ import React from 'react';
 import { Grid, Column, ColumnHang, GridSettings } from '../Grid';
 import mdx from './Grid.mdx';
 
+const defaultArgs = {
+  align: 'center',
+  as: 'div',
+  condensed: false,
+  fullWidth: false,
+  narrow: false,
+  withRowGap: false,
+};
+
+const sharedArgTypes = {
+  align: {
+    control: 'radio',
+    options: ['start', 'center', 'end'],
+  },
+  as: {
+    control: 'text',
+  },
+  children: {
+    control: false,
+  },
+  className: {
+    control: false,
+  },
+  condensed: {
+    control: 'boolean',
+  },
+  fullWidth: {
+    control: 'boolean',
+  },
+  narrow: {
+    control: 'boolean',
+  },
+  withRowGap: {
+    control: 'boolean',
+  },
+};
+
 export default {
   title: 'Elements/Grid',
   component: Grid,
   subcomponents: {
     Column,
   },
+  args: defaultArgs,
+  argTypes: sharedArgTypes,
   parameters: {
-    controls: {
-      hideNoControlsWarning: true,
-    },
     docs: {
       page: mdx,
     },
@@ -36,157 +72,311 @@ export default {
   ],
 };
 
-// Remove before merging
-export const SubGridTestStory = () => {
+export const Default = (args) => {
   return (
-    <Grid>
-      <Column lg={8}>
-        <GridSettings subgrid={false}>
-          <Grid>
-            <Column lg={4} />
-            <Column lg={4}>
-              <Grid>
-                <Column lg={2} />
-                <Column lg={2} />
-              </Grid>
+    <div className="sb-css-grid-container">
+      <Grid {...args}>
+        <Column sm={4} />
+        <Column sm={4} />
+        <Column sm={4} />
+        <Column sm={4} />
+      </Grid>
+    </div>
+  );
+};
+
+export const WithRowGap = (args) => {
+  return (
+    <div className="sb-css-grid-container">
+      <Grid {...args}>
+        <Column sm={4} md={4} lg={4} />
+        <Column sm={4} md={4} lg={4} />
+        <Column sm={4} md={4} lg={4} />
+        <Column sm={4} md={4} lg={4} />
+        <Column sm={4} md={4} lg={4} />
+        <Column sm={4} md={4} lg={4} />
+        <Column sm={4} md={4} lg={4} />
+        <Column sm={4} md={4} lg={4} />
+      </Grid>
+    </div>
+  );
+};
+
+WithRowGap.args = {
+  withRowGap: true,
+};
+
+WithRowGap.argTypes = {
+  ...sharedArgTypes,
+  withRowGap: {
+    ...sharedArgTypes.withRowGap,
+    table: {
+      readonly: true,
+    },
+  },
+};
+
+export const Narrow = (args) => {
+  return (
+    <div className="sb-css-grid-container">
+      <Grid {...args}>
+        <Column sm={4} />
+        <Column sm={4} />
+        <Column sm={4} />
+        <Column sm={4} />
+      </Grid>
+    </div>
+  );
+};
+
+Narrow.args = {
+  narrow: true,
+};
+
+Narrow.argTypes = {
+  ...sharedArgTypes,
+  narrow: {
+    ...sharedArgTypes.narrow,
+    table: {
+      readonly: true,
+    },
+  },
+};
+
+export const Condensed = (args) => {
+  return (
+    <div className="sb-css-grid-container">
+      <Grid {...args}>
+        <Column sm={4} />
+        <Column sm={4} />
+        <Column sm={4} />
+        <Column sm={4} />
+      </Grid>
+    </div>
+  );
+};
+
+Condensed.args = {
+  condensed: true,
+};
+
+Condensed.argTypes = {
+  ...sharedArgTypes,
+  condensed: {
+    ...sharedArgTypes.condensed,
+    table: {
+      readonly: true,
+    },
+  },
+};
+
+export const FullWidth = (args) => {
+  return (
+    <div className="sb-css-grid-container">
+      <Grid {...args}>
+        <Column sm={4} />
+        <Column sm={4} />
+        <Column sm={4} />
+        <Column sm={4} />
+      </Grid>
+    </div>
+  );
+};
+
+FullWidth.args = {
+  fullWidth: true,
+};
+
+FullWidth.argTypes = {
+  ...sharedArgTypes,
+  fullWidth: {
+    ...sharedArgTypes.fullWidth,
+    table: {
+      readonly: true,
+    },
+  },
+};
+
+export const Responsive = (args) => {
+  return (
+    <div className="sb-css-grid-container">
+      <Grid {...args}>
+        <Column sm={2} md={4} lg={6}>
+          <p>Small: Span 2 of 4</p>
+          <p>Medium: Span 4 of 8</p>
+          <p>Large: Span 6 of 16</p>
+        </Column>
+        <Column sm={2} md={2} lg={3}>
+          <p>Small: Span 2 of 4</p>
+          <p>Medium: Span 2 of 8</p>
+          <p>Large: Span 3 of 16</p>
+        </Column>
+        <Column sm={0} md={2} lg={3}>
+          <p>Small: Span 0 of 4</p>
+          <p>Medium: Span 2 of 8</p>
+          <p>Large: Span 3 of 16</p>
+        </Column>
+        <Column sm={0} md={0} lg={4}>
+          <p>Small: Span 0 of 4</p>
+          <p>Medium: Span 0 of 8</p>
+          <p>Large: Span 4 of 16</p>
+        </Column>
+        <Column sm="25%" md="50%" lg="75%">
+          <p>Small: Span 25%</p>
+          <p>Medium: Span 50%</p>
+          <p>Large: Span 75%</p>
+        </Column>
+      </Grid>
+    </div>
+  );
+};
+
+export const Subgrid = (args) => {
+  return (
+    <div className="sb-css-grid-container">
+      <Grid {...args}>
+        <Column sm={2} md={4} lg={3}>
+          <p>Small: Span 2 of 4</p>
+          <p>Medium: Span 4 of 8</p>
+          <p>Large: Span 3 of 16</p>
+        </Column>
+        <Column sm={2} md={4} lg={10}>
+          <p>Small: Span 2 of 4</p>
+          <p>Medium: Span 4 of 8</p>
+          <p>Large: Span 10 of 16</p>
+          <Grid className="example">
+            <Column sm={1} md={1} lg={2}>
+              <p>sm={1}</p> <p>md={1}</p> <p>lg={2}</p>
+            </Column>
+            <Column sm={1} md={1} lg={2}>
+              <p>sm={1}</p> <p>md={1}</p> <p>lg={2}</p>
+            </Column>
+            <Column sm={0} md={1} lg={1}>
+              <p>sm={0}</p> <p>md={1}</p> <p>lg={1}</p>
+            </Column>
+            <Column sm={0} md={1} lg={1}>
+              <p>sm={0}</p> <p>md={1}</p> <p>lg={1}</p>
+            </Column>
+            <Column sm={0} md={0} lg={1}>
+              <p>sm={0}</p> <p>md={0}</p> <p>lg={1}</p>
+            </Column>
+            <Column sm={0} md={0} lg={1}>
+              <p>sm={0}</p> <p>md={0}</p> <p>lg={1}</p>
+            </Column>
+            <Column sm={0} md={0} lg={1}>
+              <p>sm={0}</p> <p>md={0}</p> <p>lg={1}</p>
+            </Column>
+            <Column sm={0} md={0} lg={1}>
+              <p>sm={0}</p> <p>md={0}</p> <p>lg={1}</p>
             </Column>
           </Grid>
-        </GridSettings>
-      </Column>
-      <Column lg={8}>
-        <Grid>
-          <Column lg={4} />
-          <Column lg={4} />
-        </Grid>
-      </Column>
-    </Grid>
-  );
-};
+        </Column>
+        <Column sm={0} md={0} lg={3}>
+          <p>Small: Span 0 of 4</p>
+          <p>Medium: Span 0 of 8</p>
+          <p>Large: Span 3 of 16</p>
+        </Column>
+      </Grid>
 
-export const Default = () => {
-  return (
-    <Grid>
-      <Column sm={4} />
-      <Column sm={4} />
-      <Column sm={4} />
-      <Column sm={4} />
-    </Grid>
-  );
-};
-
-export const Narrow = () => {
-  return (
-    <Grid narrow>
-      <Column sm={4} />
-      <Column sm={4} />
-      <Column sm={4} />
-      <Column sm={4} />
-    </Grid>
-  );
-};
-
-export const Condensed = () => {
-  return (
-    <Grid condensed>
-      <Column sm={4} />
-      <Column sm={4} />
-      <Column sm={4} />
-      <Column sm={4} />
-    </Grid>
-  );
-};
-
-export const FullWidth = () => (
-  <Grid fullWidth>
-    <Column sm={4} />
-    <Column sm={4} />
-    <Column sm={4} />
-    <Column sm={4} />
-  </Grid>
-);
-
-export const Responsive = () => (
-  <Grid>
-    <Column sm={2} md={4} lg={6}>
-      <p>Small: Span 2 of 4</p>
-      <p>Medium: Span 4 of 8</p>
-      <p>Large: Span 6 of 16</p>
-    </Column>
-    <Column sm={2} md={2} lg={3}>
-      <p>Small: Span 2 of 4</p>
-      <p>Medium: Span 2 of 8</p>
-      <p>Large: Span 3 of 16</p>
-    </Column>
-    <Column sm={0} md={2} lg={3}>
-      <p>Small: Span 0 of 4</p>
-      <p>Medium: Span 2 of 8</p>
-      <p>Large: Span 3 of 16</p>
-    </Column>
-    <Column sm={0} md={0} lg={4}>
-      <p>Small: Span 0 of 4</p>
-      <p>Medium: Span 0 of 8</p>
-      <p>Large: Span 4 of 16</p>
-    </Column>
-    <Column sm="25%" md="50%" lg="75%">
-      <p>Small: Span 25%</p>
-      <p>Medium: Span 50%</p>
-      <p>Large: Span 75%</p>
-    </Column>
-  </Grid>
-);
-
-export const Subgrid = () => {
-  return (
-    <Grid>
-      <Column sm={2} md={4} lg={3}>
-        <p>Small: Span 2 of 4</p>
-        <p>Medium: Span 4 of 8</p>
-        <p>Large: Span 3 of 16</p>
-      </Column>
-      <Column sm={2} md={4} lg={10}>
-        <p>Small: Span 2 of 4</p>
-        <p>Medium: Span 4 of 8</p>
-        <p>Large: Span 10 of 16</p>
-        <Grid className="example">
-          <Column sm={1} md={1} lg={2}>
-            <p>sm={1}</p> <p>md={1}</p> <p>lg={2}</p>
-          </Column>
-          <Column sm={1} md={1} lg={2}>
-            <p>sm={1}</p> <p>md={1}</p> <p>lg={2}</p>
-          </Column>
-          <Column sm={0} md={1} lg={1}>
-            <p>sm={0}</p> <p>md={1}</p> <p>lg={1}</p>
-          </Column>
-          <Column sm={0} md={1} lg={1}>
-            <p>sm={0}</p> <p>md={1}</p> <p>lg={1}</p>
-          </Column>
-          <Column sm={0} md={0} lg={1}>
-            <p>sm={0}</p> <p>md={0}</p> <p>lg={1}</p>
-          </Column>
-          <Column sm={0} md={0} lg={1}>
-            <p>sm={0}</p> <p>md={0}</p> <p>lg={1}</p>
-          </Column>
-          <Column sm={0} md={0} lg={1}>
-            <p>sm={0}</p> <p>md={0}</p> <p>lg={1}</p>
-          </Column>
-          <Column sm={0} md={0} lg={1}>
-            <p>sm={0}</p> <p>md={0}</p> <p>lg={1}</p>
-          </Column>
-        </Grid>
-      </Column>
-      <Column sm={0} md={0} lg={3}>
-        <p>Small: Span 0 of 4</p>
-        <p>Medium: Span 0 of 8</p>
-        <p>Large: Span 3 of 16</p>
-      </Column>
-    </Grid>
-  );
-};
-
-export const MixedGutterModes = () => {
-  return (
-    <>
+      <h5>Wide</h5>
       <Grid>
+        <Column sm={4} md={4} lg={4} />
+        <Column sm={4} md={4} lg={4} />
+        <Column sm={4} md={4} lg={4} />
+        <Column sm={4} md={4} lg={4} />
+        <Column sm={4} md={8} lg={16}>
+          <Grid>
+            <Column sm={4} md={4} lg={4} />
+            <Column sm={4} md={4} lg={4} />
+            <Column sm={4} md={4} lg={4} />
+            <Column sm={4} md={4} lg={4} />
+          </Grid>
+        </Column>
+      </Grid>
+      <h5>Narrow</h5>
+      <Grid narrow>
+        <Column sm={4} md={4} lg={4} />
+        <Column sm={4} md={4} lg={4} />
+        <Column sm={4} md={4} lg={4} />
+        <Column sm={4} md={4} lg={4} />
+        <Column sm={4} md={8} lg={16}>
+          <Grid narrow>
+            <Column sm={4} md={4} lg={4} />
+            <Column sm={4} md={4} lg={4} />
+            <Column sm={4} md={4} lg={4} />
+            <Column sm={4} md={4} lg={4} />
+          </Grid>
+        </Column>
+      </Grid>
+      <h5>Condensed</h5>
+      <Grid condensed>
+        <Column sm={4} md={4} lg={4} />
+        <Column sm={4} md={4} lg={4} />
+        <Column sm={4} md={4} lg={4} />
+        <Column sm={4} md={4} lg={4} />
+        <Column sm={4} md={8} lg={16}>
+          <Grid condensed>
+            <Column sm={4} md={4} lg={4} />
+            <Column sm={4} md={4} lg={4} />
+            <Column sm={4} md={4} lg={4} />
+            <Column sm={4} md={4} lg={4} />
+          </Grid>
+        </Column>
+      </Grid>
+    </div>
+  );
+};
+
+export const SubgridWithRowGap = (args) => (
+  <Grid {...args}>
+    <Column sm={4} md={8} lg={16}>
+      <Grid withRowGap>
+        {/* Nested subgrid with row gap */}
+        <Column sm={4} md={4} lg={8} />
+        <Column sm={4} md={4} lg={8} />
+        <Column sm={4} md={4} lg={8} />
+        <Column sm={4} md={4} lg={8} />
+      </Grid>
+    </Column>
+    <Column sm={4} md={8} lg={16}>
+      <Grid withRowGap narrow>
+        {/* Nested subgrid with row gap */}
+        <Column sm={4} md={4} lg={8} />
+        <Column sm={4} md={4} lg={8} />
+        <Column sm={4} md={4} lg={8} />
+        <Column sm={4} md={4} lg={8} />
+      </Grid>
+    </Column>
+    <Column sm={4} md={8} lg={16}>
+      <Grid withRowGap condensed>
+        {/* Nested subgrid with row gap */}
+        <Column sm={4} md={4} lg={8} />
+        <Column sm={4} md={4} lg={8} />
+        <Column sm={4} md={4} lg={8} />
+        <Column sm={4} md={4} lg={8} />
+      </Grid>
+    </Column>
+  </Grid>
+);
+
+SubgridWithRowGap.args = {
+  withRowGap: true,
+};
+
+SubgridWithRowGap.argTypes = {
+  ...sharedArgTypes,
+  withRowGap: {
+    ...sharedArgTypes.withRowGap,
+    table: {
+      readonly: true,
+    },
+  },
+};
+
+export const MixedGutterModes = (args) => {
+  return (
+    <div className="sb-css-grid-container">
+      <Grid {...args}>
         <Column span={8}>
           <Grid>
             <Column span={8}>
@@ -224,7 +414,7 @@ export const MixedGutterModes = () => {
           </Grid>
         </Column>
       </Grid>
-      <Grid narrow>
+      <Grid {...args} narrow>
         <Column span={8}>
           <Grid>
             <Column span={4} />
@@ -247,100 +437,118 @@ export const MixedGutterModes = () => {
           </Grid>
         </Column>
       </Grid>
-    </>
+    </div>
   );
 };
 
-export const GridStartEnd = () => (
-  <Grid>
-    <Column
-      sm={{ span: 1, start: 4 }}
-      md={{ span: 2, start: 7 }}
-      lg={{ span: 4, start: 13 }}>
-      span, start
-    </Column>
-    <Column
-      sm={{ span: 2, end: 5 }}
-      md={{ span: 4, end: 9 }}
-      lg={{ span: 8, end: 17 }}>
-      span, end
-    </Column>
-    <Column
-      sm={{ start: 1, end: 4 }}
-      md={{ start: 3, end: 9 }}
-      lg={{ start: 5, end: 17 }}>
-      start, end
-    </Column>
-  </Grid>
-);
-
-export const Offset = () => (
-  <Grid>
-    <Column
-      sm={{ span: 1, offset: 3 }}
-      md={{ span: 2, offset: 6 }}
-      lg={{ span: 4, offset: 12 }}
-    />
-    <Column
-      sm={{ span: 2, offset: 2 }}
-      md={{ span: 4, offset: 4 }}
-      lg={{ span: 8, offset: 8 }}
-    />
-    <Column
-      sm={{ span: 3, offset: 1 }}
-      md={{ span: 6, offset: 2 }}
-      lg={{ span: 12, offset: 4 }}
-    />
-    <Column sm={{ span: 4 }} md={{ span: 8 }} lg={{ span: 16 }} />
-    <Column
-      sm={{ span: '25%', offset: 1 }}
-      md={{ span: '50%', offset: 2 }}
-      lg={{ span: '75%', offset: 4 }}
-    />
-  </Grid>
-);
-
-export const Playground = (args) => (
-  <Grid {...args}>
-    <Column sm={4} />
-    <Column sm={4} />
-    <Column sm={4} />
-    <Column sm={4} />
-  </Grid>
-);
-
-Playground.args = {
-  as: 'div',
-  fullWidth: false,
-  narrow: false,
-  condensed: false,
+export const GridStartEnd = (args) => {
+  return (
+    <div className="sb-css-grid-container">
+      <Grid {...args}>
+        <Column
+          sm={{ span: 1, start: 4 }}
+          md={{ span: 2, start: 7 }}
+          lg={{ span: 4, start: 13 }}>
+          span, start
+        </Column>
+        <Column
+          sm={{ span: 2, end: 5 }}
+          md={{ span: 4, end: 9 }}
+          lg={{ span: 8, end: 17 }}>
+          span, end
+        </Column>
+        <Column
+          sm={{ start: 1, end: 4 }}
+          md={{ start: 3, end: 9 }}
+          lg={{ start: 5, end: 17 }}>
+          start, end
+        </Column>
+      </Grid>
+    </div>
+  );
 };
 
-Playground.argTypes = {
-  as: {
-    control: {
-      type: 'text',
-    },
+export const Offset = (args) => {
+  return (
+    <div className="sb-css-grid-container">
+      <Grid {...args}>
+        <Column
+          sm={{ span: 1, offset: 3 }}
+          md={{ span: 2, offset: 6 }}
+          lg={{ span: 4, offset: 12 }}
+        />
+        <Column
+          sm={{ span: 2, offset: 2 }}
+          md={{ span: 4, offset: 4 }}
+          lg={{ span: 8, offset: 8 }}
+        />
+        <Column
+          sm={{ span: 3, offset: 1 }}
+          md={{ span: 6, offset: 2 }}
+          lg={{ span: 12, offset: 4 }}
+        />
+        <Column sm={{ span: 4 }} md={{ span: 8 }} lg={{ span: 16 }} />
+        <Column
+          sm={{ span: '25%', offset: 1 }}
+          md={{ span: '50%', offset: 2 }}
+          lg={{ span: '75%', offset: 4 }}
+        />
+      </Grid>
+    </div>
+  );
+};
+
+export const WithGridSettings = (args) => {
+  return (
+    <div className="sb-css-grid-container">
+      <GridSettings subgrid={args.subgrid}>
+        <Grid>
+          <Column sm={4} md={4} lg={4}>
+            <p>Column 1</p>
+          </Column>
+          <Column sm={4} md={4} lg={4}>
+            <p>Column 2</p>
+          </Column>
+          <Column sm={4} md={4} lg={4}>
+            <p>Column 3</p>
+          </Column>
+          <Column sm={4} md={4} lg={4}>
+            <p>Column 4</p>
+          </Column>
+        </Grid>
+      </GridSettings>
+    </div>
+  );
+};
+
+WithGridSettings.args = {
+  subgrid: false,
+};
+
+WithGridSettings.argTypes = {
+  subgrid: {
+    control: 'boolean',
+    description: 'If true, will specify whether subgrid should be enabled',
   },
-  children: {
+  align: {
     control: false,
   },
-  className: {
+  condensed: {
     control: false,
   },
   fullWidth: {
-    control: {
-      type: 'boolean',
-    },
+    control: false,
   },
   narrow: {
-    control: {
-      type: 'boolean',
-    },
+    control: false,
   },
-  condensed: {
-    control: {
-      type: 'boolean',
-    },
+  withRowGap: {
+    control: false,
+  },
+};
+
+WithGridSettings.parameters = {
+  controls: {
+    include: ['subgrid'],
   },
 };

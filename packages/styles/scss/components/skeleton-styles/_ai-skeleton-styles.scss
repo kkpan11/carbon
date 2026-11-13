@@ -8,6 +8,7 @@
 @use '../../config' as *;
 @use '../../theme';
 @use '../../utilities/convert';
+@use '../../utilities/high-contrast-mode' as *;
 
 @keyframes ai-skeleton-animation {
   0% {
@@ -36,9 +37,9 @@
     animation: 1250ms ease-in-out ai-skeleton-animation infinite;
     background: linear-gradient(
       to right,
-      rgba(theme.get('ai-skeleton-element-background'), 0) 0%,
-      rgba(theme.get('ai-skeleton-element-background'), 0.5) 50%,
-      rgba(theme.get('ai-skeleton-element-background'), 0) 100%
+      rgb(theme.get('ai-skeleton-element-background'), 0) 0%,
+      rgb(theme.get('ai-skeleton-element-background'), 0.5) 50%,
+      rgb(theme.get('ai-skeleton-element-background'), 0) 100%
     );
   }
 
@@ -60,6 +61,22 @@
   //skeleton icon
   .#{$prefix}--skeleton__icon--ai {
     border-radius: convert.to-rem(2px);
+  }
+
+  //High Contrast Mode
+  //Ensure AI Skeleton is visible and animated in Windows HCM
+  @include high-contrast-mode {
+    .#{$prefix}--skeleton__text--ai,
+    .#{$prefix}--skeleton__placeholder--ai,
+    .#{$prefix}--skeleton__icon--ai {
+      background: CanvasText;
+    }
+
+    .#{$prefix}--skeleton__text--ai::before,
+    .#{$prefix}--skeleton__placeholder--ai::before,
+    .#{$prefix}--skeleton__icon--ai::before {
+      background: Canvas;
+    }
   }
 }
 

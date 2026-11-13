@@ -1,22 +1,34 @@
 /**
- * Copyright IBM Corp. 2016, 2023
+ * Copyright IBM Corp. 2016, 2026
  *
  * This source code is licensed under the Apache-2.0 license found in the
  * LICENSE file in the root directory of this source tree.
  */
 
 import PropTypes from 'prop-types';
-import React, { ReactNode } from 'react';
+import React, {
+  Children,
+  cloneElement,
+  useRef,
+  type ComponentProps,
+  type ReactNode,
+} from 'react';
 import cx from 'classnames';
+import { deprecate } from '../../prop-types/deprecate';
 import { usePrefix } from '../../internal/usePrefix';
 import { WarningFilled, WarningAltFilled } from '@carbon/icons-react';
-import setupGetInstanceId from '../../tools/setupGetInstanceId';
-
-const getInstanceId = setupGetInstanceId();
+import { useId } from '../../internal/useId';
+import { hasHelperText } from '../../internal/hasHelperText';
+import { useNormalizedInputProps } from '../../internal/useNormalizedInputProps';
+import { AILabel } from '../AILabel';
+import { isComponentElement } from '../../internal';
+import { Checkbox } from '../Checkbox';
+import { useNoInteractiveChildrenForLabel } from '../FeatureFlags/useNoInteractiveChildrenForLabel';
 
 export interface CheckboxGroupProps {
   children?: ReactNode;
   className?: string;
+  decorator?: ReactNode;
   helperText?: ReactNode;
   invalid?: boolean;
   invalidText?: ReactNode;
@@ -24,6 +36,11 @@ export interface CheckboxGroupProps {
   orientation?: 'horizontal' | 'vertical';
   legendText: ReactNode;
   readOnly?: boolean;
+  disabled?: boolean;
+  /**
+   * * @deprecated please use decorator instead.
+   * **Experimental**: Provide a `Slug` component to be rendered inside the `Checkbox` component
+   */
   slug?: ReactNode;
   warn?: boolean;
   warnText?: ReactNode;
@@ -34,74 +51,132 @@ export interface CustomType {
   kind: string;
 }
 
-const CheckboxGroup: React.FC<CheckboxGroupProps> = ({
+const CheckboxGroup = ({
   children,
   className,
+  decorator,
   helperText,
   invalid,
   invalidText,
   legendId,
   legendText,
   readOnly,
+  disabled,
   warn,
   warnText,
   slug,
   orientation = 'vertical',
   ...rest
-}) => {
+}: CheckboxGroupProps) => {
   const prefix = usePrefix();
+  const legendRef = useRef<HTMLLegendElement>(null);
+  const checkboxGroupInstanceId = useId();
+  const normalizedProps = useNormalizedInputProps({
+    id: `checkbox-group-${checkboxGroupInstanceId}`,
+    readOnly,
+    disabled: disabled ?? false,
+    invalid: invalid ?? false,
+    invalidText,
+    warn: warn ?? false,
+    warnText,
+  });
 
-  const showWarning = !readOnly && !invalid && warn;
-  const showHelper = !invalid && !warn;
+  const showWarning = normalizedProps.warn;
+  const showHelper = !normalizedProps.invalid && !normalizedProps.warn;
 
-  const checkboxGroupInstanceId = getInstanceId();
-
-  const helperId = !helperText
+  const hasHelper = hasHelperText(helperText);
+  const helperId = !hasHelper
     ? undefined
     : `checkbox-group-helper-text-${checkboxGroupInstanceId}`;
 
-  const helper = helperText ? (
+  const helper = hasHelper && (
     <div id={helperId} className={`${prefix}--form__helper-text`}>
       {helperText}
     </div>
-  ) : null;
+  );
 
   const fieldsetClasses = cx(`${prefix}--checkbox-group`, className, {
     [`${prefix}--checkbox-group--${orientation}`]: orientation === 'horizontal',
     [`${prefix}--checkbox-group--readonly`]: readOnly,
-    [`${prefix}--checkbox-group--invalid`]: !readOnly && invalid,
+    [`${prefix}--checkbox-group--invalid`]: normalizedProps.invalid,
     [`${prefix}--checkbox-group--warning`]: showWarning,
     [`${prefix}--checkbox-group--slug`]: slug,
+    [`${prefix}--checkbox-group--decorator`]: decorator,
   });
 
-  // Slug is always size `mini`
-  let normalizedSlug;
-  if (
-    React.isValidElement(slug) &&
-    (slug['type'] as any)?.displayName === 'Slug'
-  ) {
-    normalizedSlug = React.cloneElement(slug, {
-      size: 'mini',
-      kind: 'default',
-    } as CustomType);
-  }
+  // AILabel always size `mini`
+  const candidate = slug ?? decorator;
+  const candidateIsAILabel = isComponentElement(candidate, AILabel);
+  const normalizedDecorator = candidateIsAILabel
+    ? cloneElement(candidate, { size: 'mini', kind: 'default' })
+    : candidate;
+  useNoInteractiveChildrenForLabel(
+    legendRef,
+    'The CheckboxGroup component `legendText` prop must have no interactive content'
+  );
+
+  const clonedChildren = Children.map(children, (child) => {
+    if (isComponentElement(child, Checkbox)) {
+      const childProps: Pick<
+        ComponentProps<typeof Checkbox>,
+        'invalid' | 'readOnly' | 'warn' | 'disabled'
+      > = {
+        ...(typeof invalid !== 'undefined' &&
+        typeof child.props.invalid === 'undefined'
+          ? { invalid: normalizedProps.invalid }
+          : {}),
+        ...(typeof readOnly !== 'undefined' &&
+        typeof child.props.readOnly === 'undefined'
+          ? { readOnly }
+          : {}),
+        ...(typeof warn !== 'undefined' &&
+        typeof child.props.warn === 'undefined'
+          ? { warn: normalizedProps.warn }
+          : {}),
+        ...(typeof disabled !== 'undefined' &&
+        typeof child.props.disabled === 'undefined'
+          ? { disabled }
+          : {}),
+      };
+
+      return Object.keys(childProps).length
+        ? cloneElement(child, childProps)
+        : child;
+    }
+
+    return child;
+  });
+
   return (
     <fieldset
       className={fieldsetClasses}
-      data-invalid={invalid ? true : undefined}
+      disabled={disabled}
+      data-invalid={normalizedProps.invalid ? true : undefined}
       aria-labelledby={rest['aria-labelledby'] || legendId}
       aria-readonly={readOnly}
-      aria-describedby={!invalid && !warn && helper ? helperId : undefined}
+      aria-disabled={disabled}
+      aria-describedby={
+        !normalizedProps.invalid && !normalizedProps.warn && helper
+          ? helperId
+          : undefined
+      }
       {...rest}>
       <legend
         className={`${prefix}--label`}
-        id={legendId || rest['aria-labelledby']}>
+        id={legendId || rest['aria-labelledby']}
+        ref={legendRef}>
         {legendText}
-        {normalizedSlug}
       </legend>
-      {children}
+      {slug ? (
+        normalizedDecorator
+      ) : decorator ? (
+        <div className={`${prefix}--checkbox-group-inner--decorator`}>
+          {normalizedDecorator}
+        </div>
+      ) : null}
+      {clonedChildren}
       <div className={`${prefix}--checkbox-group__validation-msg`}>
-        {!readOnly && invalid && (
+        {normalizedProps.invalid && (
           <>
             <WarningFilled className={`${prefix}--checkbox__invalid-icon`} />
             <div className={`${prefix}--form-requirement`}>{invalidText}</div>
@@ -131,6 +206,11 @@ CheckboxGroup.propTypes = {
    * Provide a custom className to be applied to the containing <fieldset> node
    */
   className: PropTypes.string,
+
+  /**
+   * **Experimental**: Provide a decorator component to be rendered inside the `CheckboxGroup` component
+   */
+  decorator: PropTypes.node,
 
   /**
    * Provide text for the form group for additional help
@@ -170,7 +250,10 @@ CheckboxGroup.propTypes = {
   /**
    * **Experimental**: Provide a `Slug` component to be rendered inside the `CheckboxGroup` component
    */
-  slug: PropTypes.node,
+  slug: deprecate(
+    PropTypes.node,
+    'The `slug` prop has been deprecated and will be removed in the next major version. Use the decorator prop instead.'
+  ),
 
   /**
    * Specify whether the form group is currently in warning state

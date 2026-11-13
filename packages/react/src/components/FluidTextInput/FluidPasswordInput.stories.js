@@ -1,5 +1,5 @@
 /**
- * Copyright IBM Corp. 2016, 2023
+ * Copyright IBM Corp. 2016, 2026
  *
  * This source code is licensed under the Apache-2.0 license found in the
  * LICENSE file in the root directory of this source tree.
@@ -7,52 +7,52 @@
 
 import React from 'react';
 import FluidPasswordInput from './FluidPasswordInput';
+import mdx from './FluidPasswordInput.mdx';
 
 import './test.scss';
 
 export default {
-  title: 'Experimental/Fluid Components/unstable__FluidPasswordInput',
+  title: 'Components/Fluid Components/FluidPasswordInput',
   component: FluidPasswordInput,
+  parameters: {
+    docs: {
+      page: mdx,
+    },
+    controls: {
+      exclude: ['isPassword'],
+    },
+  },
 };
 
-export const Default = () => (
-  <FluidPasswordInput
-    id="input-1"
-    labelText="Label"
-    placeholder="Placeholder text"
-  />
-);
+export const Default = (args) => {
+  const { defaultWidth, ...passwordInputArgs } = args;
+  return (
+    <div style={{ width: defaultWidth }}>
+      <FluidPasswordInput {...passwordInputArgs} />
+    </div>
+  );
+};
 
-export const Playground = (args) => (
-  <div style={{ width: args.playgroundWidth }}>
-    <FluidPasswordInput
-      {...args}
-      id="input-1"
-      labelText="Label"
-      placeholder="Placeholder text"
-    />
-  </div>
-);
-
-Playground.args = {
-  playgroundWidth: 300,
-  className: 'test-class',
-  placeholder: 'Placeholder text',
-  showPasswordLabel: 'Show password label',
-  hidePasswordLabel: 'Hide password label',
-  onTogglePasswordVisibility: true,
+Default.args = {
+  className: '',
+  defaultWidth: 300,
+  disabled: false,
+  id: 'input-1',
   invalid: false,
   invalidText:
     'Error message that is really long can wrap to more lines but should not be excessively long.',
-  disabled: false,
   labelText: 'Label',
+  placeholder: 'Placeholder text',
+  readOnly: false,
+  showPasswordLabel: 'Show password',
+  hidePasswordLabel: 'Hide password',
   warn: false,
   warnText:
     'Warning message that is really long can wrap to more lines but should not be excessively long.',
 };
 
-Playground.argTypes = {
-  playgroundWidth: {
+Default.argTypes = {
+  defaultWidth: {
     control: { type: 'range', min: 300, max: 800, step: 50 },
   },
   className: {
@@ -61,15 +61,12 @@ Playground.argTypes = {
     },
   },
   showPasswordLabel: {
-    description: 'Show password" tooltip text on password visibility toggle',
+    control: 'text',
+    description: '"Show password" tooltip text on password visibility toggle',
   },
   hidePasswordLabel: {
-    description: 'Hide password" tooltip text on password visibility toggle',
-  },
-  defaultValue: {
-    control: {
-      type: 'text',
-    },
+    control: 'text',
+    description: '"Hide password" tooltip text on password visibility toggle',
   },
   placeholder: {
     control: {
@@ -86,18 +83,19 @@ Playground.argTypes = {
       type: 'text',
     },
   },
-  isPassword: {
-    table: {
-      disable: true,
-    },
+  id: {
+    control: 'text',
+  },
+  onChange: {
+    action: 'onChange',
+  },
+  onClick: {
+    action: 'onClick',
   },
   onTogglePasswordVisibility: {
-    table: {
-      disable: false,
-    },
-    control: false,
+    action: 'onTogglePasswordVisibility',
     description:
-      'Callback function that is called whenever the toggle password visibility button is clicked `(evt) => void`      ',
+      'Callback function that is called whenever the toggle password visibility button is clicked `(evt) => void`',
   },
   disabled: {
     control: {
@@ -109,17 +107,15 @@ Playground.argTypes = {
       type: 'text',
     },
   },
+  readOnly: {
+    control: 'boolean',
+  },
   warn: {
     control: {
       type: 'boolean',
     },
   },
   warnText: {
-    control: {
-      type: 'text',
-    },
-  },
-  value: {
     control: {
       type: 'text',
     },
